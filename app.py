@@ -1823,7 +1823,7 @@ def m_teleconsult():
             flash(f"Lien Jitsi genere et patient notifie. Salle : {room}","success")
         elif action=="demarrer":
             tele=next((t for t in DB["teleconsultations"] if t["id_rdv"]==rdv_id),None)
-            if tele: tele["statut"]="En cours"; rdv["statut"]="En cours"
+            if tele: tele["statut"]="En cours"; tele["debut_reel"]=datetime.now().strftime("%Y-%m-%d %H:%M"); rdv["statut"]="En cours"
             flash("Teleconsultation demarree.","success")
         elif action=="terminer":
             tele=next((t for t in DB["teleconsultations"] if t["id_rdv"]==rdv_id),None)
@@ -1850,22 +1850,25 @@ def m_teleconsult():
     opts_r="".join(f'<option value="{r["id"]}">{r["date"]} {r["heure"]} — {pname(r["id_patient"])}</option>' for r in rdv_sans_lien)
     def duree_appel(t):
         if t["statut"]!="Terminee" or not t.get("date_fin"): return "-"
+        debut=t.get("debut_reel") or t["date_debut"]
         try:
-            d1=datetime.strptime(t["date_debut"],"%Y-%m-%d %H:%M"); d2=datetime.strptime(t["date_fin"],"%Y-%m-%d %H:%M")
+            d1=datetime.strptime(debut,"%Y-%m-%d %H:%M"); d2=datetime.strptime(t["date_fin"],"%Y-%m-%d %H:%M")
             mins=int((d2-d1).total_seconds()//60)
-            return f"{mins} min" if mins>=0 else "-"
+            return f"{mins} min" if mins>=0 else "< 1 min"
         except Exception: return "-"
     def row_tele(t):
         rdv=next((r for r in DB["rdvs"] if r["id"]==t.get("id_rdv")),None)
-        btn_rejoindre=f'<a href="{t["lien"]}" target="_blank" class="btn btn-sm btn-b"><i class="fas fa-video"></i>Rejoindre</a>' if t.get("lien") and t["statut"] in ["Planifiee","En cours"] else "-"
-        btn_demarrer=""; btn_terminer=""; btn_rappel=""; btn_annuler=""; msg_avant=""
+        btn_rejoindre=""; btn_demarrer=""; btn_terminer=""; btn_rappel=""; btn_annuler=""; msg_avant=""
         if rdv and t.get("lien"):
             if t["statut"]=="Planifiee":
                 msg_avant='<div style="font-size:.74rem;color:var(--g2);margin-top:3px;"><i class="fas fa-info-circle"></i> Rejoignez avant votre patient</div>'
-                btn_demarrer=f'<form method="POST" style="display:inline;"><input type="hidden" name="action" value="demarrer"><input type="hidden" name="rdv" value="{rdv["id"]}"><button type="submit" class="btn btn-sm btn-g ms-1"><i class="fas fa-play"></i>Demarrer</button></form>'
+                btn_demarrer=f'''<form method="POST" style="display:inline;" onsubmit="window.open('{t["lien"]}','_blank');">
+                  <input type="hidden" name="action" value="demarrer"><input type="hidden" name="rdv" value="{rdv["id"]}">
+                  <button type="submit" class="btn btn-sm btn-b ms-1"><i class="fas fa-video"></i>Rejoindre et demarrer</button></form>'''
                 btn_rappel=f'<form method="POST" style="display:inline;"><input type="hidden" name="action" value="rappel"><input type="hidden" name="rdv" value="{rdv["id"]}"><button type="submit" class="btn btn-sm btn-outline-g ms-1"><i class="fas fa-bell"></i>Rappel</button></form>'
                 btn_annuler=f'<form method="POST" style="display:inline;" onsubmit="return confirm(\'Annuler cette teleconsultation ?\');"><input type="hidden" name="action" value="annuler"><input type="hidden" name="rdv" value="{rdv["id"]}"><button type="submit" class="btn btn-sm btn-r ms-1"><i class="fas fa-times"></i>Annuler</button></form>'
             elif t["statut"]=="En cours":
+                btn_rejoindre=f'<a href="{t["lien"]}" target="_blank" class="btn btn-sm btn-b"><i class="fas fa-video"></i>Rejoindre</a>'
                 btn_terminer=f'''<form method="POST" style="display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap;">
                   <input type="hidden" name="action" value="terminer"><input type="hidden" name="rdv" value="{rdv["id"]}">
                   <input type="text" name="notes" placeholder="Notes de consultation..." class="form-control" style="width:180px;display:inline-block;font-size:.78rem;padding:5px 8px;">
@@ -2182,16 +2185,18 @@ def p_teleconsult():
     teles=[t for t in DB["teleconsultations"] if t["id_patient"]==pid]
     def duree_appel(t):
         if t["statut"]!="Terminee" or not t.get("date_fin"): return "-"
+        debut=t.get("debut_reel") or t["date_debut"]
         try:
-            d1=datetime.strptime(t["date_debut"],"%Y-%m-%d %H:%M"); d2=datetime.strptime(t["date_fin"],"%Y-%m-%d %H:%M")
+            d1=datetime.strptime(debut,"%Y-%m-%d %H:%M"); d2=datetime.strptime(t["date_fin"],"%Y-%m-%d %H:%M")
             mins=int((d2-d1).total_seconds()//60)
-            return f"{mins} min" if mins>=0 else "-"
+            return f"{mins} min" if mins>=0 else "< 1 min"
         except Exception: return "-"
     def row_tele_p(t,passee=False):
-        if t.get("lien") and t["statut"] in ["Planifiee","En cours"]:
+        if t["statut"]=="En cours":
+            btn='<span style="color:var(--g2);font-size:.82rem;"><i class="fas fa-arrow-up"></i> Voir le bandeau ci-dessus</span>'
+        elif t.get("lien") and t["statut"]=="Planifiee":
             btn=f'<a href="{t["lien"]}" target="_blank" class="btn btn-sm btn-b"><i class="fas fa-video"></i>Rejoindre</a>'
-            if t["statut"]=="Planifiee":
-                btn+='<div style="font-size:.72rem;color:var(--muted);margin-top:3px;">Attendez que le medecin soit pret</div>'
+            btn+='<div style="font-size:.72rem;color:var(--muted);margin-top:3px;">Attendez que le medecin soit pret</div>'
         elif t["statut"]=="Terminee":
             btn='<span style="color:var(--muted);font-size:.82rem;">Terminee</span>'
         elif t["statut"]=="Annulee":
