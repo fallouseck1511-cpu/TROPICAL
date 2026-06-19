@@ -11,7 +11,7 @@
 # SGRDMS LE TROPICAL v5 — Part 1: imports + DB complet
 from flask import Flask,render_template_string,request,redirect,url_for,session,flash,jsonify,Response
 from functools import wraps
-from datetime import datetime,date
+from datetime import datetime,date,timedelta
 import json,copy,os,base64,io
 from dotenv import load_dotenv
 
@@ -85,7 +85,13 @@ DB={
         {"matricule":"MED008","nom":"Diop","prenom":"Moussa","specialite":"Biologie medicale","telephone":"77 777 88 99","email":"dr.diop@tropical.sn","id_service":6,"username":"dr.diop","est_chef":True,"teleconsult_actif":False,"id_centre":1},
     ],
     "centres":[
-        {"id":1,"nom":"LE TROPICAL","ville":"Thies","adresse":"Diaxao, Thies","telephone":"33 951 00 00"},
+        {"id":1,"nom":"LE TROPICAL","ville":"Thies","adresse":"Diaxao, Thies","telephone":"33 951 00 00","tarif_ticket":2000},
+    ],
+    "disponibilites":[
+        {"id":1,"matricule":"MED001","id_centre":1,"jour_semaine":0,"heure_debut":"08:00","heure_fin":"12:00","duree_creneau":30},
+        {"id":2,"matricule":"MED001","id_centre":1,"jour_semaine":2,"heure_debut":"08:00","heure_fin":"12:00","duree_creneau":30},
+        {"id":3,"matricule":"MED002","id_centre":1,"jour_semaine":1,"heure_debut":"08:00","heure_fin":"13:00","duree_creneau":20},
+        {"id":4,"matricule":"MED002","id_centre":1,"jour_semaine":3,"heure_debut":"08:00","heure_fin":"13:00","duree_creneau":20},
     ],
     "sms_envoyes":[],
     "services":[
@@ -192,7 +198,7 @@ DB={
         {"id":2,"date_action":"2026-06-06 09:00","description":"RDV confirme - Ibrahima Sow / Dr. Diallo","type":"Rendez-vous","id_user":"receptionniste","id_patient":1,"matricule":"MED001"},
         {"id":3,"date_action":"2026-06-05 10:00","description":"Consultation - HTA stade 1","type":"Consultation","id_user":"dr.diallo","id_patient":1,"matricule":"MED001"},
     ],
-    "_c":{"rdvs":3,"patients":3,"cons":2,"ords":1,"facts":2,"teles":1,"notifs":4,"hists":3,"docs":3,"demandes":1,"stocks":5,"meds":5,"services":6,"medecins":8,"dossiers":2,"paiements":1,"tickets":0,"attente":2,"triage":1,"ventes":1,"contrats":2,"interactions":4,"allergies":2,"centres":1,"sms":0}
+    "_c":{"rdvs":3,"patients":3,"cons":2,"ords":1,"facts":2,"teles":1,"notifs":4,"hists":3,"docs":3,"demandes":1,"stocks":5,"meds":5,"services":6,"medecins":8,"dossiers":2,"paiements":1,"tickets":0,"attente":2,"triage":1,"ventes":1,"contrats":2,"interactions":4,"allergies":2,"centres":1,"sms":0,"disponibilites":4}
 }
 # SGRDMS v5 — Part 2: helpers, auth, CSS, layout, PDF, Login
 
@@ -213,6 +219,54 @@ def sname(sid):
 def cname(cid):
     c=next((x for x in DB.get("centres",[]) if x["id"]==cid),None)
     return c["nom"] if c else "?"
+def gen_matricule():
+    """Génère un matricule MEDxxx unique, sans doublon, en se basant sur le plus grand numéro existant."""
+    nums=[]
+    for m in DB["medecins"]:
+        mat=m.get("matricule","")
+        if mat.startswith("MED") and mat[3:].isdigit():
+            nums.append(int(mat[3:]))
+    nxt=(max(nums)+1) if nums else 1
+    while True:
+        cand=f"MED{nxt:03d}"
+        if not any(m["matricule"]==cand for m in DB["medecins"]):
+            return cand
+        nxt+=1
+def med_centres(m):
+    """Retourne la liste des id_centre rattachés à un médecin (multi-centre), avec repli sur id_centre."""
+    cs=m.get("centres")
+    if cs: return cs
+    return [m.get("id_centre",1)]
+def med_in_centre(m,cid):
+    return int(cid) in [int(x) for x in med_centres(m)]
+def tarif_centre(cid):
+    c=next((x for x in DB.get("centres",[]) if x["id"]==cid),None)
+    return c.get("tarif_ticket",0) if c else 0
+JOURS_SEMAINE=["Lundi","Mardi","Mercredi","Jeudi","Vendredi","Samedi","Dimanche"]
+def creneaux_disponibles(matricule,date_str,id_centre=None):
+    """Calcule les créneaux libres d'un médecin pour une date donnée, à partir de ses disponibilités
+    et des RDV déjà pris (hors annulés)."""
+    try:
+        d=datetime.strptime(date_str,"%Y-%m-%d")
+    except (ValueError,TypeError):
+        return []
+    jour=d.weekday()
+    disp_list=[x for x in DB.get("disponibilites",[]) if x["matricule"]==matricule and x["jour_semaine"]==jour]
+    if id_centre:
+        disp_list=[x for x in disp_list if x["id_centre"]==int(id_centre)]
+    pris=set(r["heure"] for r in DB["rdvs"] if r["matricule"]==matricule and r["date"]==date_str and r["statut"]!="Annule")
+    creneaux=[]
+    for disp in disp_list:
+        hd=datetime.strptime(disp["heure_debut"],"%H:%M")
+        hf=datetime.strptime(disp["heure_fin"],"%H:%M")
+        pas=disp.get("duree_creneau",30)
+        cur=hd
+        while cur<hf:
+            hh=cur.strftime("%H:%M")
+            if hh not in pris:
+                creneaux.append(hh)
+            cur+=timedelta(minutes=pas)
+    return sorted(set(creneaux))
 def get_pat(username):
     uid=DB["users"].get(username,{}).get("id_ref")
     return next((p for p in DB["patients"] if p["id"]==uid),None)
@@ -521,6 +575,7 @@ def sidebar(role,username):
             ("","Tableau de bord","tachometer-alt","dashboard"),("","Administration","---",""),
             ("","Medecins","user-md","a_medecins"),("","Services","building","a_services"),
             ("","Centres","hospital","a_centres"),
+            ("","Creneaux medecins","clock","a_creneaux"),
             ("","Patients","users","a_patients"),("","Toutes factures","file-invoice","a_factures"),
             ("","Assurances","shield-alt","a_assurances"),
             ("","Notifications globales","bell","a_notifs"),
@@ -930,30 +985,32 @@ if(ctxS){{const sn=[{','.join([repr(next((m["libelle"] for m in DB["medicaments"
 def a_medecins():
     if request.method=="POST":
         d=request.form
-        mat=d["matricule"]; nom=d["nom"]; prenom=d["prenom"]
+        mat=gen_matricule(); nom=d["nom"]; prenom=d["prenom"]
         spec=d["specialite"]; tel=d.get("tel",""); email=d.get("email","")
         sid=int(d.get("service",1)); uname=d.get("uname",""); pwd=d.get("pwd","med123")
-        cid=int(d.get("centre",1))
+        centres_sel=[int(x) for x in d.getlist("centres")] or [int(d.get("centre",1))]
+        cid=centres_sel[0]
         chef=d.get("chef")=="on"
-        nm={"matricule":mat,"nom":nom,"prenom":prenom,"specialite":spec,"telephone":tel,"email":email,"id_service":sid,"username":uname,"est_chef":chef,"teleconsult_actif":False,"id_centre":cid}
+        nm={"matricule":mat,"nom":nom,"prenom":prenom,"specialite":spec,"telephone":tel,"email":email,"id_service":sid,"username":uname,"est_chef":chef,"teleconsult_actif":False,"id_centre":cid,"centres":centres_sel}
         DB["medecins"].append(nm)
         if uname:
             DB["users"][uname]={"password":pwd,"role":"medecin","nom":nom,"prenom":prenom,"email":email,"telephone":tel,"photo":"","id_ref":mat,"status_med":"Disponible","teleconsult_actif":False}
-        add_hist(f"Nouveau medecin : Dr. {prenom} {nom} ({spec})","Creation medecin",session["user"])
-        flash(f"Dr. {prenom} {nom} ajoute.","success"); return redirect(url_for("a_medecins"))
+        add_hist(f"Nouveau medecin : Dr. {prenom} {nom} ({spec}) — matricule {mat}","Creation medecin",session["user"])
+        flash(f"Dr. {prenom} {nom} ajoute avec le matricule {mat}.","success"); return redirect(url_for("a_medecins"))
     opts_s="".join(f'<option value="{s["id"]}">{s["libelle"]}</option>' for s in DB["services"])
-    opts_c="".join(f'<option value="{c["id"]}">{c["nom"]}</option>' for c in DB.get("centres",[]))
+    chk_c="".join(f'<label style="display:flex;align-items:center;gap:6px;font-size:.8rem;"><input type="checkbox" name="centres" value="{c["id"]}" {"checked" if c["id"]==1 else ""}>{c["nom"]}</label>' for c in DB.get("centres",[]))
     filtre_centre=request.args.get("centre","")
     # Tableau détaillé médecins
     rows=""
     meds_list=DB["medecins"]
     if filtre_centre:
-        meds_list=[m for m in meds_list if m.get("id_centre",1)==int(filtre_centre)]
+        meds_list=[m for m in meds_list if med_in_centre(m,filtre_centre)]
     for m in meds_list:
         ud=DB["users"].get(m["username"],{})
         st=ud.get("status_med","Disponible")
         tc=ud.get("teleconsult_actif",False)
         st_c="ok" if st=="Disponible" else "inf" if "conge" in st.lower() else "att"
+        centres_lbl=", ".join(cname(c) for c in med_centres(m))
         rows+=f"""<tr>
           <td><strong>{m["matricule"]}</strong></td>
           <td><strong>Dr. {m["prenom"]} {m["nom"]}</strong></td>
@@ -961,7 +1018,7 @@ def a_medecins():
           <td>{m["telephone"]}</td>
           <td>{m["email"]}</td>
           <td>{sname(m["id_service"])}</td>
-          <td><span class="bk inf">{cname(m.get("id_centre",1))}</span></td>
+          <td><span class="bk inf">{centres_lbl}</span></td>
           <td><span class="bk {"vio" if m.get("est_chef") else "grey"}">{"Chef" if m.get("est_chef") else "Med."}</span></td>
           <td><span class="bk {st_c}">{st}</span></td>
           <td><span class="bk {"ok" if tc else "err"}">{"Oui" if tc else "Non"}</span></td>
@@ -978,14 +1035,14 @@ def a_medecins():
   </div><div style="overflow-x:auto;"><table class="table"><thead><tr><th>Matricule</th><th>Nom complet</th><th>Specialite</th><th>Telephone</th><th>Email</th><th>Service</th><th>Centre</th><th>Fonction</th><th>Statut</th><th>Teleconsult</th></tr></thead><tbody>{rows}</tbody></table></div></div></div>
   <div class="col-lg-4"><div id="fm" class="card"><div class="card-hdr"><div class="title">Ajouter un medecin</div></div><div class="card-body">
     <form method="POST"><div class="row g-2">
-      <div class="col-6"><label class="form-label">Matricule *</label><input type="text" name="matricule" class="form-control" required placeholder="MED009"></div>
+      <div class="col-6"><label class="form-label">Matricule</label><input type="text" class="form-control" value="{gen_matricule()}" disabled><div style="font-size:.7rem;color:var(--muted);">Genere automatiquement</div></div>
       <div class="col-6"><label class="form-label">Specialite *</label><select name="specialite" class="form-select"><option>Medecine Generale</option><option>Pediatrie</option><option>Gynecologie-Obstetrique</option><option>Cardiologie</option><option>Chirurgie Generale</option><option>Urgences</option><option>Biologie medicale</option><option>Dermatologie</option><option>Neurologie</option></select></div>
       <div class="col-6"><label class="form-label">Nom *</label><input type="text" name="nom" class="form-control" required></div>
       <div class="col-6"><label class="form-label">Prenom *</label><input type="text" name="prenom" class="form-control" required></div>
       <div class="col-12"><label class="form-label">Telephone *</label><input type="text" name="tel" class="form-control" required placeholder="77 000 00 00"></div>
       <div class="col-12"><label class="form-label">Email</label><input type="email" name="email" class="form-control"></div>
       <div class="col-12"><label class="form-label">Service</label><select name="service" class="form-select">{opts_s}</select></div>
-      <div class="col-12"><label class="form-label">Centre</label><select name="centre" class="form-select">{opts_c}</select></div>
+      <div class="col-12"><label class="form-label">Centre(s) *</label><div style="display:flex;flex-direction:column;gap:4px;padding:8px;border:1px solid var(--gl);border-radius:6px;">{chk_c}</div><div style="font-size:.7rem;color:var(--muted);">Un medecin peut etre rattache a plusieurs centres</div></div>
       <div class="col-8"><label class="form-label">Identifiant</label><input type="text" name="uname" class="form-control" placeholder="dr.prenom"></div>
       <div class="col-4"><label class="form-label">Mot de passe</label><input type="text" name="pwd" class="form-control" value="med123"></div>
       <div class="col-12"><label style="display:flex;align-items:center;gap:8px;font-size:.82rem;cursor:pointer;"><input type="checkbox" name="chef"> Chef de service</label></div>
@@ -1001,31 +1058,113 @@ def a_medecins():
 def a_centres():
     if request.method=="POST":
         d=request.form
-        nc={"id":nid("centres"),"nom":d["nom"],"ville":d.get("ville",""),"adresse":d.get("adresse",""),"telephone":d.get("telephone","")}
+        nc={"id":nid("centres"),"nom":d["nom"],"ville":d.get("ville",""),"adresse":d.get("adresse",""),"telephone":d.get("telephone",""),"tarif_ticket":int(d.get("tarif_ticket",0) or 0)}
         DB["centres"].append(nc)
-        add_hist(f"Nouveau centre : {nc['nom']}","Creation centre",session["user"])
+        add_hist(f"Nouveau centre : {nc['nom']} (ticket {nc['tarif_ticket']} FCFA)","Creation centre",session["user"])
         flash(f"Centre '{nc['nom']}' cree.","success"); return redirect(url_for("a_centres"))
     rows=""
     for c in DB.get("centres",[]):
-        meds_c=[m for m in DB["medecins"] if m.get("id_centre",1)==c["id"]]
+        meds_c=[m for m in DB["medecins"] if med_in_centre(m,c["id"])]
         srv_c=[s for s in DB["services"] if s.get("id_centre",1)==c["id"]]
-        rows += f"""<tr><td><strong>{c["nom"]}</strong></td><td>{c["ville"]}</td><td>{c["adresse"]}</td><td>{c["telephone"]}</td><td><span class="bk inf">{len(meds_c)} medecin(s)</span></td><td><span class="bk inf">{len(srv_c)} service(s)</span></td></tr>"""
+        rows += f"""<tr><td><strong>{c["nom"]}</strong></td><td>{c["ville"]}</td><td>{c["adresse"]}</td><td>{c["telephone"]}</td>
+        <td><form method="POST" action="{url_for('a_centre_tarif',cid=c['id'])}" style="display:flex;gap:4px;align-items:center;">
+          <input type="number" name="tarif_ticket" value="{c.get('tarif_ticket',0)}" class="form-control form-control-sm" style="width:90px;">
+          <button type="submit" class="btn btn-sm btn-outline-b"><i class="fas fa-save"></i></button>
+        </form></td>
+        <td><span class="bk inf">{len(meds_c)} medecin(s)</span></td><td><span class="bk inf">{len(srv_c)} service(s)</span></td></tr>"""
     body=f"""<div class="row g-3">
   <div class="col-lg-8"><div class="card"><div class="card-hdr"><div class="title"><i class="fas fa-hospital"></i>Centres ({len(DB.get("centres",[]))})</div>
     <button class="btn btn-sm btn-g" onclick="document.getElementById('fc').classList.toggle('d-none')"><i class="fas fa-plus"></i>Nouveau</button>
-  </div><div style="overflow-x:auto;"><table class="table"><thead><tr><th>Nom</th><th>Ville</th><th>Adresse</th><th>Telephone</th><th>Medecins</th><th>Services</th></tr></thead><tbody>{rows}</tbody></table></div></div></div>
+  </div><div style="overflow-x:auto;"><table class="table"><thead><tr><th>Nom</th><th>Ville</th><th>Adresse</th><th>Telephone</th><th>Tarif ticket (FCFA)</th><th>Medecins</th><th>Services</th></tr></thead><tbody>{rows}</tbody></table></div></div></div>
   <div class="col-lg-4"><div id="fc" class="card"><div class="card-hdr"><div class="title">Nouveau centre</div></div><div class="card-body">
     <form method="POST"><div class="row g-2">
       <div class="col-12"><label class="form-label">Nom *</label><input type="text" name="nom" class="form-control" required></div>
       <div class="col-12"><label class="form-label">Ville</label><input type="text" name="ville" class="form-control"></div>
       <div class="col-12"><label class="form-label">Adresse</label><input type="text" name="adresse" class="form-control"></div>
       <div class="col-12"><label class="form-label">Telephone</label><input type="text" name="telephone" class="form-control"></div>
+      <div class="col-12"><label class="form-label">Tarif ticket (FCFA) *</label><input type="number" name="tarif_ticket" class="form-control" value="2000" required></div>
       <div class="col-12"><button type="submit" class="btn btn-g w-100" style="justify-content:center;"><i class="fas fa-save"></i>Creer</button></div>
     </div></form>
     <div class="al al-i mt-3" style="font-size:.76rem;"><i class="fas fa-info-circle"></i>Les medecins et services peuvent ensuite etre rattaches a ce centre.</div>
   </div></div></div>
 </div>"""
     return page("Centres","admin",session["user"],body)
+
+@app.route("/a-centres/<int:cid>/tarif",methods=["POST"])
+@login_required
+@role_required("admin")
+def a_centre_tarif(cid):
+    c=next((x for x in DB.get("centres",[]) if x["id"]==cid),None)
+    if c:
+        c["tarif_ticket"]=int(request.form.get("tarif_ticket",0) or 0)
+        add_hist(f"Tarif ticket du centre {c['nom']} fixe a {c['tarif_ticket']} FCFA","Modification tarif",session["user"])
+        flash(f"Tarif ticket de {c['nom']} mis a jour ({c['tarif_ticket']} FCFA).","success")
+    return redirect(url_for("a_centres"))
+
+@app.route("/a-creneaux",methods=["GET","POST"])
+@login_required
+@role_required("admin")
+def a_creneaux():
+    if request.method=="POST":
+        d=request.form
+        nd={"id":nid("disponibilites"),"matricule":d["matricule"],"id_centre":int(d["centre"]),
+            "jour_semaine":int(d["jour"]),"heure_debut":d["heure_debut"],"heure_fin":d["heure_fin"],
+            "duree_creneau":int(d.get("duree",30))}
+        DB["disponibilites"].append(nd)
+        add_hist(f"Disponibilite ajoutee — {mname(nd['matricule'])} le {JOURS_SEMAINE[nd['jour_semaine']]} {nd['heure_debut']}-{nd['heure_fin']}","Creneau medecin",session["user"])
+        flash("Disponibilite ajoutee.","success"); return redirect(url_for("a_creneaux"))
+    filtre_med=request.args.get("medecin","")
+    disp_list=DB.get("disponibilites",[])
+    if filtre_med:
+        disp_list=[x for x in disp_list if x["matricule"]==filtre_med]
+    rows=""
+    for x in sorted(disp_list,key=lambda v:(v["matricule"],v["jour_semaine"])):
+        rows+=f"""<tr><td><strong>{mname(x["matricule"])}</strong></td><td>{cname(x["id_centre"])}</td>
+        <td>{JOURS_SEMAINE[x["jour_semaine"]]}</td><td>{x["heure_debut"]} - {x["heure_fin"]}</td><td>{x["duree_creneau"]} min</td>
+        <td><form method="POST" action="{url_for('a_creneau_suppr',did=x['id'])}" style="display:inline;"><button class="btn btn-sm btn-outline-r" onclick="return confirm('Supprimer cette disponibilite ?')"><i class="fas fa-trash"></i></button></form></td></tr>"""
+    opts_m="".join(f'<option value="{m["matricule"]}" {"selected" if filtre_med==m["matricule"] else ""}>Dr. {m["prenom"]} {m["nom"]}</option>' for m in DB["medecins"])
+    opts_c="".join(f'<option value="{c["id"]}">{c["nom"]}</option>' for c in DB.get("centres",[]))
+    opts_j="".join(f'<option value="{i}">{j}</option>' for i,j in enumerate(JOURS_SEMAINE))
+    body=f"""<div class="row g-3">
+  <div class="col-lg-8"><div class="card"><div class="card-hdr"><div class="title"><i class="fas fa-clock"></i>Creneaux medecins ({len(disp_list)})</div>
+    <form method="GET" style="display:flex;gap:6px;align-items:center;">
+      <select name="medecin" class="form-select form-select-sm" style="width:auto;" onchange="this.form.submit()">
+        <option value="">Tous les medecins</option>{opts_m}
+      </select>
+    </form>
+  </div><div style="overflow-x:auto;"><table class="table"><thead><tr><th>Medecin</th><th>Centre</th><th>Jour</th><th>Horaire</th><th>Duree creneau</th><th></th></tr></thead><tbody>
+  {rows if rows else "<tr><td colspan=6 class='text-center' style='color:var(--muted);padding:20px;'>Aucune disponibilite definie</td></tr>"}
+  </tbody></table></div></div></div>
+  <div class="col-lg-4"><div class="card"><div class="card-hdr"><div class="title">Ajouter une disponibilite</div></div><div class="card-body">
+    <form method="POST"><div class="row g-2">
+      <div class="col-12"><label class="form-label">Medecin *</label><select name="matricule" class="form-select" required><option value="">--</option>{opts_m}</select></div>
+      <div class="col-12"><label class="form-label">Centre *</label><select name="centre" class="form-select" required>{opts_c}</select></div>
+      <div class="col-12"><label class="form-label">Jour *</label><select name="jour" class="form-select" required>{opts_j}</select></div>
+      <div class="col-6"><label class="form-label">Heure debut *</label><input type="time" name="heure_debut" class="form-control" required></div>
+      <div class="col-6"><label class="form-label">Heure fin *</label><input type="time" name="heure_fin" class="form-control" required></div>
+      <div class="col-12"><label class="form-label">Duree d'un creneau (min)</label><input type="number" name="duree" class="form-control" value="30"></div>
+      <div class="col-12"><button type="submit" class="btn btn-g w-100" style="justify-content:center;"><i class="fas fa-save"></i>Ajouter</button></div>
+    </div></form>
+    <div class="al al-i mt-3" style="font-size:.76rem;"><i class="fas fa-info-circle"></i>Seuls les creneaux definis ici (et non deja pris) seront proposes lors de la prise de RDV.</div>
+  </div></div></div>
+</div>"""
+    return page("Creneaux medecins","admin",session["user"],body)
+
+@app.route("/a-creneaux/<int:did>/suppr",methods=["POST"])
+@login_required
+@role_required("admin")
+def a_creneau_suppr(did):
+    DB["disponibilites"]=[x for x in DB.get("disponibilites",[]) if x["id"]!=did]
+    flash("Disponibilite supprimee.","success")
+    return redirect(url_for("a_creneaux"))
+
+@app.route("/api/creneaux")
+@login_required
+def api_creneaux():
+    mat=request.args.get("medecin",""); dte=request.args.get("date","")
+    if not mat or not dte:
+        return jsonify({"creneaux":[]})
+    return jsonify({"creneaux":creneaux_disponibles(mat,dte)})
 
 @app.route("/a-services",methods=["GET","POST"])
 @login_required
@@ -2131,6 +2270,10 @@ def r_rdvs():
                 if not (med_check and med_check.get("teleconsult_actif")):
                     flash("Ce medecin n'a pas active la teleconsultation. Choisissez un RDV presentiel ou un autre medecin.","danger")
                     return redirect(url_for("r_rdvs"))
+            libres=creneaux_disponibles(d["medecin"],d["date"])
+            if libres and d["heure"] not in libres:
+                flash("Ce creneau n'est plus disponible pour ce medecin. Veuillez choisir un creneau libre.","danger")
+                return redirect(url_for("r_rdvs"))
             nr={"id":nid("rdvs"),"id_patient":int(d["patient"]),"matricule":d["medecin"],"date":d["date"],"heure":d["heure"],"type":rdv_type,"statut":"Confirme","motif":d.get("motif",""),"lien_teleconsult":None}
             DB["rdvs"].append(nr)
             # Vérifier si c'est pour une demande existante
@@ -2206,15 +2349,34 @@ def r_rdvs():
   <div class="col-lg-4"><div class="card"><div class="card-hdr"><div class="title">Nouveau RDV</div></div><div class="card-body">
     <form method="POST"><input type="hidden" name="action" value="creer"><input type="hidden" name="dem_id" value="{dem_pre}"><div class="row g-2">
       <div class="col-12"><label class="form-label">Patient *</label><select name="patient" class="form-select" required><option value="">--</option>{opts_p}</select></div>
-      <div class="col-12"><label class="form-label">Medecin *</label><select name="medecin" class="form-select" required><option value="">--</option>{opts_m}</select></div>
-      <div class="col-6"><label class="form-label">Date *</label><input type="date" name="date" class="form-control" required></div>
-      <div class="col-6"><label class="form-label">Heure *</label><input type="time" name="heure" class="form-control" required></div>
+      <div class="col-12"><label class="form-label">Medecin *</label><select name="medecin" id="selMed" class="form-select" required onchange="majCreneaux()"><option value="">--</option>{opts_m}</select></div>
+      <div class="col-6"><label class="form-label">Date *</label><input type="date" name="date" id="selDate" class="form-control" required onchange="majCreneaux()"></div>
+      <div class="col-6"><label class="form-label">Heure *</label><select name="heure" id="selHeure" class="form-select" required><option value="">-- Choisir une date/medecin --</option></select></div>
       <div class="col-12"><label class="form-label">Type</label><select name="type" class="form-select"><option>Presentiel</option><option>Teleconsultation</option></select></div>
       <div class="col-12"><label class="form-label">Motif</label><input type="text" name="motif" class="form-control"></div>
       <div class="col-12"><button type="submit" class="btn btn-g w-100" style="justify-content:center;"><i class="fas fa-save"></i>Creer le RDV</button></div>
     </div></form>
   </div></div></div>
-</div>"""
+</div>
+<script>
+function majCreneaux(){{
+  const med=document.getElementById('selMed').value;
+  const dte=document.getElementById('selDate').value;
+  const sel=document.getElementById('selHeure');
+  if(!med||!dte){{sel.innerHTML='<option value="">-- Choisir une date/medecin --</option>';return;}}
+  sel.innerHTML='<option value="">Chargement...</option>';
+  fetch('/api/creneaux?medecin='+encodeURIComponent(med)+'&date='+encodeURIComponent(dte))
+    .then(r=>r.json()).then(data=>{{
+      if(!data.creneaux || data.creneaux.length===0){{
+        sel.innerHTML='<option value="">Aucun creneau libre — saisir manuellement</option>';
+        const opt=document.createElement('option');
+        sel.removeAttribute('disabled');
+      }} else {{
+        sel.innerHTML='<option value="">-- Choisir un creneau --</option>'+data.creneaux.map(h=>'<option value="'+h+'">'+h+'</option>').join('');
+      }}
+    }});
+}}
+</script>"""
     return page("Rendez-vous","receptionniste",session["user"],body)
 
 @app.route("/r-demandes")
@@ -2234,13 +2396,16 @@ def r_demandes():
 def r_tickets():
     if request.method=="POST":
         d=request.form
-        nt={"id":nid("tickets"),"id_patient":int(d["patient"]),"type_ticket":d["type"],"num_ticket":f"TKT-{DB['_c']['tickets']:03d}","statut":"Emis","date_emission":date.today().strftime("%Y-%m-%d"),"prix":int(d.get("prix",500))}
+        cid=int(d.get("centre",1))
+        prix=tarif_centre(cid)
+        nt={"id":nid("tickets"),"id_patient":int(d["patient"]),"type_ticket":d["type"],"num_ticket":f"TKT-{DB['_c']['tickets']:03d}","statut":"Emis","date_emission":date.today().strftime("%Y-%m-%d"),"prix":prix,"id_centre":cid}
         DB["tickets"].append(nt)
-        add_hist(f"Ticket {nt['num_ticket']} — {nt['type_ticket']} — {pname(nt['id_patient'])}","Ticket",session["user"],nt["id_patient"])
-        flash(f"Ticket {nt['num_ticket']} emis.","success"); return redirect(url_for("r_tickets"))
+        add_hist(f"Ticket {nt['num_ticket']} — {nt['type_ticket']} — {pname(nt['id_patient'])} — {prix} FCFA ({cname(cid)})","Ticket",session["user"],nt["id_patient"])
+        flash(f"Ticket {nt['num_ticket']} emis ({prix:,} FCFA).","success"); return redirect(url_for("r_tickets"))
     rows="".join(f'<tr><td><strong>{t["num_ticket"]}</strong></td><td>{pname(t["id_patient"])}</td><td>{t["type_ticket"]}</td><td>{t["prix"]:,} FCFA</td><td>{t["date_emission"]}</td><td><span class="bk att">{t["statut"]}</span></td><td><a href="/r-ticket-detail/{t["id"]}" class="btn btn-sm btn-outline-g"><i class="fas fa-eye"></i>Voir</a></td></tr>' for t in sorted(DB.get("tickets",[]),key=lambda x:x["id"],reverse=True))
     opts_p="".join(f'<option value="{p["id"]}">{p["prenom"]} {p["nom"]}</option>' for p in DB["patients"])
     opts_s="".join(f'<option value="{s["libelle"]}">{s["libelle"]}</option>' for s in DB["services"])
+    opts_c="".join(f'<option value="{c["id"]}" data-tarif="{c.get("tarif_ticket",0)}">{c["nom"]} ({c.get("tarif_ticket",0):,} FCFA)</option>' for c in DB.get("centres",[]))
     body=f"""<div class="row g-3">
   <div class="col-lg-8"><div class="card"><div class="card-hdr"><div class="title"><i class="fas fa-ticket-alt"></i>Tickets emis</div></div>
   <div style="overflow-x:auto;"><table class="table"><thead><tr><th>Numero</th><th>Patient</th><th>Service</th><th>Prix</th><th>Date</th><th>Statut</th><th>Detail</th></tr></thead><tbody>
@@ -2250,7 +2415,8 @@ def r_tickets():
     <form method="POST"><div class="row g-2">
       <div class="col-12"><label class="form-label">Patient *</label><select name="patient" class="form-select" required><option value="">--</option>{opts_p}</select></div>
       <div class="col-12"><label class="form-label">Service *</label><select name="type" class="form-select">{opts_s}</select></div>
-      <div class="col-12"><label class="form-label">Prix (FCFA)</label><input type="number" name="prix" class="form-control" value="500" min="0"></div>
+      <div class="col-12"><label class="form-label">Centre *</label><select name="centre" id="selCentreTkt" class="form-select" onchange="document.getElementById('prixAff').innerText=this.options[this.selectedIndex].dataset.tarif+' FCFA';">{opts_c}</select></div>
+      <div class="col-12"><label class="form-label">Prix (FCFA)</label><div class="form-control" style="background:var(--bg2,#f8f9fa);" id="prixAff">{tarif_centre(1):,} FCFA</div><div style="font-size:.7rem;color:var(--muted);">Tarif fixe defini par l'admin pour ce centre</div></div>
       <div class="col-12"><button type="submit" class="btn btn-o w-100" style="justify-content:center;color:#fff;"><i class="fas fa-ticket-alt"></i>Emettre</button></div>
     </div></form>
   </div></div></div>
