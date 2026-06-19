@@ -246,6 +246,9 @@ def set_med_centres(mat,cids):
         m["id_centre"]=cids[0] if cids else 1
 def med_in_centre(mat,cid):
     return cid in get_med_centres(mat)
+def tc_badge(statut):
+    cls={"Planifiee":"att","En cours":"ok","Terminee":"grey","Annulee":"err"}.get(statut,"att")
+    return f'<span class="bk {cls}">{statut}</span>'
 def get_pat(username):
     uid=DB["users"].get(username,{}).get("id_ref")
     return next((p for p in DB["patients"] if p["id"]==uid),None)
@@ -1815,7 +1818,7 @@ def m_teleconsult():
             else:
                 nt={"id":nid("teles"),"id_patient":rdv["id_patient"],"matricule":mat,"id_rdv":rdv_id,"date_debut":f"{rdv['date']} {rdv['heure']}","statut":"Planifiee","lien":lien,"lien_envoye":True}
                 DB["teleconsultations"].append(nt)
-            rdv["lien_teleconsult"]=lien
+            rdv["lien_teleconsult"]=lien; rdv["statut"]="Confirme"
             add_notif(rdv["id_patient"],"Lien teleconsultation pret",f"Teleconsultation du {rdv['date']}",f"Votre teleconsultation du {rdv['date']} a {rdv['heure']} avec Dr. {med['prenom']} {med['nom']} est prete. Cliquez sur Rejoindre dans votre espace.",expediteur=session["user"])
             flash(f"Lien Jitsi genere et patient notifie. Salle : {room}","success")
         elif action=="demarrer":
@@ -1824,26 +1827,51 @@ def m_teleconsult():
             flash("Teleconsultation demarree.","success")
         elif action=="terminer":
             tele=next((t for t in DB["teleconsultations"] if t["id_rdv"]==rdv_id),None)
-            if tele: tele["statut"]="Terminee"; tele["date_fin"]=datetime.now().strftime("%Y-%m-%d %H:%M")
+            if tele:
+                tele["statut"]="Terminee"; tele["date_fin"]=datetime.now().strftime("%Y-%m-%d %H:%M")
+                tele["notes"]=request.form.get("notes","").strip()
             rdv["statut"]="Termine"
             flash("Teleconsultation terminee.","success")
+        elif action=="rappel":
+            tele=next((t for t in DB["teleconsultations"] if t["id_rdv"]==rdv_id),None)
+            if tele:
+                add_notif(rdv["id_patient"],"Rappel teleconsultation",f"Teleconsultation du {rdv['date']}",f"Rappel : votre teleconsultation du {rdv['date']} a {rdv['heure']} avec Dr. {med['prenom']} {med['nom']} approche. Pensez a vous connecter via votre espace.",expediteur=session["user"])
+                flash("Rappel envoye au patient.","success")
+        elif action=="annuler":
+            tele=next((t for t in DB["teleconsultations"] if t["id_rdv"]==rdv_id),None)
+            if tele: tele["statut"]="Annulee"
+            rdv["statut"]="Annule"; rdv["lien_teleconsult"]=None
+            add_notif(rdv["id_patient"],"Teleconsultation annulee",f"Teleconsultation du {rdv['date']}",f"Votre teleconsultation du {rdv['date']} a {rdv['heure']} avec Dr. {med['prenom']} {med['nom']} a ete annulee.",expediteur=session["user"])
+            flash("Teleconsultation annulee, patient notifie.","success")
         return redirect(url_for("m_teleconsult"))
 
     teles=[t for t in DB["teleconsultations"] if t["matricule"]==mat]
-    rdv_sans_lien=[r for r in DB["rdvs"] if r["matricule"]==mat and r["type"]=="Teleconsultation" and r["statut"] in ["Confirme","En attente"] and not any(t["id_rdv"]==r["id"] for t in teles)]
+    rdv_sans_lien=[r for r in DB["rdvs"] if r["matricule"]==mat and r["type"]=="Teleconsultation" and r["statut"] in ["Confirme","En attente"] and not any(t["id_rdv"]==r["id"] and t["statut"]!="Annulee" for t in teles)]
     opts_r="".join(f'<option value="{r["id"]}">{r["date"]} {r["heure"]} — {pname(r["id_patient"])}</option>' for r in rdv_sans_lien)
+    def duree_appel(t):
+        if t["statut"]!="Terminee" or not t.get("date_fin"): return "-"
+        try:
+            d1=datetime.strptime(t["date_debut"],"%Y-%m-%d %H:%M"); d2=datetime.strptime(t["date_fin"],"%Y-%m-%d %H:%M")
+            mins=int((d2-d1).total_seconds()//60)
+            return f"{mins} min" if mins>=0 else "-"
+        except Exception: return "-"
     def row_tele(t):
         rdv=next((r for r in DB["rdvs"] if r["id"]==t.get("id_rdv")),None)
-        st_cls={"Planifiee":"att","En cours":"ok","Terminee":"grey"}.get(t["statut"],"att")
-        btn_rejoindre=f'<a href="{t["lien"]}" target="_blank" class="btn btn-sm btn-b"><i class="fas fa-video"></i>Rejoindre</a>' if t.get("lien") else "-"
-        btn_demarrer=""
-        btn_terminer=""
+        btn_rejoindre=f'<a href="{t["lien"]}" target="_blank" class="btn btn-sm btn-b"><i class="fas fa-video"></i>Rejoindre</a>' if t.get("lien") and t["statut"] in ["Planifiee","En cours"] else "-"
+        btn_demarrer=""; btn_terminer=""; btn_rappel=""; btn_annuler=""; msg_avant=""
         if rdv and t.get("lien"):
             if t["statut"]=="Planifiee":
+                msg_avant='<div style="font-size:.74rem;color:var(--g2);margin-top:3px;"><i class="fas fa-info-circle"></i> Rejoignez avant votre patient</div>'
                 btn_demarrer=f'<form method="POST" style="display:inline;"><input type="hidden" name="action" value="demarrer"><input type="hidden" name="rdv" value="{rdv["id"]}"><button type="submit" class="btn btn-sm btn-g ms-1"><i class="fas fa-play"></i>Demarrer</button></form>'
+                btn_rappel=f'<form method="POST" style="display:inline;"><input type="hidden" name="action" value="rappel"><input type="hidden" name="rdv" value="{rdv["id"]}"><button type="submit" class="btn btn-sm btn-outline-g ms-1"><i class="fas fa-bell"></i>Rappel</button></form>'
+                btn_annuler=f'<form method="POST" style="display:inline;" onsubmit="return confirm(\'Annuler cette teleconsultation ?\');"><input type="hidden" name="action" value="annuler"><input type="hidden" name="rdv" value="{rdv["id"]}"><button type="submit" class="btn btn-sm btn-r ms-1"><i class="fas fa-times"></i>Annuler</button></form>'
             elif t["statut"]=="En cours":
-                btn_terminer=f'<form method="POST" style="display:inline;"><input type="hidden" name="action" value="terminer"><input type="hidden" name="rdv" value="{rdv["id"]}"><button type="submit" class="btn btn-sm btn-danger ms-1"><i class="fas fa-stop"></i>Terminer</button></form>'
-        return f'<tr><td>{t["date_debut"]}</td><td>{pname(t["id_patient"])}</td><td><span class="bk {st_cls}">{t["statut"]}</span></td><td style="white-space:nowrap;">{btn_rejoindre}{btn_demarrer}{btn_terminer}</td></tr>'
+                btn_terminer=f'''<form method="POST" style="display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                  <input type="hidden" name="action" value="terminer"><input type="hidden" name="rdv" value="{rdv["id"]}">
+                  <input type="text" name="notes" placeholder="Notes de consultation..." class="form-control" style="width:180px;display:inline-block;font-size:.78rem;padding:5px 8px;">
+                  <button type="submit" class="btn btn-sm btn-danger ms-1"><i class="fas fa-stop"></i>Terminer</button></form>'''
+        notes_html=f'<div style="font-size:.76rem;color:var(--muted);margin-top:3px;"><i class="fas fa-sticky-note"></i> {t["notes"]}</div>' if t.get("notes") else ""
+        return f'<tr><td>{t["date_debut"]}</td><td>{pname(t["id_patient"])}</td><td>{tc_badge(t["statut"])}{msg_avant}{notes_html}</td><td>{duree_appel(t)}</td><td style="white-space:nowrap;">{btn_rejoindre}{btn_demarrer}{btn_rappel}{btn_annuler}{btn_terminer}</td></tr>'
     rows="".join(row_tele(t) for t in sorted(teles,key=lambda x:x["date_debut"],reverse=True))
     form_html=""
     if rdv_sans_lien:
@@ -1855,8 +1883,8 @@ def m_teleconsult():
   </div></form>
 </div></div>"""
     body=f"""{form_html}<div class="card"><div class="card-hdr"><div class="title"><i class="fas fa-video"></i>Mes Teleconsultations ({len(teles)})</div></div>
-<div style="overflow-x:auto;"><table class="table"><thead><tr><th>Date</th><th>Patient</th><th>Statut</th><th>Actions</th></tr></thead><tbody>
-{rows if rows else "<tr><td colspan=4 class='text-center' style='color:var(--muted);padding:20px;'>Aucune teleconsultation</td></tr>"}
+<div style="overflow-x:auto;"><table class="table"><thead><tr><th>Date</th><th>Patient</th><th>Statut</th><th>Duree</th><th>Actions</th></tr></thead><tbody>
+{rows if rows else "<tr><td colspan=5 class='text-center' style='color:var(--muted);padding:20px;'>Aucune teleconsultation</td></tr>"}
 </tbody></table></div></div>"""
     return page("Mes Teleconsultations","medecin",session["user"],body)
 
@@ -2152,25 +2180,49 @@ def p_consultations():
 def p_teleconsult():
     pat=get_pat(session["user"]); pid=pat["id"]
     teles=[t for t in DB["teleconsultations"] if t["id_patient"]==pid]
-    def row_tele_p(t):
-        st_cls={"Planifiee":"att","En cours":"ok","Terminee":"grey"}.get(t["statut"],"att")
+    def duree_appel(t):
+        if t["statut"]!="Terminee" or not t.get("date_fin"): return "-"
+        try:
+            d1=datetime.strptime(t["date_debut"],"%Y-%m-%d %H:%M"); d2=datetime.strptime(t["date_fin"],"%Y-%m-%d %H:%M")
+            mins=int((d2-d1).total_seconds()//60)
+            return f"{mins} min" if mins>=0 else "-"
+        except Exception: return "-"
+    def row_tele_p(t,passee=False):
         if t.get("lien") and t["statut"] in ["Planifiee","En cours"]:
             btn=f'<a href="{t["lien"]}" target="_blank" class="btn btn-sm btn-b"><i class="fas fa-video"></i>Rejoindre</a>'
+            if t["statut"]=="Planifiee":
+                btn+='<div style="font-size:.72rem;color:var(--muted);margin-top:3px;">Attendez que le medecin soit pret</div>'
         elif t["statut"]=="Terminee":
             btn='<span style="color:var(--muted);font-size:.82rem;">Terminee</span>'
+        elif t["statut"]=="Annulee":
+            btn='<span style="color:var(--err);font-size:.82rem;">Annulee</span>'
         else:
-            btn='<span style="color:var(--muted);font-size:.82rem;">En attente du lien...</span>'
-        return f'<tr><td>{t["date_debut"]}</td><td>{mname(t["matricule"])}</td><td><span class="bk {st_cls}">{t["statut"]}</span></td><td>{btn}</td></tr>'
-    rows="".join(row_tele_p(t) for t in sorted(teles,key=lambda x:x["date_debut"],reverse=True))
+            btn='<span style="color:var(--muted);font-size:.82rem;"><i class="fas fa-hourglass-half"></i> Lien pas encore disponible</span>'
+        col_extra=f"<td>{duree_appel(t)}</td>" if passee else ""
+        return f'<tr><td>{t["date_debut"]}</td><td>{mname(t["matricule"])}</td><td>{tc_badge(t["statut"])}</td>{col_extra}<td>{btn}</td></tr>'
+    a_venir=[t for t in teles if t["statut"] in ["Planifiee","En cours"]]
+    passees=[t for t in teles if t["statut"] in ["Terminee","Annulee"]]
+    rows_av="".join(row_tele_p(t) for t in sorted(a_venir,key=lambda x:x["date_debut"]))
+    rows_pa="".join(row_tele_p(t,passee=True) for t in sorted(passees,key=lambda x:x["date_debut"],reverse=True))
     # Alerte si une téléconsultation est "En cours"
     en_cours=next((t for t in teles if t["statut"]=="En cours"),None)
     alerte=""
     if en_cours:
-        alerte=f'<div class="al al-w mb-3" style="border-left:4px solid var(--g1);"><i class="fas fa-video" style="color:var(--g1);"></i><strong>Teleconsultation en cours !</strong> Votre medecin vous attend. <a href="{en_cours["lien"]}" target="_blank" class="btn btn-sm btn-g ms-2"><i class="fas fa-video"></i>Rejoindre maintenant</a></div>'
-    body=f"""{alerte}<div class="card"><div class="card-hdr"><div class="title"><i class="fas fa-video"></i>Mes Teleconsultations ({len(teles)})</div></div>
+        alerte=f'''<div class="card mb-3" style="border-left:5px solid var(--g1);background:#f0fdf4;">
+  <div class="card-body" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+    <div><div style="font-weight:700;color:var(--g2);font-size:1.02rem;"><i class="fas fa-video"></i> Teleconsultation en cours !</div>
+    <div style="font-size:.85rem;color:var(--muted);">Votre medecin vous attend, rejoignez maintenant.</div></div>
+    <a href="{en_cours["lien"]}" target="_blank" class="btn btn-g"><i class="fas fa-video"></i>Rejoindre maintenant</a>
+  </div></div>'''
+    body=f"""{alerte}
+<div class="card mb-3"><div class="card-hdr"><div class="title"><i class="fas fa-calendar-check"></i>A venir ({len(a_venir)})</div></div>
 <div class="al al-i" style="margin:12px 18px 0;font-size:.82rem;"><i class="fas fa-info-circle"></i>Le lien est genere par votre medecin. Aucune installation requise — la visioconference s'ouvre dans votre navigateur.</div>
 <div style="overflow-x:auto;"><table class="table"><thead><tr><th>Date</th><th>Medecin</th><th>Statut</th><th>Action</th></tr></thead><tbody>
-{rows if rows else "<tr><td colspan=4 class='text-center' style='color:var(--muted);padding:20px;'>Aucune teleconsultation</td></tr>"}
+{rows_av if rows_av else "<tr><td colspan=4 class='text-center' style='color:var(--muted);padding:20px;'>Aucune teleconsultation a venir</td></tr>"}
+</tbody></table></div></div>
+<div class="card"><div class="card-hdr"><div class="title"><i class="fas fa-history"></i>Passees ({len(passees)})</div></div>
+<div style="overflow-x:auto;"><table class="table"><thead><tr><th>Date</th><th>Medecin</th><th>Statut</th><th>Duree</th><th>Action</th></tr></thead><tbody>
+{rows_pa if rows_pa else "<tr><td colspan=5 class='text-center' style='color:var(--muted);padding:20px;'>Aucune teleconsultation passee</td></tr>"}
 </tbody></table></div></div>"""
     return page("Mes Teleconsultations","patient",session["user"],body)
 
@@ -2861,21 +2913,43 @@ def r_triage():
     return page("Urgences / Triage","receptionniste",session["user"],body)
 
 
+@app.route("/r-teleconsult")
 @login_required
 @role_required("receptionniste")
 def r_teleconsult():
-    rdvs_tc=[r for r in DB["rdvs"] if r["type"]=="Teleconsultation" and r["statut"]=="Confirme"]
+    filtre=request.args.get("statut","")
+    rdvs_tc=[r for r in DB["rdvs"] if r["type"]=="Teleconsultation" and r["statut"] in ["Confirme","En cours","Termine","Annule"]]
+    def get_tc_statut(r):
+        t=next((t for t in DB["teleconsultations"] if t["id_rdv"]==r["id"]),None)
+        return t["statut"] if t else "Planifiee"
+    if filtre:
+        rdvs_tc=[r for r in rdvs_tc if get_tc_statut(r)==filtre]
     def statut_lien(r):
         t=next((t for t in DB["teleconsultations"] if t["id_rdv"]==r["id"]),None)
-        if t and t.get("lien_envoye"):
-            return '<span class="bk ok"><i class="fas fa-check"></i> Lien cree par le medecin</span>'
+        if t: return tc_badge(t["statut"])
         return '<span class="bk att"><i class="fas fa-clock"></i> En attente du medecin</span>'
-    rows="".join(f'<tr><td>{r["date"]} {r["heure"]}</td><td>{pname(r["id_patient"])}</td><td>{mname(r["matricule"])}</td><td>{statut_lien(r)}</td></tr>' for r in rdvs_tc)
+    rows="".join(f'<tr><td>{r["date"]} {r["heure"]}</td><td>{pname(r["id_patient"])}</td><td>{mname(r["matricule"])}</td><td>{statut_lien(r)}</td></tr>' for r in sorted(rdvs_tc,key=lambda x:(x["date"],x["heure"]),reverse=True))
+    meds_actifs=[m for m in DB["medecins"] if DB["users"].get(m["username"],{}).get("teleconsult_actif",False)]
+    rows_meds="".join(f'<tr><td>Dr. {m["prenom"]} {m["nom"]}</td><td>{m["specialite"]}</td><td>{m["telephone"]}</td></tr>' for m in meds_actifs)
+    opts_filtre="".join(f'<option value="{s}" {"selected" if filtre==s else ""}>{s}</option>' for s in ["Planifiee","En cours","Terminee","Annulee"])
     body=f"""<div class="row g-3">
-  <div class="col-12"><div class="card"><div class="card-hdr"><div class="title"><i class="fas fa-video"></i>Teleconsultations programmees</div></div>
+  <div class="col-md-8"><div class="card"><div class="card-hdr"><div class="title"><i class="fas fa-video"></i>Teleconsultations programmees</div></div>
   <div class="al al-i" style="margin:12px 18px 0;"><i class="fas fa-info-circle"></i>Le lien de la visioconference est genere par le medecin lors de l'activation de la teleconsultation. Le patient est notifie automatiquement.</div>
+  <div style="margin:12px 18px 0;display:flex;align-items:center;gap:8px;">
+    <form method="GET" style="display:flex;gap:8px;align-items:center;">
+      <label class="form-label" style="margin:0;">Filtrer par statut</label>
+      <select name="statut" class="form-select" style="width:auto;" onchange="this.form.submit()">
+        <option value="">Tous</option>
+        {opts_filtre}
+      </select>
+    </form>
+  </div>
   <div style="overflow-x:auto;"><table class="table"><thead><tr><th>Date</th><th>Patient</th><th>Medecin</th><th>Statut du lien</th></tr></thead><tbody>
   {rows if rows else "<tr><td colspan=4 class='text-center' style='color:var(--muted);padding:20px;'>Aucune teleconsultation programmee</td></tr>"}
+  </tbody></table></div></div></div>
+  <div class="col-md-4"><div class="card"><div class="card-hdr"><div class="title"><i class="fas fa-user-md"></i>Medecins teleconsult. actifs ({len(meds_actifs)})</div></div>
+  <div style="overflow-x:auto;"><table class="table"><thead><tr><th>Medecin</th><th>Specialite</th><th>Tel.</th></tr></thead><tbody>
+  {rows_meds if rows_meds else "<tr><td colspan=3 class='text-center' style='color:var(--muted);padding:20px;'>Aucun medecin actif</td></tr>"}
   </tbody></table></div></div></div>
 </div>"""
     return page("Teleconsultations","receptionniste",session["user"],body)
