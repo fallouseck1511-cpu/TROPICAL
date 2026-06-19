@@ -163,6 +163,28 @@ DB={
         {"id":1,"id_patient":3,"date_arrivee":"2026-06-10 07:45","motif":"Douleur abdominale aigue","niveau_urgence":"2 - Urgent","tension":"130/85","temperature":38.5,"saturation":97,"frequence_cardiaque":102,"statut":"En cours","pris_en_charge_par":"MED006","observations":"Patient agite, douleur 8/10"},
     ],
     "tickets":[],
+    "disponibilites":[
+        {"id":1,"matricule":"MED001","jour":"Lundi","heure_debut":"08:00","heure_fin":"17:00","duree_consultation":30},
+        {"id":2,"matricule":"MED001","jour":"Mercredi","heure_debut":"08:00","heure_fin":"12:00","duree_consultation":30},
+        {"id":3,"matricule":"MED002","jour":"Lundi","heure_debut":"08:00","heure_fin":"17:00","duree_consultation":30},
+        {"id":4,"matricule":"MED002","jour":"Mardi","heure_debut":"08:00","heure_fin":"17:00","duree_consultation":30},
+        {"id":5,"matricule":"MED002","jour":"Jeudi","heure_debut":"08:00","heure_fin":"17:00","duree_consultation":30},
+        {"id":6,"matricule":"MED003","jour":"Lundi","heure_debut":"09:00","heure_fin":"16:00","duree_consultation":30},
+        {"id":7,"matricule":"MED003","jour":"Vendredi","heure_debut":"09:00","heure_fin":"13:00","duree_consultation":30},
+        {"id":8,"matricule":"MED004","jour":"Mardi","heure_debut":"08:00","heure_fin":"15:00","duree_consultation":45},
+        {"id":9,"matricule":"MED004","jour":"Jeudi","heure_debut":"08:00","heure_fin":"15:00","duree_consultation":45},
+        {"id":10,"matricule":"MED005","jour":"Lundi","heure_debut":"08:00","heure_fin":"17:00","duree_consultation":30},
+        {"id":11,"matricule":"MED005","jour":"Mercredi","heure_debut":"08:00","heure_fin":"17:00","duree_consultation":30},
+        {"id":12,"matricule":"MED006","jour":"Mardi","heure_debut":"08:00","heure_fin":"17:00","duree_consultation":30},
+        {"id":13,"matricule":"MED006","jour":"Jeudi","heure_debut":"08:00","heure_fin":"17:00","duree_consultation":30},
+        {"id":14,"matricule":"MED007","jour":"Lundi","heure_debut":"00:00","heure_fin":"23:59","duree_consultation":20},
+        {"id":15,"matricule":"MED007","jour":"Mardi","heure_debut":"00:00","heure_fin":"23:59","duree_consultation":20},
+        {"id":16,"matricule":"MED007","jour":"Mercredi","heure_debut":"00:00","heure_fin":"23:59","duree_consultation":20},
+        {"id":17,"matricule":"MED007","jour":"Jeudi","heure_debut":"00:00","heure_fin":"23:59","duree_consultation":20},
+        {"id":18,"matricule":"MED007","jour":"Vendredi","heure_debut":"00:00","heure_fin":"23:59","duree_consultation":20},
+        {"id":19,"matricule":"MED008","jour":"Mercredi","heure_debut":"08:00","heure_fin":"15:00","duree_consultation":30},
+        {"id":20,"matricule":"MED008","jour":"Vendredi","heure_debut":"08:00","heure_fin":"15:00","duree_consultation":30},
+    ],
     "contrats_assurance":[
         {"id":1,"id_patient":1,"assureur":"IPRES","num_contrat":"IPRES-2024-001","date_debut":"2024-01-01","date_fin":"2026-12-31","plafond_annuel":500000,"montant_utilise":15000,"taux_prise_en_charge":40,"statut":"Actif"},
         {"id":2,"id_patient":2,"assureur":"CSS","num_contrat":"CSS-2025-002","date_debut":"2025-01-01","date_fin":"2027-12-31","plafond_annuel":750000,"montant_utilise":8500,"taux_prise_en_charge":50,"statut":"Actif"},
@@ -192,7 +214,7 @@ DB={
         {"id":2,"date_action":"2026-06-06 09:00","description":"RDV confirme - Ibrahima Sow / Dr. Diallo","type":"Rendez-vous","id_user":"receptionniste","id_patient":1,"matricule":"MED001"},
         {"id":3,"date_action":"2026-06-05 10:00","description":"Consultation - HTA stade 1","type":"Consultation","id_user":"dr.diallo","id_patient":1,"matricule":"MED001"},
     ],
-    "_c":{"rdvs":3,"patients":3,"cons":2,"ords":1,"facts":2,"teles":1,"notifs":4,"hists":3,"docs":3,"demandes":1,"stocks":5,"meds":5,"services":6,"medecins":8,"dossiers":2,"paiements":1,"tickets":0,"attente":2,"triage":1,"ventes":1,"contrats":2,"interactions":4,"allergies":2,"centres":1,"sms":0}
+    "_c":{"rdvs":3,"patients":3,"cons":2,"ords":1,"facts":2,"teles":1,"notifs":4,"hists":3,"docs":3,"demandes":1,"stocks":5,"meds":5,"services":6,"medecins":8,"dossiers":2,"paiements":1,"tickets":0,"attente":2,"triage":1,"ventes":1,"contrats":2,"interactions":4,"allergies":2,"centres":1,"sms":0,"dispos":20}
 }
 # SGRDMS v5 — Part 2: helpers, auth, CSS, layout, PDF, Login
 
@@ -213,6 +235,17 @@ def sname(sid):
 def cname(cid):
     c=next((x for x in DB.get("centres",[]) if x["id"]==cid),None)
     return c["nom"] if c else "?"
+def get_med_centres(mat):
+    m=next((x for x in DB["medecins"] if x["matricule"]==mat),None)
+    if not m: return []
+    return m.get("id_centres",[m.get("id_centre",1)])
+def set_med_centres(mat,cids):
+    m=next((x for x in DB["medecins"] if x["matricule"]==mat),None)
+    if m:
+        m["id_centres"]=cids
+        m["id_centre"]=cids[0] if cids else 1
+def med_in_centre(mat,cid):
+    return cid in get_med_centres(mat)
 def get_pat(username):
     uid=DB["users"].get(username,{}).get("id_ref")
     return next((p for p in DB["patients"] if p["id"]==uid),None)
@@ -330,6 +363,49 @@ def verifier_plafond_assurance(id_patient, montant_nouveau):
                f"La prise en charge assurance ne peut pas etre accordee.")
         return True, contrat, msg
     return False, contrat, ""
+
+JOURS_FR={"Monday":"Lundi","Tuesday":"Mardi","Wednesday":"Mercredi","Thursday":"Jeudi","Friday":"Vendredi","Saturday":"Samedi","Sunday":"Dimanche"}
+
+def jour_semaine_fr(date_str):
+    """Retourne le nom du jour en français pour une date 'YYYY-MM-DD'."""
+    try:
+        from datetime import datetime as _dt
+        return JOURS_FR.get(_dt.strptime(date_str,"%Y-%m-%d").strftime("%A"),"")
+    except:
+        return ""
+
+def get_creneaux_libres(matricule, date_str):
+    """
+    Calcule les créneaux libres d'un médecin pour une date donnée.
+    Retourne une liste de strings HH:MM disponibles.
+    """
+    from datetime import datetime as _dt, timedelta as _td
+    jour=jour_semaine_fr(date_str)
+    if not jour:
+        return []
+    # Trouver la disponibilité du médecin ce jour
+    dispo=next((d for d in DB.get("disponibilites",[]) if d["matricule"]==matricule and d["jour"]==jour),None)
+    if not dispo:
+        return []
+    # Vérifier que le médecin n'est pas en congé
+    med=next((m for m in DB["medecins"] if m["matricule"]==matricule),None)
+    if med and med.get("status_med")=="En conge":
+        return []
+    # Générer tous les créneaux entre heure_debut et heure_fin
+    duree=dispo.get("duree_consultation",30)
+    try:
+        hd=_dt.strptime(dispo["heure_debut"],"%H:%M")
+        hf=_dt.strptime(dispo["heure_fin"],"%H:%M")
+    except:
+        return []
+    creneaux=[]
+    current=hd
+    while current+_td(minutes=duree)<=hf:
+        creneaux.append(current.strftime("%H:%M"))
+        current+=_td(minutes=duree)
+    # Retirer les créneaux déjà pris (RDV actifs)
+    rdvs_pris={r["heure"] for r in DB["rdvs"] if r["matricule"]==matricule and r["date"]==date_str and r["statut"] not in ("Annule","Termine")}
+    return [c for c in creneaux if c not in rdvs_pris]
 
 def login_required(f):
     @wraps(f)
@@ -498,6 +574,7 @@ def sidebar(role,username):
         "medecin":[
             ("","Tableau de bord","tachometer-alt","dashboard"),("","Mon espace","---",""),
             ("","Mes Patients","users","m_patients"),("","Mes RDV","calendar-check","m_rdvs"),
+            ("","Mes Disponibilites","clock","m_disponibilites"),
             ("","Mes Consultations","stethoscope","m_consultations"),("","Mes Teleconsultations","video","m_teleconsult"),("","Urgences","ambulance","m_urgences"),
             ("","Mon Service","building","m_service"),("","Messagerie","paper-plane","m_notifs"),("","Mon Profil","user-cog","profil"),
         ],
@@ -939,7 +1016,7 @@ def a_medecins():
         sid=int(d.get("service",1)); uname=d.get("uname",""); pwd=d.get("pwd","med123")
         cid=int(d.get("centre",1))
         chef=d.get("chef")=="on"
-        nm={"matricule":mat,"nom":nom,"prenom":prenom,"specialite":spec,"telephone":tel,"email":email,"id_service":sid,"username":uname,"est_chef":chef,"teleconsult_actif":False,"id_centre":cid}
+        nm={"matricule":mat,"nom":nom,"prenom":prenom,"specialite":spec,"telephone":tel,"email":email,"id_service":sid,"username":uname,"est_chef":chef,"teleconsult_actif":False,"id_centre":cid,"id_centres":[cid]}
         DB["medecins"].append(nm)
         if uname:
             DB["users"][uname]={"password":pwd,"role":"medecin","nom":nom,"prenom":prenom,"email":email,"telephone":tel,"photo":"","id_ref":mat,"status_med":"Disponible","teleconsult_actif":False}
@@ -952,12 +1029,14 @@ def a_medecins():
     rows=""
     meds_list=DB["medecins"]
     if filtre_centre:
-        meds_list=[m for m in meds_list if m.get("id_centre",1)==int(filtre_centre)]
+        meds_list=[m for m in meds_list if int(filtre_centre) in get_med_centres(m["matricule"])]
     for m in meds_list:
         ud=DB["users"].get(m["username"],{})
         st=ud.get("status_med","Disponible")
         tc=ud.get("teleconsult_actif",False)
         st_c="ok" if st=="Disponible" else "inf" if "conge" in st.lower() else "att"
+        med_cids=get_med_centres(m["matricule"])
+        chk_centres="".join(f'<label style="display:block;font-size:.78rem;"><input type="checkbox" name="centres" value="{c["id"]}" {"checked" if c["id"] in med_cids else ""}> {c["nom"]}</label>' for c in DB.get("centres",[]))
         rows+=f"""<tr>
           <td><strong>{m["matricule"]}</strong></td>
           <td><strong>Dr. {m["prenom"]} {m["nom"]}</strong></td>
@@ -965,7 +1044,13 @@ def a_medecins():
           <td>{m["telephone"]}</td>
           <td>{m["email"]}</td>
           <td>{sname(m["id_service"])}</td>
-          <td><span class="bk inf">{cname(m.get("id_centre",1))}</span></td>
+          <td><span class="bk inf">{", ".join(cname(c) for c in get_med_centres(m["matricule"]))}</span><br>
+          <button class="btn btn-sm btn-outline-b mt-1" style="font-size:.7rem;" onclick="document.getElementById('aff_{m["matricule"]}').style.display='block'"><i class="fas fa-plus"></i>Centres</button>
+          <div id="aff_{m["matricule"]}" style="display:none;margin-top:6px;padding:8px;background:#dbeafe;border-radius:6px;min-width:180px;">
+            <form method="POST" action="/a-affecter-centres/{m["matricule"]}">
+              {chk_centres}
+              <button type="submit" class="btn btn-sm btn-g mt-1"><i class="fas fa-save"></i>Sauvegarder</button>
+            </form></div></td>
           <td><span class="bk {"vio" if m.get("est_chef") else "grey"}">{"Chef" if m.get("est_chef") else "Med."}</span></td>
           <td><span class="bk {st_c}">{st}</span></td>
           <td><span class="bk {"ok" if tc else "err"}">{"Oui" if tc else "Non"}</span></td>
@@ -1000,6 +1085,22 @@ def a_medecins():
 </div>"""
     return page("Medecins","admin",session["user"],body)
 
+@app.route("/a-affecter-centres/<string:mat>",methods=["POST"])
+@login_required
+@role_required("admin")
+def a_affecter_centres(mat):
+    med=next((m for m in DB["medecins"] if m["matricule"]==mat),None)
+    if not med:
+        flash("Medecin introuvable.","danger"); return redirect(url_for("a_medecins"))
+    cids=list(map(int,request.form.getlist("centres")))
+    if not cids:
+        flash("Selectionnez au moins un centre.","danger"); return redirect(url_for("a_medecins"))
+    set_med_centres(mat,cids)
+    noms=", ".join(cname(c) for c in cids)
+    add_hist(f"Affectation centres Dr. {med['prenom']} {med['nom']} : {noms}","Affectation centre",session["user"])
+    flash(f"Dr. {med['prenom']} {med['nom']} affecte a : {noms}.","success")
+    return redirect(url_for("a_medecins"))
+
 @app.route("/a-supprimer-medecin/<string:mat>",methods=["POST"])
 @login_required
 @role_required("admin")
@@ -1027,7 +1128,7 @@ def a_supprimer_centre(cid):
     centre=next((c for c in DB.get("centres",[]) if c["id"]==cid),None)
     if not centre:
         flash("Centre introuvable.","danger"); return redirect(url_for("a_centres"))
-    meds_c=[m for m in DB["medecins"] if m.get("id_centre",1)==cid]
+    meds_c=[m for m in DB["medecins"] if cid in get_med_centres(m["matricule"])]
     if meds_c:
         flash(f"Impossible de supprimer '{centre['nom']}' : {len(meds_c)} medecin(s) rattache(s). Reassignez-les d'abord.","danger")
         return redirect(url_for("a_centres"))
@@ -1131,7 +1232,7 @@ def a_centres():
         flash(f"Centre '{nc['nom']}' cree.","success"); return redirect(url_for("a_centres"))
     rows=""
     for c in DB.get("centres",[]):
-        meds_c=[m for m in DB["medecins"] if m.get("id_centre",1)==c["id"]]
+        meds_c=[m for m in DB["medecins"] if c["id"] in get_med_centres(m["matricule"])]
         srv_c=[s for s in DB["services"] if s.get("id_centre",1)==c["id"]]
         disabled_attr = "disabled" if meds_c else ""
         rows += f"""<tr><td><strong>{c["nom"]}</strong></td><td>{c["ville"]}</td><td>{c["adresse"]}</td><td>{c["telephone"]}</td><td><span class="bk inf">{len(meds_c)} medecin(s)</span></td><td><span class="bk inf">{len(srv_c)} service(s)</span></td>
@@ -2340,6 +2441,27 @@ def r_rdvs():
                 if not (med_check and med_check.get("teleconsult_actif")):
                     flash("Ce medecin n'a pas active la teleconsultation. Choisissez un RDV presentiel ou un autre medecin.","danger")
                     return redirect(url_for("r_rdvs"))
+            # ── VÉRIFICATION 1 : MÉDECIN EN CONGÉ ─────────────────
+            med_sel=next((m for m in DB["medecins"] if m["matricule"]==d["medecin"]),None)
+            if med_sel and med_sel.get("status_med")=="En conge":
+                flash(f"{mname(d['medecin'])} est actuellement en conge. Impossible de creer un RDV.","danger")
+                return redirect(url_for("r_rdvs"))
+            # ── VÉRIFICATION 2 : CRÉNEAU DANS LES DISPONIBILITÉS ──
+            creneaux_libres=get_creneaux_libres(d["medecin"],d["date"])
+            if creneaux_libres is not None and len(creneaux_libres)==0:
+                jour=jour_semaine_fr(d["date"])
+                dispo_med=next((x for x in DB.get("disponibilites",[]) if x["matricule"]==d["medecin"] and x["jour"]==jour),None)
+                if not dispo_med:
+                    flash(f"{mname(d['medecin'])} n'est pas disponible le {jour} ({d['date']}). Choisissez un autre jour.","danger")
+                    return redirect(url_for("r_rdvs"))
+                else:
+                    flash(f"Plus aucun creneau disponible pour {mname(d['medecin'])} le {d['date']}. Choisissez une autre date.","danger")
+                    return redirect(url_for("r_rdvs"))
+            # ── VÉRIFICATION 3 : CONFLIT DE CRÉNEAU ───────────────
+            conflit=next((r for r in DB["rdvs"] if r["matricule"]==d["medecin"] and r["date"]==d["date"] and r["heure"]==d["heure"] and r["statut"] not in ("Annule","Termine")),None)
+            if conflit:
+                flash(f"Creneau indisponible : {mname(d['medecin'])} a deja un RDV le {d['date']} a {d['heure']} ({conflit['statut']}).","danger")
+                return redirect(url_for("r_rdvs"))
             nr={"id":nid("rdvs"),"id_patient":int(d["patient"]),"matricule":d["medecin"],"date":d["date"],"heure":d["heure"],"type":rdv_type,"statut":"Confirme","motif":d.get("motif",""),"lien_teleconsult":None}
             DB["rdvs"].append(nr)
             # Vérifier si c'est pour une demande existante
@@ -2406,24 +2528,78 @@ def r_rdvs():
               </form></div>"""
         rows+=f'<tr><td><strong>{r["date"]}</strong></td><td>{r["heure"]}</td><td>{pname(r["id_patient"])}</td><td>{mname(r["matricule"])}</td><td>{r.get("motif","")}</td><td><span class="bk inf">{r["type"]}</span></td><td><span class="bk {sc}">{r["statut"]}</span></td><td>{actions}</td></tr>'
     opts_p="".join(f'<option value="{p["id"]}" {"selected" if str(p["id"])==pid_pre else ""}>{p["prenom"]} {p["nom"]}</option>' for p in DB["patients"])
-    opts_m="".join(f'<option value="{m["matricule"]}">Dr. {m["prenom"]} {m["nom"]} ({m["specialite"]})</option>' for m in DB["medecins"])
+    opts_m="".join(f'<option value="{m["matricule"]}">Dr. {m["prenom"]} {m["nom"]} ({m["specialite"]}){" — EN CONGE" if m.get("status_med")=="En conge" else ""}</option>' for m in DB["medecins"])
     body=f"""<div class="row g-3">
   <div class="col-lg-8"><div class="card"><div class="card-hdr"><div class="title"><i class="fas fa-calendar-check"></i>Tous les RDV ({len(DB["rdvs"])})</div></div>
   <div style="overflow-x:auto;"><table class="table"><thead><tr><th>Date</th><th>Heure</th><th>Patient</th><th>Medecin</th><th>Motif</th><th>Type</th><th>Statut</th><th>Actions</th></tr></thead><tbody>
   {rows if rows else "<tr><td colspan=8 class='text-center' style='color:var(--muted);padding:20px;'>Aucun RDV</td></tr>"}
   </tbody></table></div></div></div>
   <div class="col-lg-4"><div class="card"><div class="card-hdr"><div class="title">Nouveau RDV</div></div><div class="card-body">
-    <form method="POST"><input type="hidden" name="action" value="creer"><input type="hidden" name="dem_id" value="{dem_pre}"><div class="row g-2">
+    <form method="POST" id="rdvForm"><input type="hidden" name="action" value="creer"><input type="hidden" name="dem_id" value="{dem_pre}"><div class="row g-2">
       <div class="col-12"><label class="form-label">Patient *</label><select name="patient" class="form-select" required><option value="">--</option>{opts_p}</select></div>
-      <div class="col-12"><label class="form-label">Medecin *</label><select name="medecin" class="form-select" required><option value="">--</option>{opts_m}</select></div>
-      <div class="col-6"><label class="form-label">Date *</label><input type="date" name="date" class="form-control" required></div>
-      <div class="col-6"><label class="form-label">Heure *</label><input type="time" name="heure" class="form-control" required></div>
+      <div class="col-12"><label class="form-label">Medecin *</label><select name="medecin" id="sel_med" class="form-select" required onchange="loadCreneaux()"><option value="">--</option>{opts_m}</select></div>
+      <div class="col-12"><label class="form-label">Date *</label><input type="date" name="date" id="sel_date" class="form-control" required onchange="loadCreneaux()"></div>
+      <div class="col-12" id="zone_creneaux" style="display:none;">
+        <label class="form-label">Creneau disponible *</label>
+        <div id="creneaux_list" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:4px;"></div>
+        <input type="hidden" name="heure" id="heure_sel" required>
+        <small id="info_dispo" style="color:var(--muted);font-size:.75rem;"></small>
+      </div>
+      <div class="col-12" id="zone_aucun" style="display:none;">
+        <div class="al al-e"><i class="fas fa-times-circle"></i><span id="msg_aucun"></span></div>
+      </div>
       <div class="col-12"><label class="form-label">Type</label><select name="type" class="form-select"><option>Presentiel</option><option>Teleconsultation</option></select></div>
       <div class="col-12"><label class="form-label">Motif</label><input type="text" name="motif" class="form-control"></div>
-      <div class="col-12"><button type="submit" class="btn btn-g w-100" style="justify-content:center;"><i class="fas fa-save"></i>Creer le RDV</button></div>
+      <div class="col-12"><button type="submit" class="btn btn-g w-100" style="justify-content:center;" id="btn_creer"><i class="fas fa-save"></i>Creer le RDV</button></div>
     </div></form>
   </div></div></div>
-</div>"""
+</div>
+<script>
+function loadCreneaux(){{
+  const med=document.getElementById('sel_med').value;
+  const dat=document.getElementById('sel_date').value;
+  const zc=document.getElementById('zone_creneaux');
+  const za=document.getElementById('zone_aucun');
+  const cl=document.getElementById('creneaux_list');
+  const hs=document.getElementById('heure_sel');
+  const info=document.getElementById('info_dispo');
+  const btn=document.getElementById('btn_creer');
+  if(!med||!dat){{zc.style.display='none';za.style.display='none';return;}}
+  fetch(`/api/creneaux?matricule=${{med}}&date=${{dat}}`)
+    .then(r=>r.json()).then(data=>{{
+      cl.innerHTML=''; hs.value=''; btn.disabled=false;
+      if(data.en_conge){{
+        za.style.display='block'; zc.style.display='none';
+        document.getElementById('msg_aucun').textContent='Ce medecin est en conge.';
+        btn.disabled=true; return;
+      }}
+      if(!data.dispo){{
+        za.style.display='block'; zc.style.display='none';
+        document.getElementById('msg_aucun').textContent=`Pas de disponibilite le ${{data.jour||dat}}.`;
+        btn.disabled=true; return;
+      }}
+      za.style.display='none';
+      if(data.creneaux.length===0){{
+        zc.style.display='block';
+        cl.innerHTML='<span style="color:var(--err);font-size:.82rem;">Tous les creneaux sont pris pour cette date.</span>';
+        info.textContent=''; btn.disabled=true; return;
+      }}
+      zc.style.display='block'; btn.disabled=false;
+      info.textContent=`${{data.jour}} · ${{data.heure_debut}}–${{data.heure_fin}} · ${{data.duree}} min/consultation`;
+      data.creneaux.forEach(h=>{{
+        const b=document.createElement('button');
+        b.type='button'; b.textContent=h;
+        b.style.cssText='padding:5px 10px;border:1.5px solid var(--g1);border-radius:6px;background:#fff;color:var(--g2);font-size:.82rem;cursor:pointer;';
+        b.onclick=function(){{
+          document.querySelectorAll('#creneaux_list button').forEach(x=>{{x.style.background='#fff';x.style.color='var(--g2)';}});
+          this.style.background='var(--g1)'; this.style.color='#fff';
+          hs.value=h;
+        }};
+        cl.appendChild(b);
+      }});
+    }}).catch(()=>{{zc.style.display='none';za.style.display='none';}});
+}}
+</script>"""
     return page("Rendez-vous","receptionniste",session["user"],body)
 
 @app.route("/r-demandes")
@@ -3282,5 +3458,131 @@ def profil():
 </div>
 <script>function previewPhoto(input){{if(input.files&&input.files[0]){{const r=new FileReader();r.onload=function(e){{document.getElementById('preview_img').src=e.target.result;document.getElementById('photo_preview').style.display='block';document.getElementById('photo_b64').value=e.target.result;}};r.readAsDataURL(input.files[0]);}}}}</script>"""
     return page("Mon Profil",role,u,body)
+
+# ── API : créneaux libres (appelé en AJAX par le formulaire RDV) ──────────
+@app.route("/api/creneaux")
+@login_required
+def api_creneaux():
+    matricule=request.args.get("matricule","")
+    date_str=request.args.get("date","")
+    if not matricule or not date_str:
+        return jsonify({"creneaux":[],"jour":""})
+    jour=jour_semaine_fr(date_str)
+    creneaux=get_creneaux_libres(matricule,date_str)
+    med=next((m for m in DB["medecins"] if m["matricule"]==matricule),None)
+    en_conge=(med and med.get("status_med")=="En conge")
+    dispo=next((d for d in DB.get("disponibilites",[]) if d["matricule"]==matricule and d["jour"]==jour),None)
+    return jsonify({
+        "creneaux": creneaux,
+        "jour": jour,
+        "en_conge": en_conge,
+        "dispo": bool(dispo),
+        "heure_debut": dispo["heure_debut"] if dispo else "",
+        "heure_fin": dispo["heure_fin"] if dispo else "",
+        "duree": dispo["duree_consultation"] if dispo else 30,
+    })
+
+# ── MÉDECIN : Gérer ses disponibilités ───────────────────────────────────
+@app.route("/m-disponibilites",methods=["GET","POST"])
+@login_required
+@role_required("medecin")
+def m_disponibilites():
+    med=get_med(session["user"]); mat=med["matricule"]
+    JOURS_ORDRE=["Lundi","Mardi","Mercredi","Jeudi","Vendredi","Samedi","Dimanche"]
+    if request.method=="POST":
+        action=request.form.get("action","")
+        if action=="ajouter":
+            jour=request.form.get("jour","")
+            hd=request.form.get("heure_debut","")
+            hf=request.form.get("heure_fin","")
+            duree=int(request.form.get("duree",30))
+            # Vérifier doublon
+            exist=next((d for d in DB["disponibilites"] if d["matricule"]==mat and d["jour"]==jour),None)
+            if exist:
+                flash(f"Une disponibilite existe deja pour le {jour}. Supprimez-la d'abord.","warning")
+            elif hd>=hf:
+                flash("L'heure de fin doit etre apres l'heure de debut.","danger")
+            else:
+                DB["disponibilites"].append({"id":nid("dispos"),"matricule":mat,"jour":jour,"heure_debut":hd,"heure_fin":hf,"duree_consultation":duree})
+                flash(f"Disponibilite ajoutee : {jour} de {hd} a {hf}.","success")
+        elif action=="supprimer":
+            did=int(request.form.get("did",0))
+            DB["disponibilites"]=[d for d in DB["disponibilites"] if not (d["id"]==did and d["matricule"]==mat)]
+            flash("Disponibilite supprimee.","success")
+        elif action=="modifier":
+            did=int(request.form.get("did",0))
+            hd=request.form.get("heure_debut","")
+            hf=request.form.get("heure_fin","")
+            duree=int(request.form.get("duree",30))
+            dispo=next((d for d in DB["disponibilites"] if d["id"]==did and d["matricule"]==mat),None)
+            if dispo:
+                if hd>=hf:
+                    flash("L'heure de fin doit etre apres l'heure de debut.","danger")
+                else:
+                    dispo["heure_debut"]=hd; dispo["heure_fin"]=hf; dispo["duree_consultation"]=duree
+                    flash("Disponibilite mise a jour.","success")
+        return redirect(url_for("m_disponibilites"))
+
+    dispos=sorted([d for d in DB["disponibilites"] if d["matricule"]==mat],key=lambda x:JOURS_ORDRE.index(x["jour"]) if x["jour"] in JOURS_ORDRE else 99)
+    jours_pris={d["jour"] for d in dispos}
+    rows=""
+    for d in dispos:
+        rows+=f"""<tr>
+          <td><strong>{d['jour']}</strong></td>
+          <td>{d['heure_debut']}</td><td>{d['heure_fin']}</td>
+          <td>{d['duree_consultation']} min</td>
+          <td>
+            <button class="btn btn-sm btn-outline-g" onclick="document.getElementById('mod_{d['id']}').style.display='block'"><i class="fas fa-edit"></i>Modifier</button>
+            <form method="POST" style="display:inline;" onsubmit="return confirm('Supprimer cette disponibilite ?')">
+              <input type="hidden" name="action" value="supprimer">
+              <input type="hidden" name="did" value="{d['id']}">
+              <button type="submit" class="btn btn-sm btn-outline-r"><i class="fas fa-trash"></i>Supprimer</button>
+            </form>
+            <div id="mod_{d['id']}" style="display:none;margin-top:8px;background:#f0fdf4;border-radius:8px;padding:10px;">
+              <form method="POST" class="row g-2">
+                <input type="hidden" name="action" value="modifier">
+                <input type="hidden" name="did" value="{d['id']}">
+                <div class="col-4"><label class="form-label" style="font-size:.78rem;">Debut</label><input type="time" name="heure_debut" class="form-control form-control-sm" value="{d['heure_debut']}" required></div>
+                <div class="col-4"><label class="form-label" style="font-size:.78rem;">Fin</label><input type="time" name="heure_fin" class="form-control form-control-sm" value="{d['heure_fin']}" required></div>
+                <div class="col-4"><label class="form-label" style="font-size:.78rem;">Duree (min)</label><select name="duree" class="form-select form-select-sm">
+                  {"".join(f'<option value="{v}" {"selected" if v==d["duree_consultation"] else ""}>{v} min</option>' for v in [15,20,30,45,60])}
+                </select></div>
+                <div class="col-12"><button type="submit" class="btn btn-sm btn-g"><i class="fas fa-save"></i>Enregistrer</button>
+                  <button type="button" class="btn btn-sm btn-outline-g" onclick="document.getElementById('mod_{d['id']}').style.display='none'">Annuler</button></div>
+              </form>
+            </div>
+          </td></tr>"""
+    jours_dispo_options="".join(f'<option value="{j}">{j}</option>' for j in JOURS_ORDRE if j not in jours_pris)
+    body=f"""<div class="row g-3">
+  <div class="col-lg-8">
+    <div class="card"><div class="card-hdr"><div class="title"><i class="fas fa-clock"></i>Mes Disponibilites</div></div>
+    <div style="overflow-x:auto;"><table class="table"><thead><tr><th>Jour</th><th>Debut</th><th>Fin</th><th>Duree/Consult.</th><th>Actions</th></tr></thead>
+    <tbody>{rows if rows else "<tr><td colspan=5 class='text-center' style='color:var(--muted);padding:20px;'>Aucune disponibilite definie</td></tr>"}</tbody>
+    </table></div></div>
+  </div>
+  <div class="col-lg-4">
+    <div class="card"><div class="card-hdr"><div class="title"><i class="fas fa-plus"></i>Ajouter un jour</div></div>
+    <div class="card-body">
+      <form method="POST"><input type="hidden" name="action" value="ajouter"><div class="row g-2">
+        <div class="col-12"><label class="form-label">Jour *</label>
+          <select name="jour" class="form-select" required>{jours_dispo_options if jours_dispo_options else '<option disabled>Tous les jours sont definis</option>'}</select></div>
+        <div class="col-6"><label class="form-label">Debut *</label><input type="time" name="heure_debut" class="form-control" value="08:00" required></div>
+        <div class="col-6"><label class="form-label">Fin *</label><input type="time" name="heure_fin" class="form-control" value="17:00" required></div>
+        <div class="col-12"><label class="form-label">Duree par consultation *</label>
+          <select name="duree" class="form-select">
+            <option value="15">15 minutes</option><option value="20">20 minutes</option>
+            <option value="30" selected>30 minutes</option><option value="45">45 minutes</option><option value="60">1 heure</option>
+          </select></div>
+        <div class="col-12"><button type="submit" class="btn btn-g w-100" style="justify-content:center;" {"disabled" if not jours_dispo_options else ""}><i class="fas fa-save"></i>Enregistrer</button></div>
+      </div></form>
+    </div></div>
+    <div class="card" style="margin-top:14px;"><div class="card-hdr"><div class="title"><i class="fas fa-info-circle"></i>Info</div></div>
+    <div class="card-body" style="font-size:.82rem;color:var(--muted);">
+      <p>Ces disponibilites sont utilisees par la receptionniste pour afficher uniquement les creneaux libres lors de la creation d'un RDV.</p>
+      <p style="margin-top:8px;">La duree par consultation determine l'espacement entre chaque creneau.</p>
+    </div></div>
+  </div>
+</div>"""
+    return page("Mes Disponibilites","medecin",session["user"],body)
 
 # ── LANCEMENT ─────────────────────────────────────────────────
