@@ -498,7 +498,7 @@ def sidebar(role,username):
         "medecin":[
             ("","Tableau de bord","tachometer-alt","dashboard"),("","Mon espace","---",""),
             ("","Mes Patients","users","m_patients"),("","Mes RDV","calendar-check","m_rdvs"),
-            ("","Mes Consultations","stethoscope","m_consultations"),("","Mes Teleconsultations","video","m_teleconsult"),
+            ("","Mes Consultations","stethoscope","m_consultations"),("","Mes Teleconsultations","video","m_teleconsult"),("","Urgences","ambulance","m_urgences"),
             ("","Mon Service","building","m_service"),("","Messagerie","paper-plane","m_notifs"),("","Mon Profil","user-cog","profil"),
         ],
         "receptionniste":[
@@ -1524,6 +1524,51 @@ def m_rdvs():
 </tbody></table></div></div>"""
     return page("Mes Rendez-vous","medecin",session["user"],body)
 
+@app.route("/m-urgences")
+@login_required
+@role_required("medecin")
+def m_urgences():
+    med=get_med(session["user"]); mat=med["matricule"]
+    nc_map={"1 - Reanimation":"urg-1","2 - Urgent":"urg-2","3 - Semi-urgent":"urg-3","4 - Peu urgent":"urg-4","5 - Non urgent":"urg-5"}
+    # Patients assignés à ce médecin OU tous si aucune assignation
+    mes_urgences=[t for t in DB["triage"] if t.get("pris_en_charge_par")==mat]
+    toutes=[t for t in DB["triage"] if not t.get("pris_en_charge_par")]
+    actifs_moi=[t for t in mes_urgences if t["statut"] in ["En attente","En cours"]]
+    actifs_libre=[t for t in toutes if t["statut"] in ["En attente","En cours"]]
+    def attente_str(date_arrivee):
+        try:
+            arr=datetime.strptime(date_arrivee,"%Y-%m-%d %H:%M"); diff=datetime.now()-arr; mins=int(diff.total_seconds()//60)
+            return f"{mins} min" if mins<60 else f"{mins//60}h{mins%60:02d}"
+        except: return "-"
+    def row_u(t):
+        nc=nc_map.get(t["niveau_urgence"],"att")
+        nom_aff=t.get("nom_anonyme","") or pname(t["id_patient"])
+        anon='<span class="bk grey" style="font-size:.7rem;">Anonyme</span> ' if t.get("nom_anonyme") else ""
+        duree=attente_str(t["date_arrivee"])
+        duree_col="color:var(--err);font-weight:700;" if "h" in duree else "color:var(--warn);" if "min" in duree and duree.replace(" min","").isdigit() and int(duree.replace(" min",""))>30 else ""
+        return f'<tr><td><small>{t["date_arrivee"]}</small><br><span style="{duree_col}font-size:.78rem;"><i class="fas fa-clock"></i> {duree}</span></td><td><strong>{anon}{nom_aff}</strong></td><td>{t["motif"]}</td><td><span class="bk {nc}">{t["niveau_urgence"]}</span></td><td style="font-size:.76rem;">{t["tension"]} | {t["temperature"]}C | SpO2:{t["saturation"]}% | FC:{t["frequence_cardiaque"]}</td><td><span class="bk {"ok" if t["statut"]=="En cours" else "att"}">{t["statut"]}</span></td><td>{t.get("observations","—")}</td></tr>'
+    rows_moi="".join(row_u(t) for t in sorted(actifs_moi,key=lambda x:x["niveau_urgence"]))
+    rows_libre="".join(row_u(t) for t in sorted(actifs_libre,key=lambda x:x["niveau_urgence"]))
+    # Alerte critique
+    crit=[t for t in actifs_moi+actifs_libre if t["niveau_urgence"].startswith("1") or t["niveau_urgence"].startswith("2")]
+    alerte=""
+    if crit:
+        alerte=f'<div class="al al-r mb-3" style="border-left:4px solid var(--err);font-weight:600;"><i class="fas fa-exclamation-triangle"></i> {len(crit)} patient(s) en etat critique (Niveau 1 ou 2) necessitent une prise en charge immediate !</div>'
+    body=f"""{alerte}<div class="row g-3 mb-3">
+  <div class="col-md-3"><div class="sc bg-r"><div class="sv">{len(actifs_moi)}</div><div class="sl">Mes patients</div></div></div>
+  <div class="col-md-3"><div class="sc bg-o"><div class="sv">{len(actifs_libre)}</div><div class="sl">Non assignes</div></div></div>
+  <div class="col-md-3"><div class="sc" style="background:#7f1d1d;"><div class="sv">{len([t for t in actifs_moi+actifs_libre if t["niveau_urgence"].startswith("1")])}</div><div class="sl">Reanimation</div></div></div>
+  <div class="col-md-3"><div class="sc bg-r"><div class="sv">{len([t for t in actifs_moi+actifs_libre if t["niveau_urgence"].startswith("2")])}</div><div class="sl">Urgent</div></div></div>
+</div>
+<div class="nav-tabs"><button class="nav-tab active" onclick="showTab('um1',this)">Mes patients ({len(actifs_moi)})</button><button class="nav-tab" onclick="showTab('um2',this)">Non assignes ({len(actifs_libre)})</button></div>
+<div id="um1" class="tab-pane"><div class="card"><div style="overflow-x:auto;"><table class="table"><thead><tr><th>Arrivee / Attente</th><th>Patient</th><th>Motif</th><th>Niveau</th><th>Parametres</th><th>Statut</th><th>Observations</th></tr></thead><tbody>
+{rows_moi if rows_moi else "<tr><td colspan=7 class='text-center' style='color:var(--muted);padding:20px;'>Aucun patient urgences assigne</td></tr>"}
+</tbody></table></div></div></div>
+<div id="um2" class="tab-pane" style="display:none;"><div class="card"><div style="overflow-x:auto;"><table class="table"><thead><tr><th>Arrivee / Attente</th><th>Patient</th><th>Motif</th><th>Niveau</th><th>Parametres</th><th>Statut</th><th>Observations</th></tr></thead><tbody>
+{rows_libre if rows_libre else "<tr><td colspan=7 class='text-center' style='color:var(--muted);padding:20px;'>Aucun patient non assigne</td></tr>"}
+</tbody></table></div></div></div>"""
+    return page("Urgences","medecin",session["user"],body)
+
 @app.route("/m-consultations")
 @login_required
 @role_required("medecin")
@@ -2543,41 +2588,66 @@ def r_triage():
     if request.method=="POST":
         d=request.form; action=d.get("action","add")
         if action=="add":
-            nt={"id":nid("triage"),"id_patient":int(d["patient"]),"date_arrivee":datetime.now().strftime("%Y-%m-%d %H:%M"),"motif":d.get("motif",""),"niveau_urgence":d.get("niveau","3 - Semi-urgent"),"tension":d.get("tension",""),"temperature":float(d.get("temperature",37.0)),"saturation":int(d.get("saturation",98)),"frequence_cardiaque":int(d.get("fc",80)),"statut":"En attente","pris_en_charge_par":d.get("medecin",""),"observations":d.get("obs","")}
+            if d.get("patient_anon")=="on":
+                pid_val=0; nom_anon=d.get("nom_anon","Inconnu").strip() or "Inconnu"
+            else:
+                pid_val=int(d.get("patient",0)); nom_anon=""
+            niveau=d.get("niveau","3 - Semi-urgent")
+            nt={"id":nid("triage"),"id_patient":pid_val,"nom_anonyme":nom_anon,"date_arrivee":datetime.now().strftime("%Y-%m-%d %H:%M"),"motif":d.get("motif",""),"niveau_urgence":niveau,"tension":d.get("tension",""),"temperature":float(d.get("temperature",37.0)),"saturation":int(d.get("saturation",98)),"frequence_cardiaque":int(d.get("fc",80)),"statut":"En attente","pris_en_charge_par":d.get("medecin",""),"observations":d.get("obs","")}
             DB["triage"].append(nt)
-            add_hist(f"Triage : {pname(nt['id_patient'])} — {nt['niveau_urgence']}","Triage",session["user"],nt["id_patient"])
-            flash(f"Patient {pname(nt['id_patient'])} enregistre aux urgences.","success")
+            nom_aff=nom_anon if nom_anon else pname(pid_val)
+            add_hist(f"Triage : {nom_aff} — {niveau}","Triage",session["user"],pid_val if pid_val else None)
+            mat_assign=d.get("medecin","")
+            if niveau.startswith("1") or niveau.startswith("2"):
+                msg_urgent=f"URGENCE — {nom_aff} — {niveau} — {d.get('motif','')}. Tension {d.get('tension','-')}, Temp {d.get('temperature','-')}C, SpO2 {d.get('saturation','-')}%, FC {d.get('fc','-')} bpm."
+                if mat_assign:
+                    med_u=next((m.get("username","") for m in DB["medecins"] if m["matricule"]==mat_assign),None)
+                    if med_u: add_notif(None,"URGENCE CRITIQUE",f"Patient {niveau[:1]} — {nom_aff}",msg_urgent,expediteur=session["user"],dest_user=med_u)
+                else:
+                    add_notif(None,"URGENCE CRITIQUE",f"Patient {niveau[:1]} — {nom_aff}",msg_urgent,dest_role="medecin",expediteur=session["user"])
+            elif mat_assign:
+                add_notif(None,"Nouveau patient urgences",f"{nom_aff} — {niveau}",f"Patient assigne : {nom_aff}. Motif : {d.get('motif','')}.",expediteur=session["user"],dest_role="medecin")
+            flash(f"Patient {nom_aff} enregistre aux urgences (Niveau {niveau[0]}).","success")
         elif action=="update":
             t=next((x for x in DB["triage"] if x["id"]==int(d["tid"])),None)
-            if t: t["statut"]=d.get("statut",t["statut"])
+            if t:
+                t["statut"]=d.get("statut",t["statut"])
+                if d.get("statut")=="En cours" and not t.get("date_pec"):
+                    t["date_pec"]=datetime.now().strftime("%Y-%m-%d %H:%M")
         elif action=="transferer":
             t=next((x for x in DB["triage"] if x["id"]==int(d["tid"])),None)
             sid=int(d.get("service_dest",0))
             if t and sid:
-                old_svc=t.get("service_dest_nom","Urgences")
-                new_svc=sname(sid)
-                t["statut"]="Transfere"
-                t["service_dest"]=sid
-                # Ajouter a la liste d attente du service de destination
+                new_svc=sname(sid); t["statut"]="Transfere"; t["service_dest"]=sid
                 ordre=len([a for a in DB["liste_attente"] if a["statut"]=="En attente" and a["id_service"]==sid])+1
                 DB["liste_attente"].append({"id":nid("attente"),"id_patient":t["id_patient"],"id_service":sid,"numero_ordre":ordre,"date_arrivee":datetime.now().strftime("%Y-%m-%d %H:%M"),"statut":"En attente","priorite":"Urgent","motif":f"Transfert urgences vers {new_svc}"})
-                add_hist(f"Transfert urgences vers {new_svc} — {pname(t['id_patient'])}","Transfert",session["user"],t["id_patient"])
-                add_notif(None,"Transfert urgences",f"Patient transfere vers {new_svc}",f"{pname(t['id_patient'])} transfere depuis Urgences vers {new_svc}. Priorite Urgente.",dest_role="medecin",expediteur=session["user"])
-                flash(f"{pname(t['id_patient'])} transfere vers {new_svc}.","success")
+                nom_aff=t.get("nom_anonyme","") or pname(t["id_patient"])
+                add_hist(f"Transfert urgences vers {new_svc} — {nom_aff}","Transfert",session["user"],t["id_patient"] if t["id_patient"] else None)
+                add_notif(None,"Transfert urgences",f"Patient transfere vers {new_svc}",f"{nom_aff} transfere depuis Urgences vers {new_svc}. Priorite Urgente.",dest_role="medecin",expediteur=session["user"])
+                flash(f"{nom_aff} transfere vers {new_svc}.","success")
         return redirect(url_for("r_triage"))
     actifs=[t for t in DB["triage"] if t["statut"] in ["En attente","En cours"]]
     archives=[t for t in DB["triage"] if t["statut"] not in ["En attente","En cours"]]
     nc_map={"1 - Reanimation":"urg-1","2 - Urgent":"urg-2","3 - Semi-urgent":"urg-3","4 - Peu urgent":"urg-4","5 - Non urgent":"urg-5"}
     opts_transfer_svc="".join(f'<option value="{s["id"]}">{s["libelle"]}</option>' for s in DB["services"] if s["libelle"]!="Urgences")
+    def attente_str(date_arrivee):
+        try:
+            arr=datetime.strptime(date_arrivee,"%Y-%m-%d %H:%M"); diff=datetime.now()-arr; mins=int(diff.total_seconds()//60)
+            return f"{mins} min" if mins<60 else f"{mins//60}h{mins%60:02d}"
+        except: return "-"
     def row_t(t):
         nc=nc_map.get(t["niveau_urgence"],"att")
+        nom_aff=t.get("nom_anonyme","") or pname(t["id_patient"])
+        anon_badge='<span class="bk grey" style="font-size:.7rem;">Anonyme</span> ' if t.get("nom_anonyme") else ""
+        duree=attente_str(t["date_arrivee"]) if t["statut"] in ["En attente","En cours"] else "-"
+        duree_col="color:var(--err);font-weight:700;" if t["statut"]=="En attente" and "h" in duree else "color:var(--warn);" if "min" in duree and duree.replace(" min","").isdigit() and int(duree.replace(" min",""))>30 else ""
         transfer_btn=f'''<button class="btn btn-sm btn-outline-b ms-1" onclick="document.getElementById(\'tr_{t["id"]}\').style.display=\'block\'"><i class="fas fa-exchange-alt"></i></button>
         <div id="tr_{t["id"]}" style="display:none;margin-top:6px;padding:8px;background:#dbeafe;border-radius:6px;">
           <form method="POST"><input type="hidden" name="action" value="transferer"><input type="hidden" name="tid" value="{t["id"]}">
             <select name="service_dest" class="form-select form-select-sm mb-1">{opts_transfer_svc}</select>
             <button type="submit" class="btn btn-sm btn-b"><i class="fas fa-check"></i>Transferer</button>
           </form></div>''' if t["statut"] in ["En attente","En cours"] else ""
-        return f'<tr><td><small>{t["date_arrivee"]}</small></td><td><strong>{pname(t["id_patient"])}</strong></td><td>{t["motif"]}</td><td><span class="bk {nc}">{t["niveau_urgence"]}</span></td><td style="font-size:.76rem;">{t["tension"]} | {t["temperature"]}C | SpO2:{t["saturation"]}% | FC:{t["frequence_cardiaque"]}</td><td><form method="POST" style="display:inline;"><input type="hidden" name="action" value="update"><input type="hidden" name="tid" value="{t["id"]}"><select name="statut" class="form-select form-select-sm" style="width:120px;display:inline;" onchange="this.form.submit()"><option>En attente</option><option>En cours</option><option>Termine</option><option>Transfere</option></select></form>{transfer_btn}</td></tr>'
+        return f'<tr><td><small>{t["date_arrivee"]}</small><br><span style="{duree_col}font-size:.78rem;"><i class="fas fa-clock"></i> {duree}</span></td><td><strong>{anon_badge}{nom_aff}</strong></td><td>{t["motif"]}</td><td><span class="bk {nc}">{t["niveau_urgence"]}</span></td><td style="font-size:.76rem;">{t["tension"]} | {t["temperature"]}C | SpO2:{t["saturation"]}% | FC:{t["frequence_cardiaque"]}</td><td><form method="POST" style="display:inline;"><input type="hidden" name="action" value="update"><input type="hidden" name="tid" value="{t["id"]}"><select name="statut" class="form-select form-select-sm" style="width:120px;display:inline;" onchange="this.form.submit()"><option>En attente</option><option>En cours</option><option>Termine</option><option>Transfere</option></select></form>{transfer_btn}</td></tr>'
     rows_a="".join(row_t(t) for t in sorted(actifs,key=lambda x:x["niveau_urgence"]))
     rows_arch="".join(row_t(t) for t in sorted(archives,key=lambda x:x["date_arrivee"],reverse=True)[:20])
     opts_p="".join(f'<option value="{p["id"]}">{p["prenom"]} {p["nom"]}</option>' for p in DB["patients"])
@@ -2592,12 +2662,14 @@ def r_triage():
 <div class="row g-3">
   <div class="col-lg-8">
     <div class="nav-tabs"><button class="nav-tab active" onclick="showTab('tt1',this)">Actifs ({len(actifs)})</button><button class="nav-tab" onclick="showTab('tt2',this)">Archives</button></div>
-    <div id="tt1" class="tab-pane"><div class="card"><div style="overflow-x:auto;"><table class="table"><thead><tr><th>Arrivee</th><th>Patient</th><th>Motif</th><th>Niveau</th><th>Parametres</th><th>Statut</th></tr></thead><tbody>{rows_a if rows_a else "<tr><td colspan=6 class='text-center' style='color:var(--muted);padding:20px;'>Aucun patient aux urgences</td></tr>"}</tbody></table></div></div></div>
-    <div id="tt2" class="tab-pane" style="display:none;"><div class="card"><div style="overflow-x:auto;"><table class="table"><thead><tr><th>Arrivee</th><th>Patient</th><th>Motif</th><th>Niveau</th><th>Parametres</th><th>Statut</th></tr></thead><tbody>{rows_arch if rows_arch else "<tr><td colspan=6 class='text-center' style='color:var(--muted);padding:20px;'>Aucun archive</td></tr>"}</tbody></table></div></div></div>
+    <div id="tt1" class="tab-pane"><div class="card"><div style="overflow-x:auto;"><table class="table"><thead><tr><th>Arrivee / Attente</th><th>Patient</th><th>Motif</th><th>Niveau</th><th>Parametres</th><th>Statut</th></tr></thead><tbody>{rows_a if rows_a else "<tr><td colspan=6 class='text-center' style='color:var(--muted);padding:20px;'>Aucun patient aux urgences</td></tr>"}</tbody></table></div></div></div>
+    <div id="tt2" class="tab-pane" style="display:none;"><div class="card"><div style="overflow-x:auto;"><table class="table"><thead><tr><th>Arrivee / Attente</th><th>Patient</th><th>Motif</th><th>Niveau</th><th>Parametres</th><th>Statut</th></tr></thead><tbody>{rows_arch if rows_arch else "<tr><td colspan=6 class='text-center' style='color:var(--muted);padding:20px;'>Aucun archive</td></tr>"}</tbody></table></div></div></div>
   </div>
   <div class="col-lg-4"><div class="card"><div class="card-hdr"><div class="title"><i class="fas fa-plus-circle" style="color:var(--err);"></i>Nouveau patient urgences</div></div><div class="card-body">
     <form method="POST"><input type="hidden" name="action" value="add"><div class="row g-2">
-      <div class="col-12"><label class="form-label">Patient *</label><select name="patient" class="form-select" required><option value="">--</option>{opts_p}</select></div>
+      <div class="col-12"><div class="al al-w" style="font-size:.78rem;padding:6px 10px;"><label style="cursor:pointer;"><input type="checkbox" name="patient_anon" id="chk_anon" onchange="document.getElementById('sel_pat').style.display=this.checked?'none':'block';document.getElementById('inp_anon').style.display=this.checked?'block':'none';"> Patient inconnu / anonyme</label></div></div>
+      <div class="col-12" id="sel_pat"><label class="form-label">Patient *</label><select name="patient" class="form-select"><option value="">--</option>{opts_p}</select></div>
+      <div class="col-12" id="inp_anon" style="display:none;"><label class="form-label">Nom / Description</label><input type="text" name="nom_anon" class="form-control" placeholder="Ex: Homme 40 ans, sans papiers"></div>
       <div class="col-12"><label class="form-label">Motif *</label><input type="text" name="motif" class="form-control" required placeholder="Ex: Douleur thoracique"></div>
       <div class="col-12"><label class="form-label">Niveau (Triage)</label><select name="niveau" class="form-select"><option value="1 - Reanimation">1 - Reanimation</option><option value="2 - Urgent">2 - Urgent</option><option value="3 - Semi-urgent" selected>3 - Semi-urgent</option><option value="4 - Peu urgent">4 - Peu urgent</option><option value="5 - Non urgent">5 - Non urgent</option></select></div>
       <div class="col-6"><label class="form-label">Tension</label><input type="text" name="tension" class="form-control" placeholder="120/80"></div>
@@ -2612,7 +2684,7 @@ def r_triage():
 </div>"""
     return page("Urgences / Triage","receptionniste",session["user"],body)
 
-@app.route("/r-teleconsult")
+
 @login_required
 @role_required("receptionniste")
 def r_teleconsult():
