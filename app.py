@@ -2926,22 +2926,93 @@ def r_triage():
     return page("Urgences / Triage","receptionniste",session["user"],body)
 
 
+@app.route("/r-teleconsult")
 @login_required
 @role_required("receptionniste")
 def r_teleconsult():
-    rdvs_tc=[r for r in DB["rdvs"] if r["type"]=="Teleconsultation" and r["statut"]=="Confirme"]
-    def statut_lien(r):
-        t=next((t for t in DB["teleconsultations"] if t["id_rdv"]==r["id"]),None)
-        if t and t.get("lien_envoye"):
-            return '<span class="bk ok"><i class="fas fa-check"></i> Lien cree par le medecin</span>'
-        return '<span class="bk att"><i class="fas fa-clock"></i> En attente du medecin</span>'
-    rows="".join(f'<tr><td>{r["date"]} {r["heure"]}</td><td>{pname(r["id_patient"])}</td><td>{mname(r["matricule"])}</td><td>{statut_lien(r)}</td></tr>' for r in rdvs_tc)
-    body=f"""<div class="row g-3">
-  <div class="col-12"><div class="card"><div class="card-hdr"><div class="title"><i class="fas fa-video"></i>Teleconsultations programmees</div></div>
-  <div class="al al-i" style="margin:12px 18px 0;"><i class="fas fa-info-circle"></i>Le lien de la visioconference est genere par le medecin lors de l'activation de la teleconsultation. Le patient est notifie automatiquement.</div>
-  <div style="overflow-x:auto;"><table class="table"><thead><tr><th>Date</th><th>Patient</th><th>Medecin</th><th>Statut du lien</th></tr></thead><tbody>
-  {rows if rows else "<tr><td colspan=4 class='text-center' style='color:var(--muted);padding:20px;'>Aucune teleconsultation programmee</td></tr>"}
-  </tbody></table></div></div></div>
+    # Tous les RDV teleconsultation (tous statuts sauf Annule)
+    rdvs_tc=[r for r in DB["rdvs"] if r["type"]=="Teleconsultation" and r["statut"]!="Annule"]
+
+    def get_tele(rdv_id):
+        return next((t for t in DB["teleconsultations"] if t["id_rdv"]==rdv_id), None)
+
+    def badge_statut_rdv(statut):
+        m={"Confirme":("ok","check-circle","Confirme"),
+           "En attente":("att","clock","En attente"),
+           "Refuse":("err","times-circle","Refuse"),
+           "Termine":("grey","flag-checkered","Termine")}
+        c,i,l=m.get(statut,("grey","question-circle",statut))
+        return f'<span class="bk {c}"><i class="fas fa-{i} me-1"></i>{l}</span>'
+
+    def badge_statut_tele(t):
+        if not t:
+            return '<span class="bk att"><i class="fas fa-hourglass-half me-1"></i>En attente du medecin</span>'
+        s=t.get("statut","")
+        lien_ok=t.get("lien_envoye",False)
+        if s=="Planifiee" and lien_ok:
+            return '<span class="bk ok"><i class="fas fa-link me-1"></i>Lien envoye</span>'
+        if s=="Planifiee" and not lien_ok:
+            return '<span class="bk att"><i class="fas fa-clock me-1"></i>Lien non envoye</span>'
+        if s=="En cours":
+            return '<span class="bk inf"><i class="fas fa-circle me-1" style="color:#ef4444;animation:pulse 1s infinite;"></i>En cours</span>'
+        if s=="Terminee":
+            return '<span class="bk grey"><i class="fas fa-flag-checkered me-1"></i>Terminee</span>'
+        if s=="Annulee":
+            return '<span class="bk err"><i class="fas fa-ban me-1"></i>Annulee</span>'
+        return f'<span class="bk grey">{s}</span>'
+
+    def lien_cell(t):
+        if t and t.get("lien") and t.get("lien_envoye"):
+            return f'<a href="{t["lien"]}" target="_blank" class="btn btn-sm btn-outline-b"><i class="fas fa-external-link-alt"></i> Ouvrir</a>'
+        return '<span style="color:var(--muted);font-size:.8rem;">—</span>'
+
+    def rows_html():
+        out=[]
+        for r in sorted(rdvs_tc, key=lambda x:(x["date"],x["heure"]), reverse=True):
+            t=get_tele(r["id"])
+            out.append(
+                f'<tr>'
+                f'<td><strong>{r["date"]}</strong><br><span style="color:var(--muted);font-size:.8rem;">{r["heure"]}</span></td>'
+                f'<td>{pname(r["id_patient"])}</td>'
+                f'<td>{mname(r["matricule"])}</td>'
+                f'<td>{r.get("motif","-")}</td>'
+                f'<td>{badge_statut_rdv(r["statut"])}</td>'
+                f'<td>{badge_statut_tele(t)}</td>'
+                f'<td>{lien_cell(t)}</td>'
+                f'</tr>'
+            )
+        return "".join(out)
+
+    # Compteurs pour les cartes résumé
+    total=len(rdvs_tc)
+    confirmes=sum(1 for r in rdvs_tc if r["statut"]=="Confirme")
+    lien_envoye=sum(1 for r in rdvs_tc if get_tele(r["id"]) and get_tele(r["id"]).get("lien_envoye"))
+    en_attente_lien=confirmes-lien_envoye
+    termines=sum(1 for r in rdvs_tc if get_tele(r["id"]) and get_tele(r["id"]).get("statut")=="Terminee")
+
+    rows=rows_html()
+    body=f"""
+<style>@keyframes pulse{{0%,100%{{opacity:1;}}50%{{opacity:.4;}}}}</style>
+<div class="row g-3 mb-3">
+  <div class="col-6 col-md-3"><div class="sc bg-b"><div class="sv">{total}</div><div class="sl"><i class="fas fa-video me-1"></i>Total teleconsultations</div></div></div>
+  <div class="col-6 col-md-3"><div class="sc bg-g"><div class="sv">{confirmes}</div><div class="sl"><i class="fas fa-check me-1"></i>Confirmees</div></div></div>
+  <div class="col-6 col-md-3"><div class="sc bg-o"><div class="sv">{en_attente_lien}</div><div class="sl"><i class="fas fa-clock me-1"></i>Lien non envoye</div></div></div>
+  <div class="col-6 col-md-3"><div class="sc bg-v"><div class="sv">{termines}</div><div class="sl"><i class="fas fa-flag-checkered me-1"></i>Terminees</div></div></div>
+</div>
+<div class="row g-3">
+  <div class="col-12"><div class="card">
+    <div class="card-hdr">
+      <div class="title"><i class="fas fa-video"></i>Suivi des teleconsultations</div>
+      <input type="text" placeholder="Rechercher..." oninput="srch('tbl_tele','srch_tele')" id="srch_tele" class="form-control" style="width:200px;padding:5px 10px;font-size:.82rem;">
+    </div>
+    <div class="al al-i" style="margin:12px 18px 0;"><i class="fas fa-info-circle"></i>Le lien de visioconference est genere par le medecin. Vous pouvez suivre ici l'etat de chaque teleconsultation en temps reel.</div>
+    <div style="overflow-x:auto;"><table class="table" id="tbl_tele">
+      <thead><tr><th>Date / Heure</th><th>Patient</th><th>Medecin</th><th>Motif</th><th>Statut RDV</th><th>Statut teleconsult.</th><th>Lien</th></tr></thead>
+      <tbody>
+      {rows if rows else "<tr><td colspan=7 class='text-center' style='color:var(--muted);padding:30px;'><i class='fas fa-video' style='font-size:2rem;opacity:.3;display:block;margin-bottom:8px;'></i>Aucune teleconsultation enregistree</td></tr>"}
+      </tbody>
+    </table></div>
+  </div></div>
 </div>"""
     return page("Teleconsultations","receptionniste",session["user"],body)
 
