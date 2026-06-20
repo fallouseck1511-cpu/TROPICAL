@@ -2961,11 +2961,6 @@ def r_teleconsult():
             return '<span class="bk err"><i class="fas fa-ban me-1"></i>Annulee</span>'
         return f'<span class="bk grey">{s}</span>'
 
-    def lien_cell(t):
-        if t and t.get("lien") and t.get("lien_envoye"):
-            return f'<a href="{t["lien"]}" target="_blank" class="btn btn-sm btn-outline-b"><i class="fas fa-external-link-alt"></i> Ouvrir</a>'
-        return '<span style="color:var(--muted);font-size:.8rem;">—</span>'
-
     def rows_html():
         out=[]
         for r in sorted(rdvs_tc, key=lambda x:(x["date"],x["heure"]), reverse=True):
@@ -2978,7 +2973,6 @@ def r_teleconsult():
                 f'<td>{r.get("motif","-")}</td>'
                 f'<td>{badge_statut_rdv(r["statut"])}</td>'
                 f'<td>{badge_statut_tele(t)}</td>'
-                f'<td>{lien_cell(t)}</td>'
                 f'</tr>'
             )
         return "".join(out)
@@ -3007,9 +3001,9 @@ def r_teleconsult():
     </div>
     <div class="al al-i" style="margin:12px 18px 0;"><i class="fas fa-info-circle"></i>Le lien de visioconference est genere par le medecin. Vous pouvez suivre ici l'etat de chaque teleconsultation en temps reel.</div>
     <div style="overflow-x:auto;"><table class="table" id="tbl_tele">
-      <thead><tr><th>Date / Heure</th><th>Patient</th><th>Medecin</th><th>Motif</th><th>Statut RDV</th><th>Statut teleconsult.</th><th>Lien</th></tr></thead>
+      <thead><tr><th>Date / Heure</th><th>Patient</th><th>Medecin</th><th>Motif</th><th>Statut RDV</th><th>Statut teleconsult.</th></tr></thead>
       <tbody>
-      {rows if rows else "<tr><td colspan=7 class='text-center' style='color:var(--muted);padding:30px;'><i class='fas fa-video' style='font-size:2rem;opacity:.3;display:block;margin-bottom:8px;'></i>Aucune teleconsultation enregistree</td></tr>"}
+      {rows if rows else "<tr><td colspan=6 class='text-center' style='color:var(--muted);padding:30px;'><i class='fas fa-video' style='font-size:2rem;opacity:.3;display:block;margin-bottom:8px;'></i>Aucune teleconsultation enregistree</td></tr>"}
       </tbody>
     </table></div>
   </div></div>
