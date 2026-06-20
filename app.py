@@ -1648,6 +1648,14 @@ def m_dossier(pid):
 @role_required("medecin")
 def m_creneaux():
     med=get_med(session["user"]); mat=med["matricule"]
+    def rdvs_impactes(jour,hd,hf,exclude_cid=None):
+        """Retourne les RDV futurs actifs qui tombent dans ce jour/cette plage horaire."""
+        impactes=[]
+        for r in DB["rdvs"]:
+            if r["matricule"]!=mat or r["statut"] in ["Annule","Refuse","Termine"]: continue
+            if get_jour(r["date"])!=jour: continue
+            if hd<=r["heure"]<=hf: impactes.append(r)
+        return impactes
     if request.method=="POST":
         action=request.form.get("action","ajouter")
         if action=="ajouter":
@@ -1662,6 +1670,31 @@ def m_creneaux():
                 nc={"id":nid("creneaux"),"matricule":mat,"jour":jour,"heure_debut":hd,"heure_fin":hf,"actif":True}
                 DB["creneaux"].append(nc)
                 flash(f"Creneau ajoute : {jour} {hd}-{hf}.","success")
+        elif action=="modifier":
+            cid=int(request.form.get("cid",0))
+            c=next((x for x in DB["creneaux"] if x["id"]==cid and x["matricule"]==mat),None)
+            if c:
+                njour=request.form.get("jour",c["jour"])
+                nhd=request.form.get("heure_debut",c["heure_debut"])
+                nhf=request.form.get("heure_fin",c["heure_fin"])
+                # Garde 1 : chevauchement avec un autre creneau actif
+                chevauchement=next((x for x in DB["creneaux"] if x["id"]!=cid and x["matricule"]==mat and x["jour"]==njour and x["actif"] and not (nhf<=x["heure_debut"] or nhd>=x["heure_fin"])),None)
+                if chevauchement:
+                    flash(f"Chevauchement avec un autre creneau le {njour} ({chevauchement['heure_debut']}-{chevauchement['heure_fin']}).","danger")
+                else:
+                    # Garde 2 : RDV existants qui sortiraient de la nouvelle plage
+                    impactes=rdvs_impactes(c["jour"],c["heure_debut"],c["heure_fin"],exclude_cid=cid)
+                    # Un RDV est impacte si son jour/heure ne rentre plus dans le nouveau creneau
+                    pertes=[]
+                    for r in impactes:
+                        if get_jour(r["date"])!=njour or not (nhd<=r["heure"]<=nhf):
+                            pertes.append(r)
+                    if pertes:
+                        liste=", ".join(f"{pname(r['id_patient'])} ({r['date']} {r['heure']})" for r in pertes[:5])
+                        flash(f"Modification bloquee : {len(pertes)} RDV existant(s) sortiraient de ce creneau — {liste}{'...' if len(pertes)>5 else ''}. Annulez ou reprogrammez-les avant de modifier.","danger")
+                    else:
+                        c["jour"]=njour; c["heure_debut"]=nhd; c["heure_fin"]=nhf
+                        flash(f"Creneau modifie : {njour} {nhd}-{nhf}.","success")
         elif action=="toggle":
             cid=int(request.form.get("cid",0))
             c=next((x for x in DB["creneaux"] if x["id"]==cid and x["matricule"]==mat),None)
@@ -1670,17 +1703,30 @@ def m_creneaux():
                 flash(f"Creneau {'active' if c['actif'] else 'desactive'}.","success")
         elif action=="supprimer":
             cid=int(request.form.get("cid",0))
-            DB["creneaux"]=[c for c in DB["creneaux"] if not (c["id"]==cid and c["matricule"]==mat)]
-            flash("Creneau supprime.","success")
+            c=next((x for x in DB["creneaux"] if x["id"]==cid and x["matricule"]==mat),None)
+            if c:
+                impactes=rdvs_impactes(c["jour"],c["heure_debut"],c["heure_fin"])
+                if impactes:
+                    liste=", ".join(f"{pname(r['id_patient'])} ({r['date']} {r['heure']})" for r in impactes[:5])
+                    flash(f"Suppression bloquee : {len(impactes)} RDV existant(s) sur ce creneau — {liste}{'...' if len(impactes)>5 else ''}. Annulez ou reprogrammez-les avant de supprimer.","danger")
+                else:
+                    DB["creneaux"]=[x for x in DB["creneaux"] if x["id"]!=cid]
+                    flash("Creneau supprime.","success")
         return redirect(url_for("m_creneaux"))
     mes_crens=[c for c in DB["creneaux"] if c["matricule"]==mat]
     jours_order={"Lundi":0,"Mardi":1,"Mercredi":2,"Jeudi":3,"Vendredi":4,"Samedi":5,"Dimanche":6}
     mes_crens=sorted(mes_crens,key=lambda x:(jours_order.get(x["jour"],9),x["heure_debut"]))
-    rows="".join(f'''<tr>
+    jours_opts_g="".join(f'<option value="{j}">{j}</option>' for j in ["Lundi","Mardi","Mercredi","Jeudi","Vendredi","Samedi","Dimanche"])
+    def jours_opts_sel(selected):
+        return "".join(f'<option value="{j}" {"selected" if j==selected else ""}>{j}</option>' for j in ["Lundi","Mardi","Mercredi","Jeudi","Vendredi","Samedi","Dimanche"])
+    rows="".join(f'''<tr id="row-{c["id"]}">
         <td><strong>{c["jour"]}</strong></td>
         <td>{c["heure_debut"]} — {c["heure_fin"]}</td>
         <td><span class="bk {"ok" if c["actif"] else "grey"}">{"Actif" if c["actif"] else "Inactif"}</span></td>
         <td style="white-space:nowrap;">
+            <button type="button" class="btn btn-sm btn-outline-g" onclick="document.getElementById('edit-{c["id"]}').style.display=document.getElementById('edit-{c["id"]}').style.display=='none'?'table-row':'none';">
+                <i class="fas fa-edit"></i>Modifier
+            </button>
             <form method="POST" style="display:inline;">
                 <input type="hidden" name="action" value="toggle">
                 <input type="hidden" name="cid" value="{c["id"]}">
@@ -1693,11 +1739,22 @@ def m_creneaux():
                 <input type="hidden" name="cid" value="{c["id"]}">
                 <button type="submit" class="btn btn-sm btn-danger"><i class="fas fa-trash"></i></button>
             </form>
+        </td></tr>
+        <tr id="edit-{c["id"]}" style="display:none;background:var(--bg2,#f8fafc);">
+        <td colspan="4">
+          <form method="POST" style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;padding:8px 0;">
+            <input type="hidden" name="action" value="modifier">
+            <input type="hidden" name="cid" value="{c["id"]}">
+            <div><label class="form-label" style="font-size:.75rem;">Jour</label><select name="jour" class="form-select form-select-sm">{jours_opts_sel(c["jour"])}</select></div>
+            <div><label class="form-label" style="font-size:.75rem;">Debut</label><input type="time" name="heure_debut" class="form-control form-control-sm" value="{c["heure_debut"]}" required></div>
+            <div><label class="form-label" style="font-size:.75rem;">Fin</label><input type="time" name="heure_fin" class="form-control form-control-sm" value="{c["heure_fin"]}" required></div>
+            <button type="submit" class="btn btn-sm btn-g"><i class="fas fa-save"></i>Enregistrer</button>
+          </form>
         </td></tr>''' for c in mes_crens)
-    jours_opts="".join(f'<option value="{j}">{j}</option>' for j in ["Lundi","Mardi","Mercredi","Jeudi","Vendredi","Samedi","Dimanche"])
+    jours_opts=jours_opts_g
     body=f"""<div class="row g-3">
   <div class="col-lg-8"><div class="card"><div class="card-hdr"><div class="title"><i class="fas fa-calendar-check"></i>Mes Creneaux ({len(mes_crens)})</div></div>
-  <div class="al al-i" style="margin:12px 18px 0;font-size:.82rem;"><i class="fas fa-info-circle"></i>Les RDV ne peuvent etre pris que sur vos creneaux actifs. Tout chevauchement est refuse.</div>
+  <div class="al al-i" style="margin:12px 18px 0;font-size:.82rem;"><i class="fas fa-info-circle"></i>Les RDV ne peuvent etre pris que sur vos creneaux actifs. Tout chevauchement est refuse. Une modification ou suppression est bloquee si des RDV existants en dependent.</div>
   <div style="overflow-x:auto;"><table class="table"><thead><tr><th>Jour</th><th>Horaire</th><th>Statut</th><th>Actions</th></tr></thead><tbody>
   {rows if rows else "<tr><td colspan=4 class='text-center' style='color:var(--muted);padding:20px;'>Aucun creneau defini</td></tr>"}
   </tbody></table></div></div></div>
@@ -2926,87 +2983,22 @@ def r_triage():
     return page("Urgences / Triage","receptionniste",session["user"],body)
 
 
-@app.route("/r-teleconsult")
 @login_required
 @role_required("receptionniste")
 def r_teleconsult():
-    # Tous les RDV teleconsultation (tous statuts sauf Annule)
-    rdvs_tc=[r for r in DB["rdvs"] if r["type"]=="Teleconsultation" and r["statut"]!="Annule"]
-
-    def get_tele(rdv_id):
-        return next((t for t in DB["teleconsultations"] if t["id_rdv"]==rdv_id), None)
-
-    def badge_statut_rdv(statut):
-        m={"Confirme":("ok","check-circle","Confirme"),
-           "En attente":("att","clock","En attente"),
-           "Refuse":("err","times-circle","Refuse"),
-           "Termine":("grey","flag-checkered","Termine")}
-        c,i,l=m.get(statut,("grey","question-circle",statut))
-        return f'<span class="bk {c}"><i class="fas fa-{i} me-1"></i>{l}</span>'
-
-    def badge_statut_tele(t):
-        if not t:
-            return '<span class="bk att"><i class="fas fa-hourglass-half me-1"></i>En attente du medecin</span>'
-        s=t.get("statut","")
-        lien_ok=t.get("lien_envoye",False)
-        if s=="Planifiee" and lien_ok:
-            return '<span class="bk ok"><i class="fas fa-link me-1"></i>Lien envoye</span>'
-        if s=="Planifiee" and not lien_ok:
-            return '<span class="bk att"><i class="fas fa-clock me-1"></i>Lien non envoye</span>'
-        if s=="En cours":
-            return '<span class="bk inf"><i class="fas fa-circle me-1" style="color:#ef4444;animation:pulse 1s infinite;"></i>En cours</span>'
-        if s=="Terminee":
-            return '<span class="bk grey"><i class="fas fa-flag-checkered me-1"></i>Terminee</span>'
-        if s=="Annulee":
-            return '<span class="bk err"><i class="fas fa-ban me-1"></i>Annulee</span>'
-        return f'<span class="bk grey">{s}</span>'
-
-    def rows_html():
-        out=[]
-        for r in sorted(rdvs_tc, key=lambda x:(x["date"],x["heure"]), reverse=True):
-            t=get_tele(r["id"])
-            out.append(
-                f'<tr>'
-                f'<td><strong>{r["date"]}</strong><br><span style="color:var(--muted);font-size:.8rem;">{r["heure"]}</span></td>'
-                f'<td>{pname(r["id_patient"])}</td>'
-                f'<td>{mname(r["matricule"])}</td>'
-                f'<td>{r.get("motif","-")}</td>'
-                f'<td>{badge_statut_rdv(r["statut"])}</td>'
-                f'<td>{badge_statut_tele(t)}</td>'
-                f'</tr>'
-            )
-        return "".join(out)
-
-    # Compteurs pour les cartes résumé
-    total=len(rdvs_tc)
-    confirmes=sum(1 for r in rdvs_tc if r["statut"]=="Confirme")
-    lien_envoye=sum(1 for r in rdvs_tc if get_tele(r["id"]) and get_tele(r["id"]).get("lien_envoye"))
-    en_attente_lien=confirmes-lien_envoye
-    termines=sum(1 for r in rdvs_tc if get_tele(r["id"]) and get_tele(r["id"]).get("statut")=="Terminee")
-
-    rows=rows_html()
-    body=f"""
-<style>@keyframes pulse{{0%,100%{{opacity:1;}}50%{{opacity:.4;}}}}</style>
-<div class="row g-3 mb-3">
-  <div class="col-6 col-md-3"><div class="sc bg-b"><div class="sv">{total}</div><div class="sl"><i class="fas fa-video me-1"></i>Total teleconsultations</div></div></div>
-  <div class="col-6 col-md-3"><div class="sc bg-g"><div class="sv">{confirmes}</div><div class="sl"><i class="fas fa-check me-1"></i>Confirmees</div></div></div>
-  <div class="col-6 col-md-3"><div class="sc bg-o"><div class="sv">{en_attente_lien}</div><div class="sl"><i class="fas fa-clock me-1"></i>Lien non envoye</div></div></div>
-  <div class="col-6 col-md-3"><div class="sc bg-v"><div class="sv">{termines}</div><div class="sl"><i class="fas fa-flag-checkered me-1"></i>Terminees</div></div></div>
-</div>
-<div class="row g-3">
-  <div class="col-12"><div class="card">
-    <div class="card-hdr">
-      <div class="title"><i class="fas fa-video"></i>Suivi des teleconsultations</div>
-      <input type="text" placeholder="Rechercher..." oninput="srch('tbl_tele','srch_tele')" id="srch_tele" class="form-control" style="width:200px;padding:5px 10px;font-size:.82rem;">
-    </div>
-    <div class="al al-i" style="margin:12px 18px 0;"><i class="fas fa-info-circle"></i>Le lien de visioconference est genere par le medecin. Vous pouvez suivre ici l'etat de chaque teleconsultation en temps reel.</div>
-    <div style="overflow-x:auto;"><table class="table" id="tbl_tele">
-      <thead><tr><th>Date / Heure</th><th>Patient</th><th>Medecin</th><th>Motif</th><th>Statut RDV</th><th>Statut teleconsult.</th></tr></thead>
-      <tbody>
-      {rows if rows else "<tr><td colspan=6 class='text-center' style='color:var(--muted);padding:30px;'><i class='fas fa-video' style='font-size:2rem;opacity:.3;display:block;margin-bottom:8px;'></i>Aucune teleconsultation enregistree</td></tr>"}
-      </tbody>
-    </table></div>
-  </div></div>
+    rdvs_tc=[r for r in DB["rdvs"] if r["type"]=="Teleconsultation" and r["statut"]=="Confirme"]
+    def statut_lien(r):
+        t=next((t for t in DB["teleconsultations"] if t["id_rdv"]==r["id"]),None)
+        if t and t.get("lien_envoye"):
+            return '<span class="bk ok"><i class="fas fa-check"></i> Lien cree par le medecin</span>'
+        return '<span class="bk att"><i class="fas fa-clock"></i> En attente du medecin</span>'
+    rows="".join(f'<tr><td>{r["date"]} {r["heure"]}</td><td>{pname(r["id_patient"])}</td><td>{mname(r["matricule"])}</td><td>{statut_lien(r)}</td></tr>' for r in rdvs_tc)
+    body=f"""<div class="row g-3">
+  <div class="col-12"><div class="card"><div class="card-hdr"><div class="title"><i class="fas fa-video"></i>Teleconsultations programmees</div></div>
+  <div class="al al-i" style="margin:12px 18px 0;"><i class="fas fa-info-circle"></i>Le lien de la visioconference est genere par le medecin lors de l'activation de la teleconsultation. Le patient est notifie automatiquement.</div>
+  <div style="overflow-x:auto;"><table class="table"><thead><tr><th>Date</th><th>Patient</th><th>Medecin</th><th>Statut du lien</th></tr></thead><tbody>
+  {rows if rows else "<tr><td colspan=4 class='text-center' style='color:var(--muted);padding:20px;'>Aucune teleconsultation programmee</td></tr>"}
+  </tbody></table></div></div></div>
 </div>"""
     return page("Teleconsultations","receptionniste",session["user"],body)
 
