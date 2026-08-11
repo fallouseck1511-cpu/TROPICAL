@@ -23,8 +23,10 @@ app.secret_key=os.environ.get("SECRET_KEY","tropical_sgrdms_v12_2026_change_me")
 # ─── Base de données réelle (PostgreSQL sur Render / SQLite en local) ───
 from models import db
 _db_url = os.environ.get("DATABASE_URL", "sqlite:///tropical_local.db")
-if _db_url.startswith("postgres://"):  # Render fournit "postgres://", SQLAlchemy veut "postgresql://"
-    _db_url = _db_url.replace("postgres://", "postgresql://", 1)
+if _db_url.startswith("postgres://"):  # Render fournit "postgres://"
+    _db_url = _db_url.replace("postgres://", "postgresql+psycopg://", 1)  # SQLAlchemy + pilote psycopg (v3)
+elif _db_url.startswith("postgresql://"):
+    _db_url = _db_url.replace("postgresql://", "postgresql+psycopg://", 1)
 app.config["SQLALCHEMY_DATABASE_URI"] = _db_url
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 db.init_app(app)
