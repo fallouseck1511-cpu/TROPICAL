@@ -83,6 +83,17 @@ def send_sms(numero, message):
 
 DB=DBProxy()
 DB.init_counters(app)
+
+# Peuplement automatique au premier démarrage (base vide) : utile sur le
+# plan gratuit Render, où le Shell n'est pas disponible pour lancer
+# "python seed.py" à la main. Sans effet si la base contient déjà des données.
+with app.app_context():
+    try:
+        from seed import run_seed
+        if run_seed():
+            DB.init_counters(app)  # recalcule les compteurs après le seeding
+    except Exception as _seed_err:
+        print(f"⚠️  Seeding automatique ignoré : {_seed_err}")
 # Le dictionnaire de données de démonstration ci-dessus a été déplacé dans
 # seed.py, qui insère désormais ces mêmes données dans PostgreSQL/SQLite au
 # lieu de les charger en mémoire. Lancer "python seed.py" pour peupler la base.

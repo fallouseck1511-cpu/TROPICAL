@@ -1,9 +1,10 @@
 """
 SGRDMS — Script de seeding initial de la base de données PostgreSQL.
-À lancer UNE SEULE FOIS après la création des tables :
-    python seed.py
+
+Peut être lancé manuellement (python seed.py) OU appelé automatiquement
+par app.py au démarrage si la base est vide — utile sur les plans où le
+Shell Render n'est pas disponible (plan gratuit).
 """
-from app import app
 from models import db, Centre, Service, User, Medecin, Patient, Dossier, \
     Medicament, Stock, Rdv, Consultation, Ordonnance, LigneOrdonnance, \
     Facture, Paiement, ContratAssurance, Teleconsultation, \
@@ -11,8 +12,14 @@ from models import db, Centre, Service, User, Medecin, Patient, Dossier, \
     ListeAttente, Triage, ResultatExamen, DocumentPatient, DemandeRdv
 from datetime import date
 
-with app.app_context():
-    db.create_all()
+
+def run_seed():
+    """Insère les données de démonstration. Suppose que app.app_context()
+    est déjà actif et que les tables existent (db.create_all() déjà fait).
+    Ne fait rien si la base contient déjà des utilisateurs (idempotent —
+    sûr à appeler à chaque démarrage de l'application)."""
+    if User.query.count() > 0:
+        return False  # déjà peuplée, on ne touche à rien
 
     # ── CENTRE ──────────────────────────────────────────────────
     c1 = Centre(nom="LE TROPICAL", ville="Thies", adresse="Diaxao, Thies", telephone="33 951 00 00")
@@ -174,3 +181,13 @@ with app.app_context():
 
     db.session.commit()
     print("✅ Base de données initialisée avec succès !")
+    return True
+
+
+if __name__ == "__main__":
+    # Exécution manuelle : python seed.py (nécessite le Shell Render, plan payant)
+    from app import app
+    with app.app_context():
+        db.create_all()
+        if not run_seed():
+            print("ℹ️  La base contient déjà des données — rien fait (idempotent).")
