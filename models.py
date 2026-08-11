@@ -29,6 +29,7 @@ class Service(db.Model):
     id          = db.Column(db.Integer, primary_key=True)
     libelle     = db.Column(db.String(80), nullable=False)
     description = db.Column(db.Text)
+    tarif_ticket = db.Column(db.Integer, default=0)
     id_centre   = db.Column(db.Integer, db.ForeignKey("centres.id"), nullable=False)
 
     centre      = db.relationship("Centre",  back_populates="services")
@@ -192,6 +193,7 @@ class Ordonnance(db.Model):
     id_patient       = db.Column(db.Integer, db.ForeignKey("patients.id"), nullable=False)
     matricule        = db.Column(db.String(10), db.ForeignKey("medecins.matricule"), nullable=False)
     id_consultation  = db.Column(db.Integer, db.ForeignKey("consultations.id"))
+    statut_delivrance = db.Column(db.String(20), default="En attente")  # En attente|Delivree
 
     patient          = db.relationship("Patient",      back_populates="ordonnances")
     consultation     = db.relationship("Consultation", back_populates="ordonnance")
@@ -383,7 +385,8 @@ class ListeAttente(db.Model):
     statut         = db.Column(db.String(20), default="En attente")   # En attente|Appele|Traite
     priorite       = db.Column(db.String(20), default="Normal")       # Urgent|Prioritaire|Normal
     motif          = db.Column(db.Text)
-    id_patient     = db.Column(db.Integer, db.ForeignKey("patients.id"), nullable=False)
+    nom_anonyme    = db.Column(db.String(80))  # patient non identifié transféré depuis les urgences
+    id_patient     = db.Column(db.Integer, db.ForeignKey("patients.id"))  # nullable : patient anonyme possible
     id_service     = db.Column(db.Integer, db.ForeignKey("services.id"), nullable=False)
 
     patient = db.relationship("Patient", back_populates="liste_att")
@@ -405,7 +408,10 @@ class Triage(db.Model):
     statut                 = db.Column(db.String(20), default="En cours")
     pris_en_charge_par     = db.Column(db.String(10), db.ForeignKey("medecins.matricule"))
     observations           = db.Column(db.Text)
-    id_patient             = db.Column(db.Integer, db.ForeignKey("patients.id"), nullable=False)
+    nom_anonyme            = db.Column(db.String(80))     # patient non identifié (urgences)
+    date_pec               = db.Column(db.String(20))     # date de prise en charge
+    service_dest           = db.Column(db.Integer, db.ForeignKey("services.id"))  # transfert
+    id_patient             = db.Column(db.Integer, db.ForeignKey("patients.id"))  # nullable : patient anonyme possible
 
     patient = db.relationship("Patient", back_populates="triage")
 
@@ -467,6 +473,52 @@ class Historique(db.Model):
     id_user         = db.Column(db.String(60))
     matricule       = db.Column(db.String(10))
     id_patient      = db.Column(db.Integer, db.ForeignKey("patients.id"))
+
+# ─────────────────────────────────────────────────────────────
+# 28. CRÉNEAU MÉDECIN (disponibilités hebdomadaires)
+# ─────────────────────────────────────────────────────────────
+class Creneau(db.Model):
+    __tablename__  = "creneaux"
+    id             = db.Column(db.Integer, primary_key=True)
+    jour           = db.Column(db.String(12), nullable=False)   # Lundi..Dimanche
+    heure_debut    = db.Column(db.String(5), nullable=False)
+    heure_fin      = db.Column(db.String(5), nullable=False)
+    actif          = db.Column(db.Boolean, default=True)
+    matricule      = db.Column(db.String(10), db.ForeignKey("medecins.matricule"), nullable=False)
+
+    medecin = db.relationship("Medecin", backref="creneaux")
+
+# ─────────────────────────────────────────────────────────────
+# 29. ALERTE STOCK
+# ─────────────────────────────────────────────────────────────
+class AlerteStock(db.Model):
+    __tablename__     = "alertes_stock"
+    id                = db.Column(db.Integer, primary_key=True)
+    type_alerte       = db.Column(db.String(40))   # Stock faible|Rupture de stock
+    date              = db.Column(db.Date, default=date.today)
+    message           = db.Column(db.Text)
+    quantite_actuel   = db.Column(db.Integer)
+    statut            = db.Column(db.String(20), default="Non traite")
+    id_medicament     = db.Column(db.Integer, db.ForeignKey("medicaments.id"), nullable=False)
+
+    medicament = db.relationship("Medicament", backref="alertes")
+
+# ─────────────────────────────────────────────────────────────
+# 30. TICKET (file de services / caisse)
+# ─────────────────────────────────────────────────────────────
+class Ticket(db.Model):
+    __tablename__   = "tickets"
+    id              = db.Column(db.Integer, primary_key=True)
+    num_ticket      = db.Column(db.String(20))
+    type_ticket     = db.Column(db.String(80))
+    statut          = db.Column(db.String(20), default="Emis")
+    date_emission   = db.Column(db.Date, default=date.today)
+    prix            = db.Column(db.Integer, default=0)
+    id_patient      = db.Column(db.Integer, db.ForeignKey("patients.id"), nullable=False)
+    id_service      = db.Column(db.Integer, db.ForeignKey("services.id"), nullable=False)
+
+    patient = db.relationship("Patient", backref="tickets")
+    service = db.relationship("Service", backref="tickets")
 
 # ─────────────────────────────────────────────────────────────
 # 27. SMS ENVOYÉ

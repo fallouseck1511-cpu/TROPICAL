@@ -20,6 +20,32 @@ load_dotenv()  # charge .env en local, ignoré sur Render (variables injectées 
 app=Flask(__name__)
 app.secret_key=os.environ.get("SECRET_KEY","tropical_sgrdms_v12_2026_change_me")
 
+# ─── Base de données réelle (PostgreSQL sur Render / SQLite en local) ───
+from models import db
+_db_url = os.environ.get("DATABASE_URL", "sqlite:///tropical_local.db")
+if _db_url.startswith("postgres://"):  # Render fournit "postgres://", SQLAlchemy veut "postgresql://"
+    _db_url = _db_url.replace("postgres://", "postgresql://", 1)
+app.config["SQLALCHEMY_DATABASE_URI"] = _db_url
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+db.init_app(app)
+
+@app.teardown_appcontext
+def _commit_or_rollback(exception=None):
+    """Toute mutation faite via DB[...] pendant la requête est enregistrée
+    en base ici. En cas d'erreur non gérée, on annule pour ne rien
+    corrompre (équivalent, pour une vraie base, du fait que l'ancien
+    dictionnaire en mémoire ne gardait jamais un état à moitié modifié)."""
+    if exception is None:
+        try:
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+            raise
+    else:
+        db.session.rollback()
+
+from db_compat import DBProxy
+
 # ─── Configuration SMS (renseigner les variables d'environnement) ───
 SMS_CONFIG={
     "provider":  os.environ.get("SMS_PROVIDER",""),
@@ -53,168 +79,11 @@ def send_sms(numero, message):
 # DB — Comptes utilisateurs (admin, médecins, réceptionniste, pharmacien, patients)
 # =======================================================
 
-DB={
-    "users":{
-        "admin":{"password":"admin123","role":"admin","nom":"Systeme","prenom":"Admin","email":"admin@tropical.sn","telephone":"33 951 00 00","photo":"","id_ref":0},
-        "dr.diallo":{"password":"med123","role":"medecin","nom":"Diallo","prenom":"Cheikh","email":"dr.diallo@tropical.sn","telephone":"77 111 22 33","photo":"","id_ref":"MED002","status_med":"Disponible","teleconsult_actif":True},
-        "dr.ndiaye":{"password":"med123","role":"medecin","nom":"Ndiaye","prenom":"Rokhaya","email":"dr.ndiaye@tropical.sn","telephone":"76 222 33 44","photo":"","id_ref":"MED001","status_med":"Disponible","teleconsult_actif":False},
-        "dr.sarr":{"password":"med123","role":"medecin","nom":"Sarr","prenom":"Abdoulaye","email":"dr.sarr@tropical.sn","telephone":"70 333 44 55","photo":"","id_ref":"MED004","status_med":"En conge","teleconsult_actif":True},
-        "dr.fall":{"password":"med123","role":"medecin","nom":"Fall","prenom":"Mariama","email":"dr.fall@tropical.sn","telephone":"77 444 55 66","photo":"","id_ref":"MED005","status_med":"Disponible","teleconsult_actif":False},
-        "dr.ba":{"password":"med123","role":"medecin","nom":"Ba","prenom":"Oumar","email":"dr.ba@tropical.sn","telephone":"76 555 66 77","photo":"","id_ref":"MED006","status_med":"Disponible","teleconsult_actif":True},
-        "dr.gueye":{"password":"med123","role":"medecin","nom":"Gueye","prenom":"Aminata","email":"dr.gueye@tropical.sn","telephone":"70 666 77 88","photo":"","id_ref":"MED007","status_med":"Disponible","teleconsult_actif":False},
-        "dr.diop":{"password":"med123","role":"medecin","nom":"Diop","prenom":"Moussa","email":"dr.diop@tropical.sn","telephone":"77 777 88 99","photo":"","id_ref":"MED008","status_med":"Disponible","teleconsult_actif":False},
-        "dr.toure":{"password":"med123","role":"medecin","nom":"Toure","prenom":"Fatou","email":"dr.toure@tropical.sn","telephone":"76 888 99 00","photo":"","id_ref":"MED003","status_med":"Disponible","teleconsult_actif":True},
-        "receptionniste":{"password":"recep123","role":"receptionniste","nom":"Ndiaye","prenom":"Fatou","email":"recep@tropical.sn","telephone":"77 444 55 66","photo":"","id_ref":1},
-        "pharmacien":{"password":"pharma123","role":"pharmacien","nom":"Fall","prenom":"Mamadou","email":"pharma@tropical.sn","telephone":"76 555 66 77","photo":"","id_ref":1},
-        "ibra.sow":{"password":"patient123","role":"patient","nom":"Sow","prenom":"Ibrahima","email":"ibra@email.com","telephone":"77 123 45 67","photo":"","id_ref":1},
-        "aminata.d":{"password":"patient123","role":"patient","nom":"Diallo","prenom":"Aminata","email":"aminata@email.com","telephone":"76 234 56 78","photo":"","id_ref":2},
-    },
-    "patients":[
-        {"id":1,"nom":"Sow","prenom":"Ibrahima","sexe":"M","telephone":"77 123 45 67","email":"ibra@email.com","date_naissance":"1990-05-12","adresse":"Dakar, Plateau","assurance":"IPRES","username":"ibra.sow","statut":"Actif","groupe_sanguin":"O+","photo":""},
-        {"id":2,"nom":"Diallo","prenom":"Aminata","sexe":"F","telephone":"76 234 56 78","email":"aminata@email.com","date_naissance":"1985-11-23","adresse":"Thies","assurance":"CSS","username":"aminata.d","statut":"Actif","groupe_sanguin":"A+","photo":""},
-        {"id":3,"nom":"Ndiaye","prenom":"Moussa","sexe":"M","telephone":"70 345 67 89","email":"moussa@email.com","date_naissance":"2000-03-07","adresse":"Ziguinchor","assurance":"Aucune","username":"","statut":"Actif","groupe_sanguin":"Non connu","photo":""},
-    ],
-    "medecins":[
-        {"matricule":"MED001","nom":"Ndiaye","prenom":"Rokhaya","specialite":"Pediatrie","telephone":"76 222 33 44","email":"dr.ndiaye@tropical.sn","id_service":1,"username":"dr.ndiaye","est_chef":True,"teleconsult_actif":False,"id_centre":1},
-        {"matricule":"MED002","nom":"Diallo","prenom":"Cheikh","specialite":"Medecine Generaliste","telephone":"77 111 22 33","email":"dr.diallo@tropical.sn","id_service":2,"username":"dr.diallo","est_chef":True,"teleconsult_actif":True,"id_centre":1},
-        {"matricule":"MED003","nom":"Toure","prenom":"Fatou","specialite":"Medecine Generaliste","telephone":"76 888 99 00","email":"dr.toure@tropical.sn","id_service":2,"username":"dr.toure","est_chef":False,"teleconsult_actif":True,"id_centre":1},
-        {"matricule":"MED004","nom":"Sarr","prenom":"Abdoulaye","specialite":"Gynecologie","telephone":"70 333 44 55","email":"dr.sarr@tropical.sn","id_service":3,"username":"dr.sarr","est_chef":True,"teleconsult_actif":True,"id_centre":1},
-        {"matricule":"MED005","nom":"Fall","prenom":"Mariama","specialite":"Cardiologie","telephone":"77 444 55 66","email":"dr.fall@tropical.sn","id_service":4,"username":"dr.fall","est_chef":True,"teleconsult_actif":False,"id_centre":1},
-        {"matricule":"MED006","nom":"Ba","prenom":"Oumar","specialite":"Cardiologie","telephone":"76 555 66 77","email":"dr.ba@tropical.sn","id_service":4,"username":"dr.ba","est_chef":False,"teleconsult_actif":True,"id_centre":1},
-        {"matricule":"MED007","nom":"Gueye","prenom":"Aminata","specialite":"Urgences","telephone":"70 666 77 88","email":"dr.gueye@tropical.sn","id_service":5,"username":"dr.gueye","est_chef":True,"teleconsult_actif":False,"id_centre":1},
-        {"matricule":"MED008","nom":"Diop","prenom":"Moussa","specialite":"Biologie medicale","telephone":"77 777 88 99","email":"dr.diop@tropical.sn","id_service":6,"username":"dr.diop","est_chef":True,"teleconsult_actif":False,"id_centre":1},
-    ],
-    "centres":[
-        {"id":1,"nom":"LE TROPICAL","ville":"Thies","adresse":"Diaxao, Thies","telephone":"33 951 00 00"},
-    ],
-    "sms_envoyes":[],
-    "services":[
-        {"id":1,"libelle":"Pediatrie","description":"Soins pour enfants (0-15 ans)","id_centre":1,"tarif_ticket":3000},
-        {"id":2,"libelle":"Medecine Generaliste","description":"Consultation adulte generale","id_centre":1,"tarif_ticket":5000},
-        {"id":3,"libelle":"Gynecologie","description":"Sante de la femme et maternite","id_centre":1,"tarif_ticket":7500},
-        {"id":4,"libelle":"Cardiologie","description":"Maladies du coeur et vaisseaux","id_centre":1,"tarif_ticket":10000},
-        {"id":5,"libelle":"Urgences","description":"Prise en charge urgente 24h/24","id_centre":1,"tarif_ticket":8000},
-        {"id":6,"libelle":"Laboratoire","description":"Analyses biologiques et medicales","id_centre":1,"tarif_ticket":6000},
-    ],
-    "creneaux":[
-        {"id":1,"matricule":"MED001","jour":"Lundi","heure_debut":"08:00","heure_fin":"12:00","actif":True},
-        {"id":2,"matricule":"MED001","jour":"Mercredi","heure_debut":"08:00","heure_fin":"12:00","actif":True},
-        {"id":3,"matricule":"MED001","jour":"Vendredi","heure_debut":"14:00","heure_fin":"17:00","actif":True},
-        {"id":4,"matricule":"MED002","jour":"Lundi","heure_debut":"08:00","heure_fin":"13:00","actif":True},
-        {"id":5,"matricule":"MED002","jour":"Mardi","heure_debut":"08:00","heure_fin":"13:00","actif":True},
-        {"id":6,"matricule":"MED002","jour":"Jeudi","heure_debut":"08:00","heure_fin":"13:00","actif":True},
-        {"id":7,"matricule":"MED003","jour":"Lundi","heure_debut":"14:00","heure_fin":"18:00","actif":True},
-        {"id":8,"matricule":"MED003","jour":"Mercredi","heure_debut":"14:00","heure_fin":"18:00","actif":True},
-        {"id":9,"matricule":"MED004","jour":"Mardi","heure_debut":"08:00","heure_fin":"12:00","actif":True},
-        {"id":10,"matricule":"MED004","jour":"Jeudi","heure_debut":"08:00","heure_fin":"12:00","actif":True},
-        {"id":11,"matricule":"MED005","jour":"Lundi","heure_debut":"09:00","heure_fin":"13:00","actif":True},
-        {"id":12,"matricule":"MED005","jour":"Mercredi","heure_debut":"09:00","heure_fin":"13:00","actif":True},
-        {"id":13,"matricule":"MED006","jour":"Mardi","heure_debut":"14:00","heure_fin":"18:00","actif":True},
-        {"id":14,"matricule":"MED006","jour":"Vendredi","heure_debut":"08:00","heure_fin":"12:00","actif":True},
-        {"id":15,"matricule":"MED007","jour":"Lundi","heure_debut":"00:00","heure_fin":"23:59","actif":True},
-        {"id":16,"matricule":"MED007","jour":"Mardi","heure_debut":"00:00","heure_fin":"23:59","actif":True},
-        {"id":17,"matricule":"MED007","jour":"Mercredi","heure_debut":"00:00","heure_fin":"23:59","actif":True},
-        {"id":18,"matricule":"MED008","jour":"Mercredi","heure_debut":"08:00","heure_fin":"12:00","actif":True},
-        {"id":19,"matricule":"MED008","jour":"Vendredi","heure_debut":"08:00","heure_fin":"12:00","actif":True},
-    ],
-    "rdvs":[
-        {"id":1,"id_patient":1,"matricule":"MED002","date":"2026-06-10","heure":"08:00","type":"Presentiel","statut":"Confirme","motif":"Douleur thoracique","lien_teleconsult":None},
-        {"id":2,"id_patient":2,"matricule":"MED001","date":"2026-06-11","heure":"09:00","type":"Presentiel","statut":"En attente","motif":"Vaccination","lien_teleconsult":None},
-        {"id":3,"id_patient":1,"matricule":"MED002","date":"2026-06-10","heure":"10:00","type":"Teleconsultation","statut":"Confirme","motif":"Suivi tension","lien_teleconsult":"https://meet.google.com/abc-defg-hij"},
-    ],
-    "demandes_rdv":[
-        {"id":1,"id_patient":1,"id_service":1,"type":"Presentiel","motif":"Renouvellement ordonnance","statut":"En attente","date_demande":"2026-06-06","traite_par":None},
-    ],
-    "consultations":[
-        {"id":1,"id_patient":1,"matricule":"MED002","date":"2026-06-05","observation":"Pression 140/90","diagnostic":"Hypertension arterielle","type":"Presentiel","id_ordonnance":1,"id_facture":1,"id_resultat":1},
-        {"id":2,"id_patient":2,"matricule":"MED001","date":"2026-06-04","observation":"Bonne sante generale","diagnostic":"Bilan normal","type":"Presentiel","id_ordonnance":None,"id_facture":2,"id_resultat":None},
-    ],
-    "ordonnances":[
-        {"id":1,"id_consultation":1,"id_patient":1,"matricule":"MED002","date":"2026-06-05","duree":30,"lignes":[
-            {"id_medicament":1,"libelle":"Amlodipine 5mg","posologie":"1 cp le soir","duree":"30 jours"},
-            {"id_medicament":4,"libelle":"Metformine 500mg","posologie":"1 cp matin et soir","duree":"30 jours"},
-        ]},
-    ],
-    "resultats_examens":[
-        {"id":1,"id_patient":1,"id_consultation":1,"matricule":"MED002","type":"Bilan sanguin","date":"2026-06-05","commentaire":"Glycemie legerement elevee (1.26 g/L). Cholesterol 2.1 g/L.","statut":"Disponible","fichier":""},
-    ],
-    "documents_patient":[
-        {"id":1,"id_patient":1,"type_document":"Resultat examen","nom_fichier":"bilan_sow.pdf","type_fichier":"PDF","date_creation":"2026-06-05","ref_id":1,"ref_type":"resultat"},
-        {"id":2,"id_patient":1,"type_document":"Ordonnance","nom_fichier":"ordonnance_0001.pdf","type_fichier":"PDF","date_creation":"2026-06-05","ref_id":1,"ref_type":"ordonnance"},
-        {"id":3,"id_patient":1,"type_document":"Facture","nom_fichier":"facture_FAC-0001.pdf","type_fichier":"PDF","date_creation":"2026-06-05","ref_id":1,"ref_type":"facture"},
-    ],
-    # ✅ v5: part_payee + reste_a_payer
-    "factures":[
-        {"id":1,"num_facture":"FAC-0001","id_patient":1,"id_consultation":1,"montant":15000,"date":"2026-06-05","statut":"Payee","mode_paiement":"Especes","part_assurance":6000,"part_patient":9000,"montant_paye":9000,"reste_a_payer":0},
-        {"id":2,"num_facture":"FAC-0002","id_patient":2,"id_consultation":2,"montant":8500,"date":"2026-06-04","statut":"Impayee","mode_paiement":"-","part_assurance":4250,"part_patient":4250,"montant_paye":0,"reste_a_payer":4250},
-    ],
-    "paiements":[
-        {"id":1,"id_facture":1,"id_patient":1,"montant":9000,"date":"2026-06-05","mode":"Especes","statut":"Valide"},
-    ],
-    "teleconsultations":[
-        {"id":1,"id_patient":1,"matricule":"MED001","id_rdv":3,"date_debut":"2026-06-10 10:00","statut":"Planifiee","lien":"https://meet.google.com/abc-defg-hij","lien_envoye":True},
-    ],
-    "medicaments":[
-        {"id":1,"libelle":"Amlodipine 5mg","type":"Antihypertenseur","dosage":"5mg","prix":900,"id_stock":1,"contre_indication":"Insuffisance hepatique","notice":"Prendre le soir"},
-        {"id":2,"libelle":"Amoxicilline 250mg","type":"Antibiotique","dosage":"250mg","prix":1200,"id_stock":2,"contre_indication":"Allergie penicilline","notice":"Completer le traitement"},
-        {"id":3,"libelle":"Paracetamol 500mg","type":"Antalgique","dosage":"500mg","prix":500,"id_stock":3,"contre_indication":"Insuffisance hepatique","notice":"Max 4g/jour"},
-        {"id":4,"libelle":"Metformine 500mg","type":"Antidiabetique","dosage":"500mg","prix":600,"id_stock":4,"contre_indication":"Insuffisance renale","notice":"Prendre pendant les repas"},
-        {"id":5,"libelle":"Ibuprofene 400mg","type":"Anti-inflammatoire","dosage":"400mg","prix":800,"id_stock":5,"contre_indication":"Ulcere gastrique","notice":"Max 3 prises/jour"},
-    ],
-    "stocks":[
-        {"id":1,"id_medicament":1,"quantite":80,"date_stock":"2026-06-01","statut":"Normal","seuil_alerte":20},
-        {"id":2,"id_medicament":2,"quantite":15,"date_stock":"2026-06-01","statut":"Faible","seuil_alerte":20},
-        {"id":3,"id_medicament":3,"quantite":200,"date_stock":"2026-06-01","statut":"Normal","seuil_alerte":30},
-        {"id":4,"id_medicament":4,"quantite":150,"date_stock":"2026-06-01","statut":"Normal","seuil_alerte":20},
-        {"id":5,"id_medicament":5,"quantite":0,"date_stock":"2026-06-01","statut":"Epuise","seuil_alerte":20},
-    ],
-    "alertes_stock":[
-        {"id":1,"id_medicament":2,"type_alerte":"Stock faible","date":"2026-06-05","message":"Amoxicilline 250mg : stock faible (15 unites)","quantite_actuel":15,"statut":"Non traite"},
-        {"id":2,"id_medicament":5,"type_alerte":"Rupture de stock","date":"2026-06-04","message":"Ibuprofene 400mg : rupture de stock","quantite_actuel":0,"statut":"Non traite"},
-    ],
-    # ✅ v5: ventes pharmacien
-    "ventes_pharmacie":[
-        {"id":1,"id_medicament":3,"libelle":"Paracetamol 500mg","quantite":2,"prix_unitaire":500,"montant_total":1000,"date":"2026-06-05","vendeur":"pharmacien","id_patient":None,"nom_acheteur":"Vente libre"},
-    ],
-    "liste_attente":[
-        {"id":1,"id_patient":1,"id_service":1,"numero_ordre":1,"date_arrivee":"2026-06-10 08:05","statut":"En attente","priorite":"Normal","motif":"Consultation"},
-        {"id":2,"id_patient":2,"id_service":2,"numero_ordre":2,"date_arrivee":"2026-06-10 08:20","statut":"En attente","priorite":"Prioritaire","motif":"Suivi"},
-    ],
-    "triage":[
-        {"id":1,"id_patient":3,"date_arrivee":"2026-06-10 07:45","motif":"Douleur abdominale aigue","niveau_urgence":"2 - Urgent","tension":"130/85","temperature":38.5,"saturation":97,"frequence_cardiaque":102,"statut":"En cours","pris_en_charge_par":"MED006","observations":"Patient agite, douleur 8/10"},
-    ],
-    "tickets":[],
-    "contrats_assurance":[
-        {"id":1,"id_patient":1,"assureur":"IPRES","num_contrat":"IPRES-2024-001","date_debut":"2024-01-01","date_fin":"2026-12-31","plafond_annuel":500000,"montant_utilise":15000,"taux_prise_en_charge":40,"statut":"Actif"},
-        {"id":2,"id_patient":2,"assureur":"CSS","num_contrat":"CSS-2025-002","date_debut":"2025-01-01","date_fin":"2027-12-31","plafond_annuel":750000,"montant_utilise":8500,"taux_prise_en_charge":50,"statut":"Actif"},
-    ],
-    "interactions_medicamenteuses":[
-        {"id":1,"id_med1":1,"id_med2":4,"niveau":"modere","description":"Amlodipine + Metformine : surveiller glycemie (potentialisation hypoglycemie)"},
-        {"id":2,"id_med1":2,"id_med2":5,"niveau":"eleve","description":"Amoxicilline + Ibuprofene : risque hemorragie digestive eleve"},
-        {"id":3,"id_med1":3,"id_med2":5,"niveau":"modere","description":"Paracetamol + Ibuprofene : eviter association prolongee (toxicite renale)"},
-        {"id":4,"id_med1":1,"id_med2":5,"niveau":"eleve","description":"Amlodipine + Ibuprofene : diminution de l effet antihypertenseur, risque IRA"},
-    ],
-    "allergies_patient":[
-        {"id":1,"id_patient":1,"libelle":"Ibuprofene","type":"Medicament","severite":"Elevee","date_constatee":"2025-01-15"},
-        {"id":2,"id_patient":2,"libelle":"Penicilline","type":"Medicament","severite":"Critique","date_constatee":"2024-06-01"},
-    ],
-    "dossiers":[
-        {"id":1,"id_patient":1,"num_dossier":"DOS-0001","date_creation":"2026-06-06","diagnostic_general":"Hypertension arterielle"},
-        {"id":2,"id_patient":2,"num_dossier":"DOS-0002","date_creation":"2026-06-04","diagnostic_general":"Aucune pathologie chronique"},
-    ],
-    "notifications":[
-        {"id":1,"type":"Rappel RDV","objet":"RDV demain a 08h00","contenu":"Votre RDV est prevu le 10/06 a 08h00 avec Dr. Diallo.","id_patient":1,"date":"2026-06-09","lu":False,"dest_role":None,"dest_user":None,"expediteur":None},
-        {"id":2,"type":"Resultat disponible","objet":"Vos resultats d'examen sont disponibles","contenu":"Vos resultats de bilan sanguin du 05/06 sont disponibles.","id_patient":1,"date":"2026-06-05","lu":False,"dest_role":None,"dest_user":None,"expediteur":"dr.diallo"},
-        {"id":3,"type":"Stock faible","objet":"Alerte stock Amoxicilline","contenu":"Stock Amoxicilline 250mg en dessous du seuil (15 unites).","id_patient":None,"date":"2026-06-05","lu":False,"dest_role":"pharmacien","dest_user":"pharmacien","expediteur":"system"},
-        {"id":4,"type":"Info","objet":"Bienvenue sur SGRDMS v5","contenu":"Le systeme a ete mis a jour. Nouvelles fonctionnalites disponibles.","id_patient":None,"date":"2026-06-10","lu":False,"dest_role":"admin","dest_user":"admin","expediteur":"system"},
-    ],
-    "historiques":[
-        {"id":1,"date_action":"2026-06-06 08:00","description":"Nouveau patient : Ibrahima Sow","type":"Creation patient","id_user":"receptionniste","id_patient":1,"matricule":None},
-        {"id":2,"date_action":"2026-06-06 09:00","description":"RDV confirme - Ibrahima Sow / Dr. Diallo","type":"Rendez-vous","id_user":"receptionniste","id_patient":1,"matricule":"MED001"},
-        {"id":3,"date_action":"2026-06-05 10:00","description":"Consultation - HTA stade 1","type":"Consultation","id_user":"dr.diallo","id_patient":1,"matricule":"MED001"},
-    ],
-    "_c":{"rdvs":3,"patients":3,"cons":2,"ords":1,"facts":2,"teles":1,"notifs":4,"hists":3,"docs":3,"demandes":1,"stocks":5,"meds":5,"services":6,"medecins":8,"dossiers":2,"paiements":1,"tickets":0,"attente":2,"triage":1,"ventes":1,"contrats":2,"interactions":4,"allergies":2,"centres":1,"sms":0,"creneaux":19}
-}
+DB=DBProxy()
+DB.init_counters(app)
+# Le dictionnaire de données de démonstration ci-dessus a été déplacé dans
+# seed.py, qui insère désormais ces mêmes données dans PostgreSQL/SQLite au
+# lieu de les charger en mémoire. Lancer "python seed.py" pour peupler la base.
 # SGRDMS v5 — Part 2: helpers, auth, CSS, layout, PDF, Login
 
 # =======================================================
@@ -306,7 +175,8 @@ def get_creneaux_libres(mat,date_str):
     return libres
 def get_pat(username):
     uid=DB["users"].get(username,{}).get("id_ref")
-    return next((p for p in DB["patients"] if p["id"]==uid),None)
+    if uid is None: return None
+    return next((p for p in DB["patients"] if str(p["id"])==str(uid)),None)
 def get_med(username):
     mat=DB["users"].get(username,{}).get("id_ref")
     return next((m for m in DB["medecins"] if m["matricule"]==mat),None)
@@ -324,10 +194,16 @@ def get_notifs_user(username,role,id_patient=None):
 def unread_count(username,role,id_patient=None):
     return sum(1 for n in get_notifs_user(username,role,id_patient) if not n["lu"])
 
+def _ds(v):
+    """Normalise une date (str ou datetime.date/datetime) en 'YYYY-MM-DD' comparable."""
+    if v is None: return ""
+    if hasattr(v,"strftime"): return v.strftime("%Y-%m-%d")
+    return str(v)
+
 def get_contrat_assurance(id_patient):
     """Retourne le contrat assurance actif d un patient"""
     today=date.today().strftime("%Y-%m-%d")
-    return next((c for c in DB.get("contrats_assurance",[]) if c["id_patient"]==id_patient and c.get("date_debut","")<=today<=c.get("date_fin","2099-12-31") and c.get("statut")=="Actif"),None)
+    return next((c for c in DB.get("contrats_assurance",[]) if c["id_patient"]==id_patient and _ds(c.get("date_debut"))<=today<=_ds(c.get("date_fin")) and c.get("statut")=="Actif"),None)
 
 def reste_plafond(id_patient):
     """Calcule le montant restant du plafond annuel"""
@@ -713,7 +589,10 @@ LOGIN_HTML=f"""<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><meta 
 # Routes : Login / Logout / Dashboard (tous rôles) / Administration complète
 # =======================================================
 
-@app.route("/",methods=["GET","POST"])
+@app.route("/")
+def index():
+    return redirect(url_for("dashboard" if "user" in session else "login"))
+
 @app.route("/view-doc/<ref_type>/<int:ref_id>")
 @login_required
 def view_doc(ref_type, ref_id):
@@ -1817,10 +1696,10 @@ def m_nouvelle_consultation():
     if request.method=="POST":
         d=request.form; pid=int(d["patient"])
         nc={"id":nid("cons"),"id_patient":pid,"matricule":mat,"date":date.today().strftime("%Y-%m-%d"),"observation":d.get("obs",""),"diagnostic":d.get("diag",""),"type":d.get("type","Presentiel"),"id_ordonnance":None,"id_facture":None,"id_resultat":None}
-        DB["consultations"].append(nc)
+        nc_row=DB["consultations"].append(nc)
         if d.get("type_exam") and d.get("commentaire_exam"):
             nr={"id":nid("docs"),"id_patient":pid,"id_consultation":nc["id"],"matricule":mat,"type":d["type_exam"],"date":date.today().strftime("%Y-%m-%d"),"commentaire":d["commentaire_exam"],"statut":"Disponible","fichier":""}
-            DB["resultats_examens"].append(nr); nc["id_resultat"]=nr["id"]
+            DB["resultats_examens"].append(nr); nc_row["id_resultat"]=nr["id"]
             DB["documents_patient"].append({"id":nid("docs"),"id_patient":pid,"type_document":"Resultat examen","nom_fichier":f"resultat_{nr['id']:04d}.pdf","type_fichier":"PDF","date_creation":date.today().strftime("%Y-%m-%d"),"ref_id":nr["id"],"ref_type":"resultat"})
             add_notif(pid,"Resultat disponible","Vos resultats sont disponibles",f"Resultat de {d['type_exam']} disponible dans votre espace.",expediteur=session["user"])
         add_hist(f"Consultation - {d.get('diag','')} - {pname(pid)}","Consultation",session["user"],pid,mat)
@@ -2510,7 +2389,7 @@ def r_patients():
     if request.method=="POST":
         d=request.form
         np={"id":nid("patients"),"nom":d["nom"],"prenom":d["prenom"],"sexe":d.get("sexe","M"),"telephone":d.get("tel",""),"email":d.get("email",""),"date_naissance":d.get("ddn",""),"adresse":d.get("adr",""),"assurance":d.get("ass","Aucune"),"username":"","statut":"Actif","groupe_sanguin":d.get("gs","Non connu"),"photo":""}
-        DB["patients"].append(np)
+        np_row=DB["patients"].append(np)
         ndo={"id":nid("dossiers"),"id_patient":np["id"],"num_dossier":f"DOS-{DB['_c']['dossiers']:04d}","date_creation":date.today().strftime("%Y-%m-%d"),"diagnostic_general":"Nouveau patient"}
         DB["dossiers"].append(ndo)
         # Créer un compte utilisateur automatiquement
@@ -2523,7 +2402,7 @@ def r_patients():
             uname=f"{base_uname}{counter}"; counter+=1
         pwd_gen=f"pat{np['id']:03d}trop"
         DB["users"][uname]={"password":pwd_gen,"role":"patient","nom":d["nom"],"prenom":d["prenom"],"email":d.get("email",""),"telephone":d.get("tel",""),"photo":"","id_ref":np["id"]}
-        np["username"]=uname
+        np_row["username"]=uname
         add_hist(f"Nouveau patient : {np['prenom']} {np['nom']} — Compte : {uname}","Creation patient",session["user"],np["id"])
         flash(f"Patient {np['prenom']} {np['nom']} enregistre ! Dossier : {ndo['num_dossier']}. IDENTIFIANT : {uname} | MOT DE PASSE : {pwd_gen}","success")
         return redirect(url_for("r_patients"))
@@ -2790,7 +2669,7 @@ def r_attente():
     def row_att(a,show_btn=True):
         pc="err" if a["priorite"]=="Urgent" else "att" if a["priorite"]=="Prioritaire" else "ok"
         act=f'<form method="POST" style="display:inline;"><input type="hidden" name="action" value="appeler"><input type="hidden" name="id" value="{a["id"]}"><button type="submit" class="btn btn-sm btn-g"><i class="fas fa-bullhorn"></i>Appeler</button></form>' if show_btn else f'<form method="POST" style="display:inline;"><input type="hidden" name="action" value="terminer"><input type="hidden" name="id" value="{a["id"]}"><button type="submit" class="btn btn-sm btn-outline-r btn-sm"><i class="fas fa-check"></i>Termine</button></form>'
-        return f'<tr><td><strong>N{a["numero_ordre"]}</strong></td><td>{pname(a["id_patient"])}</td><td>{a["motif"]}</td><td><span class="bk {pc}">{a["priorite"]}</span></td><td><small>{a["date_arrivee"]}</small></td><td>{act}</td></tr>'
+        return f'<tr><td><strong>N{a["numero_ordre"]}</strong></td><td>{(a.get("nom_anonyme","") or pname(a["id_patient"])) if a["id_patient"] else (a.get("nom_anonyme") or "Anonyme")}</td><td>{a["motif"]}</td><td><span class="bk {pc}">{a["priorite"]}</span></td><td><small>{a["date_arrivee"]}</small></td><td>{act}</td></tr>'
 
     # Onglets par service
     tabs_nav=""; tabs_content=""
@@ -2861,7 +2740,7 @@ def r_triage():
             if t and sid:
                 new_svc=sname(sid); t["statut"]="Transfere"; t["service_dest"]=sid
                 ordre=len([a for a in DB["liste_attente"] if a["statut"]=="En attente" and a["id_service"]==sid])+1
-                DB["liste_attente"].append({"id":nid("attente"),"id_patient":t["id_patient"],"id_service":sid,"numero_ordre":ordre,"date_arrivee":datetime.now().strftime("%Y-%m-%d %H:%M"),"statut":"En attente","priorite":"Urgent","motif":f"Transfert urgences vers {new_svc}"})
+                DB["liste_attente"].append({"id":nid("attente"),"id_patient":t["id_patient"] or None,"nom_anonyme":t.get("nom_anonyme",""),"id_service":sid,"numero_ordre":ordre,"date_arrivee":datetime.now().strftime("%Y-%m-%d %H:%M"),"statut":"En attente","priorite":"Urgent","motif":f"Transfert urgences vers {new_svc}"})
                 nom_aff=t.get("nom_anonyme","") or pname(t["id_patient"])
                 add_hist(f"Transfert urgences vers {new_svc} — {nom_aff}","Transfert",session["user"],t["id_patient"] if t["id_patient"] else None)
                 add_notif(None,"Transfert urgences",f"Patient transfere vers {new_svc}",f"{nom_aff} transfere depuis Urgences vers {new_svc}. Priorite Urgente.",dest_role="medecin",expediteur=session["user"])
@@ -3231,10 +3110,10 @@ def r_historique():
 def ph_medicaments():
     if request.method=="POST":
         d=request.form; qte=int(d.get("qte",0)); seuil=int(d.get("seuil",20))
-        ns={"id":nid("stocks"),"id_medicament":0,"quantite":qte,"date_stock":date.today().strftime("%Y-%m-%d"),"statut":"Normal" if qte>seuil else ("Faible" if qte>0 else "Epuise"),"seuil_alerte":seuil}
+        nm={"id":nid("meds"),"libelle":d["libelle"],"type":d.get("type","Autre"),"dosage":d.get("dosage",""),"prix":int(d.get("prix",0)),"contre_indication":d.get("ci",""),"notice":d.get("notice","")}
+        DB["medicaments"].append(nm)
+        ns={"id":nid("stocks"),"id_medicament":nm["id"],"quantite":qte,"date_stock":date.today().strftime("%Y-%m-%d"),"statut":"Normal" if qte>seuil else ("Faible" if qte>0 else "Epuise"),"seuil_alerte":seuil}
         DB["stocks"].append(ns)
-        nm={"id":nid("meds"),"libelle":d["libelle"],"type":d.get("type","Autre"),"dosage":d.get("dosage",""),"prix":int(d.get("prix",0)),"id_stock":ns["id"],"contre_indication":d.get("ci",""),"notice":d.get("notice","")}
-        DB["medicaments"].append(nm); ns["id_medicament"]=nm["id"]
         add_hist(f"Medicament ajoute : {nm['libelle']}","Pharmacie",session["user"])
         flash(f"'{nm['libelle']}' ajoute.","success"); return redirect(url_for("ph_medicaments"))
     rows=""
@@ -3431,7 +3310,7 @@ def ph_ordonnances():
             stock=next((s for s in DB["stocks"] if s["id_medicament"]==mid),None)
             lignes_enrichies.append({"id":mid,"libelle":l["libelle"],"posologie":l["posologie"],"duree":l["duree"],"prix":med_obj["prix"] if med_obj else 0,"stock":stock["quantite"] if stock else 0})
         ordo_data[o["id"]]={"patient":pname(o["id_patient"]),"medecin":mname(o["matricule"]),"date":o["date"],"duree":o["duree"],"lignes":lignes_enrichies}
-    ordo_json=_json.dumps(ordo_data)
+    ordo_json=_json.dumps(ordo_data,default=str)
     body=f"""<div class="card"><div class="card-hdr"><div class="title"><i class="fas fa-prescription"></i>Ordonnances ({len(DB["ordonnances"])})</div></div>
 <div style="overflow-x:auto;"><table class="table"><thead><tr><th>Ref</th><th>Patient</th><th>Date</th><th>Medicaments</th><th>Duree</th><th>Statut</th><th>Actions</th></tr></thead><tbody>
 {rows if rows else "<tr><td colspan=7 class='text-center' style='color:var(--muted);padding:20px;'>Aucune ordonnance</td></tr>"}

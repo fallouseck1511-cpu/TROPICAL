@@ -2,6 +2,8 @@
 **Système de Gestion des Rendez-vous et Dossiers Médicaux**  
 Université Iba Der Thiam de Thiès — Licence 2 Génie Logiciel
 
+> **Mise à jour :** l'application est désormais branchée sur une vraie base PostgreSQL (via `db_compat.py`, une couche qui fait que le code existant continue de fonctionner à l'identique tout en persistant réellement les données). Auparavant, tout était stocké dans un dictionnaire en mémoire et disparaissait à chaque redémarrage du serveur.
+
 ---
 
 ## 🚀 Déploiement sur Render (recommandé)
