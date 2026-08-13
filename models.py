@@ -282,12 +282,31 @@ class Facture(db.Model):
     statut            = db.Column(db.String(20), default="Impayee")  # Impayee|Partielle|Payee
     mode_paiement     = db.Column(db.String(30), default="-")
     date              = db.Column(db.Date, default=date.today)
+    date_echeance     = db.Column(db.Date)               # échéance de paiement
+    derniere_relance  = db.Column(db.Date)                # date de la dernière relance envoyée
+    nb_relances       = db.Column(db.Integer, default=0)  # nombre de relances envoyées
     id_patient        = db.Column(db.Integer, db.ForeignKey("patients.id"), nullable=False)
     id_consultation   = db.Column(db.Integer, db.ForeignKey("consultations.id"))
 
     patient           = db.relationship("Patient",      back_populates="factures")
     consultation      = db.relationship("Consultation", back_populates="facture")
     paiements         = db.relationship("Paiement",     back_populates="facture")
+    lignes            = db.relationship("FactureLigne", back_populates="facture", cascade="all, delete-orphan")
+
+# ─────────────────────────────────────────────────────────────
+# 15bis. LIGNE DE FACTURE (détail multi-lignes)
+# ─────────────────────────────────────────────────────────────
+class FactureLigne(db.Model):
+    __tablename__     = "lignes_facture"
+    id                = db.Column(db.Integer, primary_key=True)
+    libelle           = db.Column(db.String(120), nullable=False)
+    type_ligne        = db.Column(db.String(30), default="Autre")  # Consultation|Acte|Medicament|Examen|Autre
+    quantite          = db.Column(db.Integer, default=1)
+    prix_unitaire     = db.Column(db.Integer, default=0)
+    montant           = db.Column(db.Integer, default=0)  # quantite * prix_unitaire
+    id_facture        = db.Column(db.Integer, db.ForeignKey("factures.id"), nullable=False)
+
+    facture           = db.relationship("Facture", back_populates="lignes")
 
 # ─────────────────────────────────────────────────────────────
 # 16. PAIEMENT

@@ -11,8 +11,8 @@
 # SGRDMS LE TROPICAL v5 — Part 1: imports + DB complet
 from flask import Flask,render_template_string,request,redirect,url_for,session,flash,jsonify,Response
 from functools import wraps
-from datetime import datetime,date
-import json,copy,os,base64,io
+from datetime import datetime,date,timedelta
+import json,copy,os,base64,io,csv
 from dotenv import load_dotenv
 
 load_dotenv()  # charge .env en local, ignoré sur Render (variables injectées directement)
@@ -311,6 +311,27 @@ def verifier_plafond_assurance(id_patient, montant_nouveau):
         return True, contrat, msg
     return False, contrat, ""
 
+def verifier_relances_factures():
+    """Parcourt les factures impayees/partielles en retard d'echeance et
+    envoie une notification de relance au patient (une fois par jour max).
+    Sans effet de bord si tout est a jour — sur a etre appele a chaque
+    consultation de la page facturation (pas de cron sur le plan gratuit)."""
+    aujourdhui = date.today().strftime("%Y-%m-%d")
+    n_relances = 0
+    for f in DB["factures"]:
+        if f["reste_a_payer"] <= 0: continue
+        ech = f.get("date_echeance")
+        if not ech or _ds(ech) >= aujourdhui: continue
+        if _ds(f.get("derniere_relance")) == aujourdhui: continue  # deja relance aujourd'hui
+        f["derniere_relance"] = aujourdhui
+        f["nb_relances"] = (f.get("nb_relances") or 0) + 1
+        add_notif(f["id_patient"],"Relance de paiement",f"Facture {f['num_facture']} en retard",
+                   f"Votre facture {f['num_facture']} d'un montant de {f['reste_a_payer']:,} FCFA "
+                   f"etait due le {_ds(ech)}. Merci de regulariser votre situation aupres de l'accueil.",
+                   dest_role=None,expediteur="Systeme")
+        n_relances += 1
+    return n_relances
+
 def login_required(f):
     @wraps(f)
     def d(*a,**k):
@@ -502,6 +523,7 @@ def sidebar(role,username):
             ("","Medecins","user-md","a_medecins"),("","Services","building","a_services"),
             ("","Centres","hospital","a_centres"),("","Staff","users-cog","a_staff"),
             ("","Patients","users","a_patients"),("","Toutes factures","file-invoice","a_factures"),
+            ("","Rapports financiers","chart-line","a_rapports_financiers"),
             ("","Assurances","shield-alt","a_assurances"),
             ("","Notifications globales","bell","a_notifs"),
             ("","Historiques","history","a_historiques"),("","Mon Profil","user-cog","profil"),
@@ -668,6 +690,13 @@ def view_doc(ref_type, ref_id):
         pat = next((p for p in DB["patients"] if p["id"]==fac["id_patient"]), None)
         titre = f"Facture {fac['num_facture']}"
         dl_url = f"/p-download/facture/{ref_id}"
+        lignes_fac=fac.get("lignes") or []
+        lignes_html="".join(f'<tr><td style="padding:6px;">{l["libelle"]}</td><td style="padding:6px;color:var(--muted);">{l["type_ligne"]}</td><td style="padding:6px;text-align:center;">{l["quantite"]}</td><td style="padding:6px;text-align:right;">{l["prix_unitaire"]:,}</td><td style="padding:6px;text-align:right;font-weight:600;">{l["montant"]:,}</td></tr>' for l in lignes_fac)
+        tableau_lignes=f"""<table style="width:100%;font-size:.85rem;margin-bottom:16px;border-collapse:collapse;">
+    <thead><tr style="border-bottom:2px solid #e5e7eb;"><th style="padding:6px;text-align:left;">Libelle</th><th style="padding:6px;text-align:left;">Type</th><th style="padding:6px;">Qte</th><th style="padding:6px;text-align:right;">P.U.</th><th style="padding:6px;text-align:right;">Montant</th></tr></thead>
+    <tbody>{lignes_html}</tbody></table>""" if lignes_html else ""
+        ech = fac.get("date_echeance") or "-"
+        en_retard = fac["reste_a_payer"]>0 and ech!="-" and _ds(ech)<date.today().strftime("%Y-%m-%d")
         contenu = f"""<div style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:28px;max-width:640px;margin:0 auto;">
   <div style="text-align:center;margin-bottom:20px;padding-bottom:16px;border-bottom:2px solid var(--g1);">
     <div style="font-size:1.3rem;font-weight:800;color:var(--g3);">CENTRE DE SANTE LE TROPICAL</div>
@@ -681,6 +710,7 @@ def view_doc(ref_type, ref_id):
     <div><span style="color:var(--muted);">Groupe sanguin</span><div>{"" if not pat else pat.get("groupe_sanguin","-")}</div></div>
     <div><span style="color:var(--muted);">Email</span><div>{"" if not pat else pat.get("email","-")}</div></div>
   </div>
+  {tableau_lignes}
   <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;">
     <div style="background:#f0fdf4;border-radius:8px;padding:14px;text-align:center;">
       <div style="font-size:1.1rem;font-weight:800;color:var(--g3);">{fac["montant"]:,} F</div>
@@ -698,8 +728,9 @@ def view_doc(ref_type, ref_id):
   <table style="width:100%;font-size:.88rem;">
     <tr style="background:#f9fafb;"><td style="padding:8px;">Montant payé</td><td style="font-weight:700;color:var(--g3);text-align:right;">{fac["montant_paye"]:,} FCFA</td></tr>
     <tr><td style="padding:8px;">Reste à payer</td><td style="font-weight:700;color:{"var(--err)" if fac["reste_a_payer"]>0 else "var(--g1)"};text-align:right;">{fac["reste_a_payer"]:,} FCFA</td></tr>
-    <tr style="background:#f9fafb;"><td style="padding:8px;">Mode paiement</td><td style="text-align:right;">{fac["mode_paiement"]}</td></tr>
-    <tr><td style="padding:8px;">Statut</td><td style="text-align:right;"><span class="bk {"ok" if fac["statut"]=="Payee" else "att" if fac["statut"]=="Partielle" else "err"}">{fac["statut"]}</span></td></tr>
+    <tr style="background:#f9fafb;"><td style="padding:8px;">Echeance de paiement</td><td style="text-align:right;{"color:var(--err);font-weight:700;" if en_retard else ""}">{ech}{" (en retard)" if en_retard else ""}</td></tr>
+    <tr><td style="padding:8px;">Mode paiement</td><td style="text-align:right;">{fac["mode_paiement"]}</td></tr>
+    <tr style="background:#f9fafb;"><td style="padding:8px;">Statut</td><td style="text-align:right;"><span class="bk {"ok" if fac["statut"]=="Payee" else "att" if fac["statut"]=="Partielle" else "err"}">{fac["statut"]}</span></td></tr>
   </table>
 </div>"""
     else:
@@ -1309,6 +1340,114 @@ def a_factures():
 </tbody></table></div></div>"""
     return page("Toutes les factures","admin",session["user"],body)
 
+def _factures_periode(date_debut,date_fin):
+    """Factures dont la date tombe dans [date_debut, date_fin] (chaines YYYY-MM-DD)."""
+    return [f for f in DB["factures"] if date_debut<=_ds(f["date"])<=date_fin]
+
+@app.route("/a-rapports-financiers")
+@login_required
+@role_required("admin")
+def a_rapports_financiers():
+    debut=request.args.get("debut") or (date.today().replace(day=1)).strftime("%Y-%m-%d")
+    fin=request.args.get("fin") or date.today().strftime("%Y-%m-%d")
+    factures_p=_factures_periode(debut,fin)
+    total_p=sum(f["montant"] for f in factures_p)
+    encaisse_p=sum(f["montant_paye"] for f in factures_p)
+    reste_p=sum(f["reste_a_payer"] for f in factures_p)
+    part_ass_p=sum(f["part_assurance"] for f in factures_p)
+    n_impayees=len([f for f in factures_p if f["statut"]=="Impayee"])
+    n_retard=len([f for f in DB["factures"] if f["reste_a_payer"]>0 and f.get("date_echeance") and _ds(f["date_echeance"])<date.today().strftime("%Y-%m-%d")])
+
+    # Ventilation par service (via consultation -> medecin -> service)
+    rev_service={}
+    for f in factures_p:
+        cons=next((c for c in DB["consultations"] if c["id"]==f.get("id_consultation")),None)
+        med=next((m for m in DB["medecins"] if cons and m["matricule"]==cons["matricule"]),None) if cons else None
+        svc=sname(med["id_service"]) if med else "Non rattache"
+        rev_service[svc]=rev_service.get(svc,0)+f["montant"]
+
+    # Ventilation par medecin
+    rev_medecin={}
+    for f in factures_p:
+        cons=next((c for c in DB["consultations"] if c["id"]==f.get("id_consultation")),None)
+        med=next((m for m in DB["medecins"] if cons and m["matricule"]==cons["matricule"]),None) if cons else None
+        nom_m=f"Dr. {med['prenom']} {med['nom']}" if med else "Non rattache"
+        rev_medecin[nom_m]=rev_medecin.get(nom_m,0)+f["montant"]
+
+    # Tendance mensuelle (6 derniers mois, sur toutes les factures, independamment du filtre)
+    mois_labels=[]; mois_vals=[]
+    ref=date.today().replace(day=1)
+    for i in range(5,-1,-1):
+        m=ref.month-i; y=ref.year
+        while m<=0: m+=12; y-=1
+        mois_str=f"{y}-{m:02d}"
+        mois_labels.append(mois_str)
+        mois_vals.append(sum(f["montant"] for f in DB["factures"] if _ds(f["date"]).startswith(mois_str)))
+
+    # Types de ligne les plus facturés sur la periode
+    rev_type={}
+    for f in factures_p:
+        for l in (f.get("lignes") or []):
+            rev_type[l["type_ligne"]]=rev_type.get(l["type_ligne"],0)+l["montant"]
+
+    def row_svc(svc,mnt): return f'<tr><td>{svc}</td><td style="text-align:right;font-weight:700;">{mnt:,} FCFA</td></tr>'
+    rows_svc="".join(row_svc(k,v) for k,v in sorted(rev_service.items(),key=lambda x:-x[1]))
+    rows_med="".join(row_svc(k,v) for k,v in sorted(rev_medecin.items(),key=lambda x:-x[1]))
+
+    extra_js=f"""<script>
+const ctxM=document.getElementById('chartMensuel');
+if(ctxM){{new Chart(ctxM,{{type:'line',data:{{labels:{json.dumps(mois_labels)},datasets:[{{label:'Recettes (FCFA)',data:{json.dumps(mois_vals)},borderColor:'#16a34a',backgroundColor:'rgba(22,163,74,.1)',fill:true,tension:.3}}]}},options:{{responsive:true,plugins:{{legend:{{display:false}}}},scales:{{y:{{beginAtZero:true}}}}}}}})}}
+const ctxT=document.getElementById('chartTypes');
+if(ctxT){{new Chart(ctxT,{{type:'doughnut',data:{{labels:{json.dumps(list(rev_type.keys()))},datasets:[{{data:{json.dumps(list(rev_type.values()))},backgroundColor:['#16a34a','#0ea5e9','#f59e0b','#ef4444','#8b5cf6'],borderWidth:2}}]}},options:{{responsive:true,plugins:{{legend:{{position:'right'}}}}}}}})}}
+</script>"""
+
+    body=f"""
+<div class="card mb-3"><div class="card-body">
+  <form method="GET" class="row g-2 align-items-end">
+    <div class="col-md-3"><label class="form-label">Du</label><input type="date" name="debut" class="form-control" value="{debut}"></div>
+    <div class="col-md-3"><label class="form-label">Au</label><input type="date" name="fin" class="form-control" value="{fin}"></div>
+    <div class="col-md-3"><button type="submit" class="btn btn-g"><i class="fas fa-filter"></i>Filtrer</button></div>
+    <div class="col-md-3"><a href="/a-rapports-financiers/export?debut={debut}&fin={fin}" class="btn btn-outline-g w-100"><i class="fas fa-file-csv"></i>Exporter CSV</a></div>
+  </form>
+</div></div>
+<div class="row g-3 mb-3">
+  <div class="col-md-3"><div class="sc bg-g"><div class="sv">{total_p:,} F</div><div class="sl">Facture sur la periode</div></div></div>
+  <div class="col-md-3"><div class="sc bg-b"><div class="sv">{encaisse_p:,} F</div><div class="sl">Encaisse</div></div></div>
+  <div class="col-md-3"><div class="sc bg-o"><div class="sv">{reste_p:,} F</div><div class="sl">Reste a recouvrer</div></div></div>
+  <div class="col-md-3"><div class="sc bg-v"><div class="sv">{part_ass_p:,} F</div><div class="sl">Pris en charge assurance</div></div></div>
+</div>
+<div class="row g-3 mb-3">
+  <div class="col-md-2"><div class="sc bg-r"><div class="sv">{n_impayees}</div><div class="sl">Impayees (periode)</div></div></div>
+  <div class="col-md-2"><div class="sc bg-pk"><div class="sv">{n_retard}</div><div class="sl">En retard (global)</div></div></div>
+</div>
+<div class="row g-3 mb-3">
+  <div class="col-lg-8"><div class="card"><div class="card-hdr"><div class="title"><i class="fas fa-chart-line"></i>Recettes mensuelles (6 derniers mois)</div></div>
+    <div class="card-body"><canvas id="chartMensuel" height="110"></canvas></div></div></div>
+  <div class="col-lg-4"><div class="card"><div class="card-hdr"><div class="title"><i class="fas fa-chart-pie"></i>Repartition par type</div></div>
+    <div class="card-body"><canvas id="chartTypes" height="140"></canvas></div></div></div>
+</div>
+<div class="row g-3">
+  <div class="col-lg-6"><div class="card"><div class="card-hdr"><div class="title"><i class="fas fa-hospital"></i>Recettes par service</div></div>
+    <div style="overflow-x:auto;"><table class="table"><tbody>{rows_svc if rows_svc else "<tr><td class='text-center' style='color:var(--muted);padding:16px;'>Aucune donnee</td></tr>"}</tbody></table></div></div></div>
+  <div class="col-lg-6"><div class="card"><div class="card-hdr"><div class="title"><i class="fas fa-user-md"></i>Recettes par medecin</div></div>
+    <div style="overflow-x:auto;"><table class="table"><tbody>{rows_med if rows_med else "<tr><td class='text-center' style='color:var(--muted);padding:16px;'>Aucune donnee</td></tr>"}</tbody></table></div></div></div>
+</div>"""
+    return page("Rapports financiers","admin",session["user"],body,extra_js=extra_js)
+
+@app.route("/a-rapports-financiers/export")
+@login_required
+@role_required("admin")
+def a_rapports_financiers_export():
+    debut=request.args.get("debut") or (date.today().replace(day=1)).strftime("%Y-%m-%d")
+    fin=request.args.get("fin") or date.today().strftime("%Y-%m-%d")
+    factures_p=_factures_periode(debut,fin)
+    buf=io.StringIO()
+    w=csv.writer(buf)
+    w.writerow(["Numero","Date","Echeance","Patient","Montant total","Part assurance","Part patient","Montant paye","Reste a payer","Statut","Mode paiement"])
+    for f in sorted(factures_p,key=lambda x:_ds(x["date"])):
+        w.writerow([f["num_facture"],f["date"],f.get("date_echeance","-"),pname(f["id_patient"]),f["montant"],f["part_assurance"],f["part_patient"],f["montant_paye"],f["reste_a_payer"],f["statut"],f["mode_paiement"]])
+    return Response(buf.getvalue(),mimetype="text/csv",headers={"Content-Disposition":f"attachment; filename=rapport_financier_{debut}_a_{fin}.csv"})
+
 @app.route("/a-notifs",methods=["GET","POST"])
 @login_required
 @role_required("admin")
@@ -1906,6 +2045,14 @@ def m_facture_pdf(fid):
         "",
         f"FACTURE {f['num_facture']}","-"*50,
         f"Date            : {f['date']}",
+        f"Echeance        : {f.get('date_echeance','-')}",
+    ]
+    if f.get("lignes"):
+        lignes+=["","Detail :","="*50]
+        for l in f["lignes"]:
+            lignes.append(f"  {l['libelle']:<28} x{l['quantite']:<3} {l['prix_unitaire']:>8,} = {l['montant']:>10,} FCFA")
+        lignes+=["-"*50]
+    lignes+=[
         f"Montant total   : {f['montant']:,} FCFA",
         f"Part assurance  : {f['part_assurance']:,} FCFA",
         f"Part patient    : {f['part_patient']:,} FCFA",
@@ -2908,13 +3055,28 @@ def r_teleconsult():
 def r_facturation():
     if request.method=="POST":
         d=request.form
-        cid=int(d["consultation"]); mnt=int(d.get("montant",0))
+        cid=int(d["consultation"])
         cons=next((c for c in DB["consultations"] if c["id"]==cid),None)
-        if not cons or mnt<=0:
-            flash("Consultation ou montant invalide.","danger")
+        if not cons:
+            flash("Consultation invalide.","danger")
             return redirect(url_for("r_facturation"))
         if cons.get("id_facture"):
             flash("Une facture existe deja pour cette consultation.","warning")
+            return redirect(url_for("r_facturation"))
+        libelles=request.form.getlist("libelle[]")
+        type_lignes=request.form.getlist("type_ligne[]")
+        qtes=request.form.getlist("qte[]")
+        pus=request.form.getlist("pu[]")
+        lignes=[]
+        for i in range(len(libelles)):
+            lib=libelles[i].strip()
+            if not lib: continue
+            try: q=max(1,int(qtes[i] or 1)); pu=max(0,int(pus[i] or 0))
+            except (ValueError,IndexError): continue
+            lignes.append({"libelle":lib,"type_ligne":type_lignes[i] if i<len(type_lignes) else "Autre","quantite":q,"prix_unitaire":pu,"montant":q*pu})
+        mnt=sum(l["montant"] for l in lignes)
+        if not lignes or mnt<=0:
+            flash("Ajoutez au moins une ligne de facturation avec un montant valide.","danger")
             return redirect(url_for("r_facturation"))
         pid=cons["id_patient"]
         pat=next((p for p in DB["patients"] if p["id"]==pid),None)
@@ -2928,13 +3090,18 @@ def r_facturation():
             flash(f"⚠️ {msg_plafond} — Facture creee SANS prise en charge assurance.","warning")
         elif contrat_ass and part_ass>0:
             contrat_ass["montant_utilise"]=contrat_ass.get("montant_utilise",0)+part_ass
-        nf={"id":nid("facts"),"num_facture":f"FAC-{DB['_c']['facts']:04d}","id_patient":pid,"id_consultation":cid,"montant":mnt,"date":date.today().strftime("%Y-%m-%d"),"statut":"Impayee","mode_paiement":"-","part_assurance":part_ass,"part_patient":part_pat,"montant_paye":0,"reste_a_payer":part_pat,"plafond_depasse":plafond_bloque}
+        try: jours_ech=max(1,int(d.get("jours_echeance",30) or 30))
+        except ValueError: jours_ech=30
+        date_ech=(date.today()+timedelta(days=jours_ech)).strftime("%Y-%m-%d")
+        nf={"id":nid("facts"),"num_facture":f"FAC-{DB['_c']['facts']:04d}","id_patient":pid,"id_consultation":cid,"montant":mnt,"date":date.today().strftime("%Y-%m-%d"),"date_echeance":date_ech,"statut":"Impayee","mode_paiement":"-","part_assurance":part_ass,"part_patient":part_pat,"montant_paye":0,"reste_a_payer":part_pat,"lignes":lignes}
         DB["factures"].append(nf); cons["id_facture"]=nf["id"]
         DB["documents_patient"].append({"id":nid("docs"),"id_patient":pid,"type_document":"Facture","nom_fichier":f"facture_{nf['num_facture']}.pdf","type_fichier":"PDF","date_creation":date.today().strftime("%Y-%m-%d"),"ref_id":nf["id"],"ref_type":"facture"})
         add_hist(f"Facture {nf['num_facture']} creee — {pname(pid)}","Facturation",session["user"],pid)
-        add_notif(pid,"Facture generee",f"Facture {nf['num_facture']}",f"Consultation du {cons['date']} : {mnt:,} FCFA. Part assurance : {part_ass:,} FCFA. A payer : {part_pat:,} FCFA.",expediteur=session["user"])
-        flash(f"Facture {nf['num_facture']} creee pour {pname(pid)} — A payer : {part_pat:,} FCFA.","success")
+        detail_lignes="; ".join(f"{l['libelle']} x{l['quantite']} = {l['montant']:,} FCFA" for l in lignes)
+        add_notif(pid,"Facture generee",f"Facture {nf['num_facture']}",f"{detail_lignes}. Total : {mnt:,} FCFA. Part assurance : {part_ass:,} FCFA. A payer : {part_pat:,} FCFA avant le {date_ech}.",expediteur=session["user"])
+        flash(f"Facture {nf['num_facture']} creee pour {pname(pid)} — A payer : {part_pat:,} FCFA (echeance {date_ech}).","success")
         return redirect(url_for("r_facturation"))
+    verifier_relances_factures()
     cons_sans_facture=[c for c in DB["consultations"] if not c.get("id_facture")]
     opts_cons="".join(f'<option value="{c["id"]}">{c["date"]} — {pname(c["id_patient"])} — Dr. {next((m["nom"] for m in DB["medecins"] if m["matricule"]==c["matricule"]),"?")} — {c["diagnostic"][:40]}</option>' for c in sorted(cons_sans_facture,key=lambda x:x["date"],reverse=True))
     def row_f(f):
@@ -2943,34 +3110,49 @@ def r_facturation():
         btn=f'<a href="/r-paiements?fid={f["id"]}" class="btn btn-sm btn-g"><i class="fas fa-cash-register"></i>Regler</a>' if f["reste_a_payer"]>0 else "<span style='color:var(--g1);'>✓ Solde</span>"
         view=f'<a href="/view-doc/facture/{f["id"]}" class="btn btn-sm btn-outline-b ms-1"><i class="fas fa-eye"></i></a>'
         pdf=f'<a href="/r-facture-pdf/{f["id"]}" class="btn btn-sm btn-outline-g ms-1"><i class="fas fa-file-pdf"></i></a>'
+        ech=f.get("date_echeance") or "-"
+        en_retard = f["reste_a_payer"]>0 and ech!="-" and _ds(ech)<date.today().strftime("%Y-%m-%d")
+        ech_html=f'<span style="color:var(--err);font-weight:700;"><i class="fas fa-exclamation-circle"></i> {ech}</span>' if en_retard else ech
         return (f'<tr><td><strong>{f["num_facture"]}</strong></td><td>{pname(f["id_patient"])}</td>'
-                f'<td>{f["date"]}</td><td><strong>{f["montant"]:,}</strong></td>'
+                f'<td>{f["date"]}</td><td>{ech_html}</td><td><strong>{f["montant"]:,}</strong></td>'
                 f'<td>{f["part_assurance"]:,}</td><td>{f["part_patient"]:,}</td>'
                 f'<td style="color:var(--g1);font-weight:600;">{f["montant_paye"]:,}</td>'
                 f'<td style="color:{col};font-weight:700;">{f["reste_a_payer"]:,}</td>'
                 f'<td><span class="bk {cls}">{f["statut"]}</span></td>'
                 f'<td>{f["mode_paiement"]}</td><td style="white-space:nowrap;">{btn}{view}{pdf}</td></tr>')
     rows="".join(row_f(f) for f in sorted(DB["factures"],key=lambda x:x["id"],reverse=True))
-    alerte_cons=f'<div class="al al-w mb-3"><i class="fas fa-exclamation-triangle"></i><strong>{len(cons_sans_facture)} consultation(s)</strong> en attente de facturation.</div>' if cons_sans_facture else ""
+    n_retard=len([f for f in DB["factures"] if f["reste_a_payer"]>0 and f.get("date_echeance") and _ds(f["date_echeance"])<date.today().strftime("%Y-%m-%d")])
+    alerte_cons=f'<div class="al al-w mb-2"><i class="fas fa-exclamation-triangle"></i><strong>{len(cons_sans_facture)} consultation(s)</strong> en attente de facturation.</div>' if cons_sans_facture else ""
+    alerte_retard=f'<div class="al al-w mb-3" style="border-color:var(--err);"><i class="fas fa-clock" style="color:var(--err);"></i><strong style="color:var(--err);">{n_retard} facture(s) en retard de paiement.</strong></div>' if n_retard else ""
+    types_opts="".join(f'<option value="{t}">{t}</option>' for t in ["Consultation","Acte","Medicament","Examen","Autre"])
     form_facture=f"""
-    <form method="POST"><div class="row g-2">
-      <div class="col-12"><label class="form-label">Consultation *</label><select name="consultation" class="form-select" required><option value="">-- Choisir --</option>{opts_cons}</select></div>
-      <div class="col-12"><label class="form-label">Montant total (FCFA) *</label><input type="number" name="montant" class="form-control" min="1" required placeholder="Ex: 15000"></div>
-      <div class="col-12"><div class="al al-i" style="font-size:.78rem;"><i class="fas fa-info-circle"></i>Part assurance calculee auto : IPRES 40%, CSS 50%, LONASE 30%</div></div>
-      <div class="col-12"><button type="submit" class="btn btn-g w-100" style="justify-content:center;"><i class="fas fa-file-invoice"></i>Creer la facture</button></div>
-    </div></form>""" if cons_sans_facture else '<div class="al al-i" style="font-size:.8rem;"><i class="fas fa-check-circle"></i>Toutes les consultations sont facturees.</div>'
+    <form method="POST">
+      <label class="form-label">Consultation *</label><select name="consultation" class="form-select mb-2" required><option value="">-- Choisir --</option>{opts_cons}</select>
+      <label class="form-label">Delai de paiement (jours)</label><input type="number" name="jours_echeance" class="form-control mb-2" value="30" min="1">
+      <label class="form-label">Lignes de facturation *</label>
+      <div id="lignes"><div class="row g-1 mb-2 ligne">
+        <div class="col-4"><input type="text" name="libelle[]" class="form-control form-control-sm" placeholder="Libelle"></div>
+        <div class="col-3"><select name="type_ligne[]" class="form-select form-select-sm">{types_opts}</select></div>
+        <div class="col-2"><input type="number" name="qte[]" class="form-control form-control-sm" placeholder="Qte" value="1" min="1"></div>
+        <div class="col-3"><input type="number" name="pu[]" class="form-control form-control-sm" placeholder="Prix unit." min="0"></div>
+      </div></div>
+      <button type="button" class="btn btn-sm btn-outline-g mb-2" onclick="addLigneFac()"><i class="fas fa-plus"></i>Ajouter une ligne</button>
+      <div class="al al-i mb-2" style="font-size:.78rem;"><i class="fas fa-info-circle"></i>Part assurance calculee auto sur le total : IPRES 40%, CSS 50%, LONASE 30%</div>
+      <button type="submit" class="btn btn-g w-100" style="justify-content:center;"><i class="fas fa-file-invoice"></i>Creer la facture</button>
+    </form>""" if cons_sans_facture else '<div class="al al-i" style="font-size:.8rem;"><i class="fas fa-check-circle"></i>Toutes les consultations sont facturees.</div>'
     body=f"""<div class="row g-3">
   <div class="col-lg-8">
-    {alerte_cons}
+    {alerte_cons}{alerte_retard}
     <div class="card"><div class="card-hdr"><div class="title"><i class="fas fa-file-invoice"></i>Factures ({len(DB["factures"])})</div></div>
-    <div style="overflow-x:auto;"><table class="table"><thead><tr><th>Facture</th><th>Patient</th><th>Date</th><th>Total F</th><th>Part assur.</th><th>Part pat.</th><th>Paye</th><th>Reste</th><th>Statut</th><th>Mode</th><th>Actions</th></tr></thead><tbody>
-    {rows if rows else "<tr><td colspan=11 class='text-center' style='color:var(--muted);padding:20px;'>Aucune facture</td></tr>"}
+    <div style="overflow-x:auto;"><table class="table"><thead><tr><th>Facture</th><th>Patient</th><th>Date</th><th>Echeance</th><th>Total F</th><th>Part assur.</th><th>Part pat.</th><th>Paye</th><th>Reste</th><th>Statut</th><th>Mode</th><th>Actions</th></tr></thead><tbody>
+    {rows if rows else "<tr><td colspan=12 class='text-center' style='color:var(--muted);padding:20px;'>Aucune facture</td></tr>"}
     </tbody></table></div></div>
   </div>
   <div class="col-lg-4"><div class="card"><div class="card-hdr"><div class="title"><i class="fas fa-plus-circle"></i>Nouvelle Facture</div></div><div class="card-body">
     {form_facture}
   </div></div></div>
-</div>"""
+</div>
+<script>function addLigneFac(){{const c=document.getElementById('lignes');const t=c.querySelector('.ligne').cloneNode(true);t.querySelectorAll('input').forEach(e=>e.value=e.name=='qte[]'?'1':'');c.appendChild(t);}}</script>"""
     return page("Facturation","receptionniste",session["user"],body)
 
 
@@ -3031,6 +3213,14 @@ def r_facture_pdf(fid):
         "",
         f"FACTURE {f['num_facture']}","="*55,
         f"Date            : {f['date']}",
+        f"Echeance        : {f.get('date_echeance','-')}",
+    ]
+    if f.get("lignes"):
+        lignes+=["","Detail :","-"*55]
+        for l in f["lignes"]:
+            lignes.append(f"  {l['libelle']:<28} x{l['quantite']:<3} {l['prix_unitaire']:>8,} = {l['montant']:>10,} FCFA")
+        lignes+=["-"*55]
+    lignes+=[
         f"Montant total   : {f['montant']:,} FCFA",
         f"Part assurance  : {f['part_assurance']:,} FCFA",
         f"Part patient    : {f['part_patient']:,} FCFA",

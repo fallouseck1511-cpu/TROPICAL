@@ -16,7 +16,7 @@ Résultat : la logique métier de app.py reste quasi inchangée, mais chaque
 from models import (
     db, Centre, Service, User, Medecin, Patient, Dossier, Rdv, DemandeRdv,
     Consultation, Ordonnance, LigneOrdonnance, Medicament, Stock,
-    VentePharmacie, Facture, Paiement, ContratAssurance, Teleconsultation,
+    VentePharmacie, Facture, FactureLigne, Paiement, ContratAssurance, Teleconsultation,
     ResultatExamen, DocumentPatient, ListeAttente, Triage,
     InteractionMedicamenteuse, AllergiePatient, Notification, Historique,
     SmsEnvoye, Creneau, AlerteStock, Ticket,
@@ -33,7 +33,6 @@ MODEL_MAP = {
     "consultations": Consultation,
     "resultats_examens": ResultatExamen,
     "documents_patient": DocumentPatient,
-    "factures": Facture,
     "paiements": Paiement,
     "teleconsultations": Teleconsultation,
     "medicaments": Medicament,
@@ -50,7 +49,8 @@ MODEL_MAP = {
     "historiques": Historique,
     "sms_envoyes": SmsEnvoye,
     "creneaux": Creneau,
-    # "ordonnances" est géré à part (lignes imbriquées) — voir OrdonnanceRow
+    # "ordonnances" et "factures" sont gérées à part (lignes imbriquées) —
+    # voir OrdonnanceRow / FactureRow
 }
 
 
@@ -97,7 +97,9 @@ class Row:
         return getattr(self._obj, key)
 
     def __setitem__(self, key, value):
-        setattr(self._obj, key, value)
+        table = getattr(self._obj, "__table__", None)
+        col = table.columns.get(key) if table is not None else None
+        setattr(self._obj, key, _coerce(col, value) if col is not None else value)
 
     def __contains__(self, key):
         return hasattr(self._obj, key)
@@ -142,6 +144,25 @@ class OrdonnanceRow(Row):
                     "posologie": l.posologie,
                     "duree": l.duree,
                 }
+                for l in self._obj.lignes
+            ]
+        return super().__getitem__(key)
+
+    def get(self, key, default=None):
+        if key == "lignes":
+            return self.__getitem__("lignes")
+        return super().get(key, default)
+
+
+class FactureRow(Row):
+    """La facture peut désormais avoir des lignes de détail (multi-lignes) :
+    clé 'lignes' recomposée depuis la relation ORM lignes_facture."""
+
+    def __getitem__(self, key):
+        if key == "lignes":
+            return [
+                {"id": l.id, "libelle": l.libelle, "type_ligne": l.type_ligne,
+                 "quantite": l.quantite, "prix_unitaire": l.prix_unitaire, "montant": l.montant}
                 for l in self._obj.lignes
             ]
         return super().__getitem__(key)
@@ -213,7 +234,15 @@ def wrap(obj, table_name):
         return ConsultationRow(obj)
     if table_name == "ventes_pharmacie":
         return VentePharmacieRow(obj)
+    if table_name == "factures":
+        return FactureRow(obj)
     return Row(obj)
+
+
+NESTED_LINES = {
+    "ordonnances": (LigneOrdonnance, "id_ordonnance"),
+    "factures": (FactureLigne, "id_facture"),
+}
 
 
 class TableProxy:
@@ -244,7 +273,8 @@ class TableProxy:
         IMPORTANT : on modifie le dict d'origine (pas une copie) pour que
         d["id"] soit mis à jour avec le vrai id — le code appelant relit
         souvent cette valeur juste après l'appel à append()."""
-        lignes = d.get("lignes") if self.table_name == "ordonnances" else None
+        nested = NESTED_LINES.get(self.table_name)
+        lignes = d.get("lignes") if nested else None
         valid_cols = {c.name: c for c in self.model.__table__.columns}
         clean = {k: v for k, v in d.items() if k in valid_cols and k != "id"}
         clean = {k: _coerce(valid_cols[k], v) for k, v in clean.items()}
@@ -252,10 +282,11 @@ class TableProxy:
         db.session.add(obj)
         db.session.flush()  # attribue l'id réel tout de suite
         if lignes:
-            ligne_cols = {c.name for c in LigneOrdonnance.__table__.columns}
+            child_model, fk_name = nested
+            ligne_cols = {c.name for c in child_model.__table__.columns}
             for l in lignes:
                 lclean = {k: v for k, v in l.items() if k in ligne_cols}
-                db.session.add(LigneOrdonnance(id_ordonnance=obj.id, **lclean))
+                db.session.add(child_model(**{fk_name: obj.id}, **lclean))
             db.session.flush()
         pk_name = [c.name for c in self.model.__table__.primary_key.columns][0]
         d[pk_name] = getattr(obj, pk_name)  # pour le code appelant qui relit d["id"]/d["matricule"] juste après
@@ -339,6 +370,7 @@ class DBProxy:
         self._counters = CounterProxy()
         self._tables = {name: TableProxy(name, model) for name, model in MODEL_MAP.items()}
         self._tables["ordonnances"] = TableProxy("ordonnances", Ordonnance)
+        self._tables["factures"] = TableProxy("factures", Facture)
 
     def __getitem__(self, key):
         if key == "users":
