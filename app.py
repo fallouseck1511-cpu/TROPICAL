@@ -353,53 +353,58 @@ def role_required(*roles):
 # CSS, Sidebar, Topbar, Page builder, PDF (gen_pdf), Page Login
 # =======================================================
 
-CSS="""<style>
-:root{--g1:#16a34a;--g2:#15803d;--g3:#14532d;--gl:#dcfce7;--gm:#bbf7d0;--gd:#86efac;--acc:#0ea5e9;--warn:#f59e0b;--err:#ef4444;--bg:#f0fdf4;--card:#ffffff;--txt:#1a2e1a;--muted:#4b7a4b;--sw:260px;}
+CSS="""<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"><style>
+:root{--g1:#0d7a52;--g2:#0a5f40;--g3:#0a3b28;--gl:#e6f2ea;--gm:#c7e0d1;--gd:#8fc4a8;--acc:#2b7a9e;--warn:#c07f0e;--err:#c0392b;--bg:#f5f7f6;--card:#ffffff;--txt:#1c2622;--muted:#61756c;--sw:264px;--r-sm:8px;--r-md:12px;--r-lg:16px;--shadow-sm:0 1px 2px rgba(10,40,30,.05),0 1px 3px rgba(10,40,30,.06);--shadow-md:0 2px 8px rgba(10,40,30,.06),0 8px 24px -8px rgba(10,40,30,.10);}
 *{box-sizing:border-box;margin:0;padding:0;}
-body{background:var(--bg);font-family:'Segoe UI',system-ui,sans-serif;color:var(--txt);}
-#sb{position:fixed;top:0;left:0;width:var(--sw);height:100vh;background:var(--g3);overflow-y:auto;z-index:1040;display:flex;flex-direction:column;}
-#sb .logo{padding:20px 16px 14px;border-bottom:1px solid rgba(255,255,255,.15);}
-#sb .logo .brand{display:flex;align-items:center;gap:10px;}
-#sb .logo .ico{width:38px;height:38px;background:var(--g1);border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
-#sb .logo h6{color:#fff;font-size:.95rem;font-weight:700;margin:0;}
-#sb .logo small{color:#86efac;font-size:.68rem;}
-#sb .sec{padding:12px 14px 4px;font-size:.6rem;letter-spacing:1.8px;color:#86efac;text-transform:uppercase;}
-#sb a.nl{display:flex;align-items:center;gap:9px;padding:9px 14px;color:#dcfce7;border-radius:8px;margin:1px 8px;font-size:.83rem;text-decoration:none;transition:.15s;}
-#sb a.nl:hover,#sb a.nl.active{background:var(--g1);color:#fff;}
-#sb a.nl i{width:16px;text-align:center;font-size:.85rem;}
-#sb .sb-foot{padding:14px;border-top:1px solid rgba(255,255,255,.15);margin-top:auto;}
-#tb{position:fixed;top:0;left:var(--sw);right:0;height:56px;background:#fff;border-bottom:1px solid #d1fae5;display:flex;align-items:center;padding:0 22px;z-index:1030;justify-content:space-between;box-shadow:0 1px 4px rgba(0,0,0,.06);}
-#tb .pt{font-weight:600;color:var(--g3);font-size:.95rem;display:flex;align-items:center;gap:8px;}
-#mc{margin-left:var(--sw);margin-top:56px;padding:24px 26px;min-height:calc(100vh - 56px);}
-.card{background:var(--card);border:1px solid #d1fae5;border-radius:12px;box-shadow:0 1px 6px rgba(0,0,0,.05);}
-.card-hdr{padding:14px 18px;border-bottom:1px solid #d1fae5;display:flex;align-items:center;justify-content:space-between;background:#f0fdf4;border-radius:12px 12px 0 0;}
-.card-hdr .title{font-weight:600;color:var(--g3);font-size:.9rem;display:flex;align-items:center;gap:8px;}
-.card-body{padding:18px;}
-.sc{border-radius:12px;padding:18px;color:#fff;border:none;}
-.sc .sv{font-size:1.9rem;font-weight:700;line-height:1;}
-.sc .sl{font-size:.74rem;opacity:.9;margin-top:3px;}
-.bg-g{background:linear-gradient(135deg,#16a34a,#15803d);}
-.bg-b{background:linear-gradient(135deg,#0ea5e9,#0284c7);}
-.bg-o{background:linear-gradient(135deg,#f59e0b,#d97706);}
-.bg-r{background:linear-gradient(135deg,#ef4444,#dc2626);}
-.bg-v{background:linear-gradient(135deg,#8b5cf6,#7c3aed);}
-.bg-t{background:linear-gradient(135deg,#06b6d4,#0891b2);}
-.bg-pk{background:linear-gradient(135deg,#ec4899,#db2777);}
+body{background:var(--bg);font-family:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif;color:var(--txt);font-size:.9rem;line-height:1.5;-webkit-font-smoothing:antialiased;}
+h1,h2,h3,h4,h5,h6,.brand-font{font-family:'Plus Jakarta Sans',system-ui,sans-serif;letter-spacing:-.01em;}
+#sb{position:fixed;top:0;left:0;width:var(--sw);height:100vh;background:linear-gradient(180deg,var(--g3) 0%,#082e21 100%);overflow-y:auto;z-index:1040;display:flex;flex-direction:column;box-shadow:2px 0 12px rgba(0,0,0,.08);}
+#sb .logo{padding:22px 18px 16px;border-bottom:1px solid rgba(255,255,255,.1);}
+#sb .logo .brand{display:flex;align-items:center;gap:11px;}
+#sb .logo .ico{width:40px;height:40px;background:linear-gradient(135deg,var(--g1),#0f9166);border-radius:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 2px 8px rgba(13,122,82,.35);}
+#sb .logo h6{color:#fff;font-size:.98rem;font-weight:700;margin:0;font-family:'Plus Jakarta Sans',sans-serif;letter-spacing:-.01em;}
+#sb .logo small{color:#8fc4a8;font-size:.68rem;letter-spacing:.02em;}
+#sb .sec{padding:16px 16px 6px;font-size:.62rem;font-weight:700;letter-spacing:1.6px;color:#6fa88a;text-transform:uppercase;}
+#sb a.nl{display:flex;align-items:center;gap:10px;padding:9px 14px;color:#cfe3d7;border-radius:9px;margin:1.5px 10px;font-size:.83rem;font-weight:500;text-decoration:none;transition:background .15s,color .15s;}
+#sb a.nl:hover{background:rgba(255,255,255,.06);color:#fff;}
+#sb a.nl.active{background:var(--g1);color:#fff;box-shadow:0 2px 6px rgba(13,122,82,.4);}
+#sb a.nl i{width:16px;text-align:center;font-size:.82rem;opacity:.9;}
+#sb .sb-foot{padding:14px;border-top:1px solid rgba(255,255,255,.1);margin-top:auto;}
+#tb{position:fixed;top:0;left:var(--sw);right:0;height:58px;background:#fff;border-bottom:1px solid #e5eae7;display:flex;align-items:center;padding:0 24px;z-index:1030;justify-content:space-between;}
+#tb .pt{font-weight:700;color:var(--g3);font-size:1rem;display:flex;align-items:center;gap:9px;font-family:'Plus Jakarta Sans',sans-serif;letter-spacing:-.01em;}
+#mc{margin-left:var(--sw);margin-top:58px;padding:26px 28px;min-height:calc(100vh - 58px);}
+.card{background:var(--card);border:1px solid #e5eae7;border-radius:var(--r-md);box-shadow:var(--shadow-sm);}
+.card-hdr{padding:15px 20px;border-bottom:1px solid #eef1ef;display:flex;align-items:center;justify-content:space-between;background:#fff;border-radius:var(--r-md) var(--r-md) 0 0;}
+.card-hdr .title{font-weight:700;color:var(--g3);font-size:.88rem;display:flex;align-items:center;gap:10px;font-family:'Plus Jakarta Sans',sans-serif;letter-spacing:-.005em;}
+.card-hdr .title i{width:30px;height:30px;background:var(--gl);color:var(--g1);border-radius:8px;display:inline-flex;align-items:center;justify-content:center;font-size:.82rem;flex-shrink:0;}
+.card-body{padding:20px;}
+.sc{border-radius:var(--r-md);padding:19px 20px;color:#fff;border:none;box-shadow:var(--shadow-md);position:relative;overflow:hidden;}
+.sc .sv{font-size:1.85rem;font-weight:800;line-height:1;font-family:'Plus Jakarta Sans',sans-serif;letter-spacing:-.02em;}
+.sc .sl{font-size:.73rem;opacity:.92;margin-top:4px;font-weight:500;}
+.bg-g{background:linear-gradient(135deg,#0d7a52,#0a5f40);}
+.bg-b{background:linear-gradient(135deg,#2b7a9e,#1f5f7d);}
+.bg-o{background:linear-gradient(135deg,#b3760f,#8f5e0c);}
+.bg-r{background:linear-gradient(135deg,#c0392b,#9c2e22);}
+.bg-v{background:linear-gradient(135deg,#6d5bb3,#584893);}
+.bg-t{background:linear-gradient(135deg,#1b8fa3,#146d7d);}
+.bg-pk{background:linear-gradient(135deg,#b8447a,#943a63);}
 .table{width:100%;border-collapse:collapse;}
-.table th{background:#f0fdf4;font-size:.72rem;letter-spacing:.6px;text-transform:uppercase;color:var(--g2);padding:10px 12px;border-bottom:2px solid #d1fae5;text-align:left;}
-.table td{padding:10px 12px;font-size:.85rem;border-bottom:1px solid #f0fdf4;vertical-align:middle;}
-.table tr:hover td{background:#f0fdf4;}
+.table th{background:#fafbfa;font-size:.7rem;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--g2);padding:11px 12px;border-bottom:1.5px solid #e5eae7;text-align:left;}
+.table td{padding:11px 12px;font-size:.85rem;border-bottom:1px solid #f0f2f0;vertical-align:middle;}
+.table tr:last-child td{border-bottom:none;}
+.table tr:hover td{background:#fafcfa;}
 .bk{display:inline-block;font-size:.7rem;padding:3px 10px;border-radius:20px;font-weight:600;}
-.ok{background:#dcfce7;color:#14532d;}.att{background:#fef3c7;color:#78350f;}
-.err{background:#fee2e2;color:#7f1d1d;}.inf{background:#dbeafe;color:#1e3a8a;}
+.ok{background:#e6f2ea;color:#0a3b28;}.att{background:#fbf0da;color:#6b4a0c;}
+.err{background:#fae4e1;color:#7a251c;}.inf{background:#dde9f0;color:#1c4258;}
 .vio{background:#ede9fe;color:#3b0764;}.grey{background:#f3f4f6;color:#374151;}
-.form-label{font-size:.82rem;font-weight:600;color:var(--g3);margin-bottom:4px;display:block;}
-.form-control,.form-select{border:1.5px solid #d1fae5;border-radius:8px;padding:9px 12px;font-size:.87rem;width:100%;transition:.15s;background:#fff;color:var(--txt);}
-.form-control:focus,.form-select:focus{border-color:var(--g1);outline:none;box-shadow:0 0 0 3px rgba(22,163,74,.12);}
-.ig-text{background:#f0fdf4;border:1.5px solid #d1fae5;border-right:none;border-radius:8px 0 0 8px;padding:9px 12px;}
-.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:8px;font-size:.83rem;font-weight:600;cursor:pointer;border:none;transition:.15s;text-decoration:none;}
-.btn:hover{filter:brightness(.94);}
-.btn-g{background:var(--g1);color:#fff;}.btn-r{background:var(--err);color:#fff;}
+.form-label{font-size:.82rem;font-weight:600;color:var(--g3);margin-bottom:5px;display:block;}
+.form-control,.form-select{border:1.5px solid #dfe7e2;border-radius:8px;padding:9px 12px;font-size:.87rem;width:100%;transition:border-color .15s,box-shadow .15s;background:#fff;color:var(--txt);}
+.form-control:focus,.form-select:focus{border-color:var(--g1);outline:none;box-shadow:0 0 0 3px rgba(13,122,82,.13);}
+.ig-text{background:#f6f8f6;border:1.5px solid #dfe7e2;border-right:none;border-radius:8px 0 0 8px;padding:9px 12px;}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:9px 17px;border-radius:8px;font-size:.83rem;font-weight:600;cursor:pointer;border:none;transition:filter .15s,box-shadow .15s,transform .1s;text-decoration:none;}
+.btn:hover{filter:brightness(1.07);}
+.btn:active{transform:translateY(1px);}
+.btn-g{background:var(--g1);color:#fff;box-shadow:0 1px 2px rgba(13,122,82,.25);}.btn-r{background:var(--err);color:#fff;box-shadow:0 1px 2px rgba(192,57,43,.25);}
 .btn-o{background:var(--warn);color:#fff;}.btn-b{background:var(--acc);color:#fff;}
 .btn-v{background:#8b5cf6;color:#fff;}
 .btn-outline-g{background:transparent;border:1.5px solid var(--g1);color:var(--g1);}
@@ -410,7 +415,7 @@ body{background:var(--bg);font-family:'Segoe UI',system-ui,sans-serif;color:var(
 .btn-outline-r:hover{background:var(--err);color:#fff;}
 .btn-sm{padding:5px 10px;font-size:.76rem;border-radius:6px;}
 .al{border-radius:8px;padding:10px 14px;font-size:.85rem;margin-bottom:10px;display:flex;align-items:center;gap:8px;}
-.al-s{background:#dcfce7;border:1px solid #86efac;color:#14532d;}
+.al-s{background:#e6f2ea;border:1px solid #8fc4a8;color:#0a3b28;}
 .al-e{background:#fee2e2;border:1px solid #fca5a5;color:#7f1d1d;}
 .al-w{background:#fef3c7;border:1px solid #fde047;color:#78350f;}
 .al-i{background:#dbeafe;border:1px solid #93c5fd;color:#1e3a8a;}
@@ -421,8 +426,8 @@ body{background:var(--bg);font-family:'Segoe UI',system-ui,sans-serif;color:var(
 .nav-tab{padding:8px 16px;border-radius:8px 8px 0 0;font-size:.84rem;font-weight:600;cursor:pointer;border:none;background:transparent;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-2px;}
 .nav-tab.active{background:#fff;color:var(--g1);border:2px solid var(--gd);border-bottom:2px solid #fff;}
 .urg-1{background:#7f1d1d;color:#fff;}.urg-2{background:#ef4444;color:#fff;}
-.urg-3{background:#f59e0b;color:#fff;}.urg-4{background:#16a34a;color:#fff;}.urg-5{background:#dbeafe;color:#1e3a8a;}
-.stat-dispo{background:#dcfce7;color:#14532d;}.stat-occ{background:#fef3c7;color:#78350f;}.stat-conge{background:#dbeafe;color:#1e3a8a;}
+.urg-3{background:#f59e0b;color:#fff;}.urg-4{background:#0d7a52;color:#fff;}.urg-5{background:#dbeafe;color:#1e3a8a;}
+.stat-dispo{background:#e6f2ea;color:#0a3b28;}.stat-occ{background:#fef3c7;color:#78350f;}.stat-conge{background:#dbeafe;color:#1e3a8a;}
 /* Charts */
 .chart-bar{display:flex;align-items:flex-end;gap:8px;height:120px;padding:8px 0;}
 .bar{flex:1;border-radius:6px 6px 0 0;min-width:20px;transition:.3s;position:relative;}
@@ -456,11 +461,11 @@ body{background:var(--bg);font-family:'Segoe UI',system-ui,sans-serif;color:var(
 @media(max-width:576px){
   .table-responsive-stack table, .table-responsive-stack thead, .table-responsive-stack tbody, .table-responsive-stack th, .table-responsive-stack td, .table-responsive-stack tr{display:block;}
   .table-responsive-stack thead tr{position:absolute;top:-9999px;left:-9999px;}
-  .table-responsive-stack tr{border:1px solid #d1fae5;border-radius:8px;margin-bottom:8px;padding:6px;}
-  .table-responsive-stack td{border:none;border-bottom:1px solid #f0fdf4;position:relative;padding-left:45%;}
+  .table-responsive-stack tr{border:1px solid #dfe7e2;border-radius:8px;margin-bottom:8px;padding:6px;}
+  .table-responsive-stack td{border:none;border-bottom:1px solid #f6f8f6;position:relative;padding-left:45%;}
   .table-responsive-stack td:before{position:absolute;left:8px;width:40%;white-space:nowrap;font-weight:600;font-size:.7rem;color:var(--g2);content:attr(data-label);}
 }
-::-webkit-scrollbar{width:4px;}::-webkit-scrollbar-track{background:#f0fdf4;}::-webkit-scrollbar-thumb{background:var(--gd);border-radius:4px;}
+::-webkit-scrollbar{width:4px;}::-webkit-scrollbar-track{background:#f6f8f6;}::-webkit-scrollbar-thumb{background:var(--gd);border-radius:4px;}
 </style>"""
 
 JS_BASE="""<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
@@ -541,7 +546,7 @@ def sidebar(role,username):
         href=f"/{ep.replace('_','-')}"
         links+=f'<a href="{href}" class="nl"><i class="fas fa-{icon}"></i>{label}{nb}</a>\n'
     ph=f'<img src="{ud["photo"]}" style="width:34px;height:34px;border-radius:50%;object-fit:cover;border:2px solid var(--gd);" alt="">' if ud.get("photo") else f'<div style="width:34px;height:34px;background:var(--g1);border-radius:50%;display:flex;align-items:center;justify-content:center;"><i class="fas fa-user" style="color:#fff;font-size:.85rem;"></i></div>'
-    return f"""<nav id="sb"><div class="logo"><div class="brand"><div class="ico"><i class="fas fa-heartbeat" style="color:#fff;font-size:1rem;"></i></div><div><h6>LE TROPICAL</h6><small>Centre de Sante LE TROPICAL</small></div></div></div><div style="flex:1;overflow-y:auto;padding-bottom:10px;">{links}</div><div class="sb-foot"><div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">{ph}<div><div style="font-size:.82rem;color:#fff;font-weight:600;">{nom}</div><div style="font-size:.68rem;color:#86efac;text-transform:uppercase;">{rl}</div></div></div><a href="/logout" class="btn btn-sm" style="background:rgba(255,255,255,.15);color:#fff;width:100%;justify-content:center;"><i class="fas fa-sign-out-alt"></i>Deconnexion</a></div></nav>"""
+    return f"""<nav id="sb"><div class="logo"><div class="brand"><div class="ico"><i class="fas fa-heartbeat" style="color:#fff;font-size:1rem;"></i></div><div><h6>LE TROPICAL</h6><small>Centre de Sante LE TROPICAL</small></div></div></div><div style="flex:1;overflow-y:auto;padding-bottom:10px;">{links}</div><div class="sb-foot"><div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">{ph}<div><div style="font-size:.82rem;color:#fff;font-weight:600;">{nom}</div><div style="font-size:.68rem;color:#8fc4a8;text-transform:uppercase;">{rl}</div></div></div><a href="/logout" class="btn btn-sm" style="background:rgba(255,255,255,.15);color:#fff;width:100%;justify-content:center;"><i class="fas fa-sign-out-alt"></i>Deconnexion</a></div></nav>"""
 
 def topbar(title,role,username):
     ud=DB["users"].get(username,{})
@@ -619,7 +624,7 @@ def gen_pdf(titre,lignes):
     out+=xr+tr
     return out
 
-LOGIN_HTML=f"""<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet"><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet"><title>Connexion — LE TROPICAL</title>{CSS}<style>.lw{{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#14532d,#16a34a 60%,#0d9488);}}.lc{{background:#fff;border-radius:20px;box-shadow:0 25px 60px rgba(0,0,0,.3);width:100%;max-width:420px;overflow:hidden;}}.lh{{background:linear-gradient(135deg,#14532d,#16a34a);padding:30px;text-align:center;color:#fff;}}.li{{width:70px;height:70px;background:rgba(255,255,255,.2);border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:1.8rem;margin-bottom:10px;}}</style></head><body><div class="lw"><div class="lc"><div class="lh"><div class="li"><i class="fas fa-heartbeat"></i></div><h4 class="mb-0 fw-bold">LE TROPICAL</h4><p class="mb-0 mt-1" style="opacity:.8;font-size:.82rem;">SGRDMS — Centre de Sante</p></div><div style="padding:28px 30px;">{{ERR}}<div class="mb-3"><label class="form-label fw-semibold" style="font-size:.83rem;">Identifiant</label><div style="display:flex;"><span class="ig-text"><i class="fas fa-user" style="color:#16a34a;"></i></span><input type="text" id="usr" class="form-control" placeholder="Votre identifiant" required autofocus style="border-radius:0 8px 8px 0;border-left:none;"></div></div><div class="mb-3"><label class="form-label fw-semibold" style="font-size:.83rem;">Mot de passe</label><div style="display:flex;"><span class="ig-text"><i class="fas fa-lock" style="color:#16a34a;"></i></span><input type="password" id="pwd" class="form-control" placeholder="Mot de passe" required style="border-radius:0 8px 8px 0;border-left:none;"><button type="button" onclick="tp()" class="btn btn-sm btn-outline-g" style="margin-left:6px;"><i class="fas fa-eye" id="ei"></i></button></div></div><button type="button" onclick="doLogin()" class="btn btn-g w-100 mt-1" style="justify-content:center;padding:11px;font-size:.92rem;"><i class="fas fa-sign-in-alt"></i>Se connecter</button><p style="text-align:center;font-size:.74rem;color:var(--muted);margin-top:12px;"><i class="fas fa-key me-1"></i>Mot de passe oublie ? Contactez votre administrateur.</p><p style="text-align:center;font-size:.74rem;color:var(--muted);margin-top:4px;"><i class="fas fa-shield-alt me-1"></i>Acces reserve au personnel autorise</p></div></div></div><script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script><script>function doLogin(){{const u=document.getElementById('usr').value,p=document.getElementById('pwd').value;if(!u||!p){{alert('Remplir tous les champs');return;}}const f=document.createElement('form');f.method='POST';f.action='/login';[['username',u],['password',p]].forEach(([k,v])=>{{const i=document.createElement('input');i.name=k;i.value=v;f.appendChild(i);}});document.body.appendChild(f);f.submit();}}document.addEventListener('keydown',e=>{{if(e.key==='Enter')doLogin();}});function tp(){{const p=document.getElementById('pwd'),e=document.getElementById('ei');p.type=p.type==='password'?'text':'password';e.className='fas fa-eye'+(p.type==='text'?'-slash':'');}}</script></body></html>"""
+LOGIN_HTML=f"""<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet"><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet"><title>Connexion — LE TROPICAL</title>{CSS}<style>.lw{{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#0a3b28,#0d7a52 55%,#146d5f);}}.lc{{background:#fff;border-radius:20px;box-shadow:0 24px 60px -12px rgba(6,28,20,.45);width:100%;max-width:420px;overflow:hidden;}}.lh{{background:linear-gradient(135deg,#0a3b28,#0d7a52);padding:32px;text-align:center;color:#fff;}}.li{{width:68px;height:68px;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.25);border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:1.7rem;margin-bottom:12px;}}</style></head><body><div class="lw"><div class="lc"><div class="lh"><div class="li"><i class="fas fa-heartbeat"></i></div><h4 class="mb-0 fw-bold" style="font-family:'Plus Jakarta Sans',sans-serif;letter-spacing:-.01em;">LE TROPICAL</h4><p class="mb-0 mt-1" style="opacity:.75;font-size:.82rem;">SGRDMS — Centre de Sante</p></div><div style="padding:28px 30px;">{{ERR}}<div class="mb-3"><label class="form-label fw-semibold" style="font-size:.83rem;">Identifiant</label><div style="display:flex;"><span class="ig-text"><i class="fas fa-user" style="color:#0d7a52;"></i></span><input type="text" id="usr" class="form-control" placeholder="Votre identifiant" required autofocus style="border-radius:0 8px 8px 0;border-left:none;"></div></div><div class="mb-3"><label class="form-label fw-semibold" style="font-size:.83rem;">Mot de passe</label><div style="display:flex;"><span class="ig-text"><i class="fas fa-lock" style="color:#0d7a52;"></i></span><input type="password" id="pwd" class="form-control" placeholder="Mot de passe" required style="border-radius:0 8px 8px 0;border-left:none;"><button type="button" onclick="tp()" class="btn btn-sm btn-outline-g" style="margin-left:6px;"><i class="fas fa-eye" id="ei"></i></button></div></div><button type="button" onclick="doLogin()" class="btn btn-g w-100 mt-1" style="justify-content:center;padding:11px;font-size:.92rem;"><i class="fas fa-sign-in-alt"></i>Se connecter</button><p style="text-align:center;font-size:.74rem;color:var(--muted);margin-top:12px;"><i class="fas fa-key me-1"></i>Mot de passe oublie ? Contactez votre administrateur.</p><p style="text-align:center;font-size:.74rem;color:var(--muted);margin-top:4px;"><i class="fas fa-shield-alt me-1"></i>Acces reserve au personnel autorise</p></div></div></div><script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script><script>function doLogin(){{const u=document.getElementById('usr').value,p=document.getElementById('pwd').value;if(!u||!p){{alert('Remplir tous les champs');return;}}const f=document.createElement('form');f.method='POST';f.action='/login';[['username',u],['password',p]].forEach(([k,v])=>{{const i=document.createElement('input');i.name=k;i.value=v;f.appendChild(i);}});document.body.appendChild(f);f.submit();}}document.addEventListener('keydown',e=>{{if(e.key==='Enter')doLogin();}});function tp(){{const p=document.getElementById('pwd'),e=document.getElementById('ei');p.type=p.type==='password'?'text':'password';e.className='fas fa-eye'+(p.type==='text'?'-slash':'');}}</script></body></html>"""
 # SGRDMS v7 — Part 3: Login, Dashboard admin (stats + charts), Admin complet
 
 # =======================================================
@@ -645,7 +650,7 @@ def view_doc(ref_type, ref_id):
         pat = next((p for p in DB["patients"] if p["id"]==o["id_patient"]), None)
         titre = f"Ordonnance ORD-{o['id']:04d}"
         dl_url = f"/p-download/ordonnance/{ref_id}"
-        lignes_html = "".join(f'<div style="background:#f0fdf4;border-radius:8px;padding:12px 16px;margin-bottom:8px;border-left:4px solid var(--g1);"><strong>{l["libelle"]}</strong><br><small style="color:var(--muted);">Posologie : {l["posologie"]} &nbsp;|&nbsp; Durée : {l["duree"]}</small></div>' for l in o["lignes"])
+        lignes_html = "".join(f'<div style="background:#f6f8f6;border-radius:8px;padding:12px 16px;margin-bottom:8px;border-left:4px solid var(--g1);"><strong>{l["libelle"]}</strong><br><small style="color:var(--muted);">Posologie : {l["posologie"]} &nbsp;|&nbsp; Durée : {l["duree"]}</small></div>' for l in o["lignes"])
         contenu = f"""<div style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:28px;max-width:640px;margin:0 auto;font-family:sans-serif;">
   <div style="text-align:center;margin-bottom:20px;padding-bottom:16px;border-bottom:2px solid var(--g1);">
     <div style="font-size:1.3rem;font-weight:800;color:var(--g3);">CENTRE DE SANTE LE TROPICAL</div>
@@ -681,7 +686,7 @@ def view_doc(ref_type, ref_id):
     <div><span style="color:var(--muted);">Médecin</span><div>{mname(r["matricule"])}</div></div>
     <div><span style="color:var(--muted);">Statut</span><div><span class="bk ok">{r["statut"]}</span></div></div>
   </div>
-  <div style="background:#f0fdf4;border-radius:10px;padding:18px;border-left:4px solid var(--g1);margin-top:12px;">
+  <div style="background:#f6f8f6;border-radius:10px;padding:18px;border-left:4px solid var(--g1);margin-top:12px;">
     <div style="font-weight:700;color:var(--g3);margin-bottom:8px;"><i class="fas fa-flask me-2"></i>Résultats et observations</div>
     <div style="line-height:1.8;">{r["commentaire"]}</div>
   </div>
@@ -714,7 +719,7 @@ def view_doc(ref_type, ref_id):
   </div>
   {tableau_lignes}
   <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;">
-    <div style="background:#f0fdf4;border-radius:8px;padding:14px;text-align:center;">
+    <div style="background:#f6f8f6;border-radius:8px;padding:14px;text-align:center;">
       <div style="font-size:1.1rem;font-weight:800;color:var(--g3);">{fac["montant"]:,} F</div>
       <div style="font-size:.75rem;color:var(--muted);">Total</div>
     </div>
@@ -802,15 +807,15 @@ def dashboard():
         extra_js=f"""<script>
 // Graphique consultations par service
 const ctx1=document.getElementById('chartCons');
-if(ctx1){{new Chart(ctx1,{{type:'bar',data:{{labels:{json.dumps(chart_labels)},datasets:[{{label:'Consultations',data:{json.dumps(chart_vals)},backgroundColor:['#16a34a','#0ea5e9','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#ec4899'],borderRadius:6}}]}},options:{{responsive:true,plugins:{{legend:{{display:false}}}},scales:{{y:{{beginAtZero:true,ticks:{{stepSize:1}}}}}}}}}})}}
+if(ctx1){{new Chart(ctx1,{{type:'bar',data:{{labels:{json.dumps(chart_labels)},datasets:[{{label:'Consultations',data:{json.dumps(chart_vals)},backgroundColor:['#0d7a52','#2b7a9e','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#ec4899'],borderRadius:6}}]}},options:{{responsive:true,plugins:{{legend:{{display:false}}}},scales:{{y:{{beginAtZero:true,ticks:{{stepSize:1}}}}}}}}}})}}
 
 // Graphique RDV par statut
 const ctx2=document.getElementById('chartRdv');
-if(ctx2){{new Chart(ctx2,{{type:'doughnut',data:{{labels:{json.dumps(list(rdv_stats.keys()))},datasets:[{{data:{json.dumps(list(rdv_stats.values()))},backgroundColor:['#16a34a','#f59e0b','#ef4444','#06b6d4'],borderWidth:2}}]}},options:{{responsive:true,plugins:{{legend:{{position:'right'}}}}}}}})}}
+if(ctx2){{new Chart(ctx2,{{type:'doughnut',data:{{labels:{json.dumps(list(rdv_stats.keys()))},datasets:[{{data:{json.dumps(list(rdv_stats.values()))},backgroundColor:['#0d7a52','#f59e0b','#ef4444','#06b6d4'],borderWidth:2}}]}},options:{{responsive:true,plugins:{{legend:{{position:'right'}}}}}}}})}}
 
 // Graphique stocks
 const ctxS=document.getElementById('chartStock');
-if(ctxS){{const sn=[{','.join([repr(next((m["libelle"] for m in DB["medicaments"] if m["id_stock"]==s["id"]),"?")) for s in DB["stocks"]])}];const sv=[{','.join([str(s["quantite"]) for s in DB["stocks"]])}];new Chart(ctxS,{{type:'bar',data:{{labels:sn,datasets:[{{label:'Quantite',data:sv,backgroundColor:sv.map(v=>v==0?'#ef4444':v<20?'#f59e0b':'#16a34a'),borderRadius:4}}]}},options:{{responsive:true,plugins:{{legend:{{display:false}}}},scales:{{y:{{beginAtZero:true}}}}}}}})}}
+if(ctxS){{const sn=[{','.join([repr(next((m["libelle"] for m in DB["medicaments"] if m["id_stock"]==s["id"]),"?")) for s in DB["stocks"]])}];const sv=[{','.join([str(s["quantite"]) for s in DB["stocks"]])}];new Chart(ctxS,{{type:'bar',data:{{labels:sn,datasets:[{{label:'Quantite',data:sv,backgroundColor:sv.map(v=>v==0?'#ef4444':v<20?'#f59e0b':'#0d7a52'),borderRadius:4}}]}},options:{{responsive:true,plugins:{{legend:{{display:false}}}},scales:{{y:{{beginAtZero:true}}}}}}}})}}
 </script>"""
 
         body=f"""
@@ -1398,9 +1403,9 @@ def a_rapports_financiers():
 
     extra_js=f"""<script>
 const ctxM=document.getElementById('chartMensuel');
-if(ctxM){{new Chart(ctxM,{{type:'line',data:{{labels:{json.dumps(mois_labels)},datasets:[{{label:'Recettes (FCFA)',data:{json.dumps(mois_vals)},borderColor:'#16a34a',backgroundColor:'rgba(22,163,74,.1)',fill:true,tension:.3}}]}},options:{{responsive:true,plugins:{{legend:{{display:false}}}},scales:{{y:{{beginAtZero:true}}}}}}}})}}
+if(ctxM){{new Chart(ctxM,{{type:'line',data:{{labels:{json.dumps(mois_labels)},datasets:[{{label:'Recettes (FCFA)',data:{json.dumps(mois_vals)},borderColor:'#0d7a52',backgroundColor:'rgba(13,122,82,.1)',fill:true,tension:.3}}]}},options:{{responsive:true,plugins:{{legend:{{display:false}}}},scales:{{y:{{beginAtZero:true}}}}}}}})}}
 const ctxT=document.getElementById('chartTypes');
-if(ctxT){{new Chart(ctxT,{{type:'doughnut',data:{{labels:{json.dumps(list(rev_type.keys()))},datasets:[{{data:{json.dumps(list(rev_type.values()))},backgroundColor:['#16a34a','#0ea5e9','#f59e0b','#ef4444','#8b5cf6'],borderWidth:2}}]}},options:{{responsive:true,plugins:{{legend:{{position:'right'}}}}}}}})}}
+if(ctxT){{new Chart(ctxT,{{type:'doughnut',data:{{labels:{json.dumps(list(rev_type.keys()))},datasets:[{{data:{json.dumps(list(rev_type.values()))},backgroundColor:['#0d7a52','#2b7a9e','#f59e0b','#ef4444','#8b5cf6'],borderWidth:2}}]}},options:{{responsive:true,plugins:{{legend:{{position:'right'}}}}}}}})}}
 </script>"""
 
     body=f"""
@@ -1519,7 +1524,7 @@ def a_statistiques():
 
     extra_js=f"""<script>
 const ctxE=document.getElementById('chartEvolution');
-if(ctxE){{new Chart(ctxE,{{type:'line',data:{{labels:{json.dumps(mois_labels)},datasets:[{{label:'Consultations',data:{json.dumps(cons_mois)},borderColor:'#16a34a',backgroundColor:'rgba(22,163,74,.1)',fill:true,tension:.3}},{{label:'Rendez-vous',data:{json.dumps(rdv_mois)},borderColor:'#0ea5e9',backgroundColor:'rgba(14,165,233,.08)',fill:true,tension:.3}}]}},options:{{responsive:true,plugins:{{legend:{{display:true}}}},scales:{{y:{{beginAtZero:true,ticks:{{stepSize:1}}}}}}}}}})}}
+if(ctxE){{new Chart(ctxE,{{type:'line',data:{{labels:{json.dumps(mois_labels)},datasets:[{{label:'Consultations',data:{json.dumps(cons_mois)},borderColor:'#0d7a52',backgroundColor:'rgba(13,122,82,.1)',fill:true,tension:.3}},{{label:'Rendez-vous',data:{json.dumps(rdv_mois)},borderColor:'#2b7a9e',backgroundColor:'rgba(43,122,158,.08)',fill:true,tension:.3}}]}},options:{{responsive:true,plugins:{{legend:{{display:true}}}},scales:{{y:{{beginAtZero:true,ticks:{{stepSize:1}}}}}}}}}})}}
 const ctxM=document.getElementById('chartMotifs');
 if(ctxM){{new Chart(ctxM,{{type:'bar',indexAxis:'y',data:{{labels:{json.dumps([m for m,n in top_motifs])},datasets:[{{label:'Nb consultations',data:{json.dumps([n for m,n in top_motifs])},backgroundColor:'#8b5cf6',borderRadius:4}}]}},options:{{responsive:true,plugins:{{legend:{{display:false}}}},scales:{{x:{{beginAtZero:true,ticks:{{stepSize:1}}}}}}}}}})}}
 </script>"""
@@ -1940,9 +1945,9 @@ def m_dossier(pid):
         chart_const_js=f"""<script>
         (function(){{
         const ctx1=document.getElementById('chartPoids');
-        if(ctx1) new Chart(ctx1,{{type:'line',data:{{labels:{json.dumps(labels)},datasets:[{{label:'Poids (kg)',data:{json.dumps(poids_data)},borderColor:'#16a34a',backgroundColor:'rgba(22,163,74,.1)',fill:true,tension:.3}}]}},options:{{responsive:true,plugins:{{legend:{{display:true}}}}}}}});
+        if(ctx1) new Chart(ctx1,{{type:'line',data:{{labels:{json.dumps(labels)},datasets:[{{label:'Poids (kg)',data:{json.dumps(poids_data)},borderColor:'#0d7a52',backgroundColor:'rgba(13,122,82,.1)',fill:true,tension:.3}}]}},options:{{responsive:true,plugins:{{legend:{{display:true}}}}}}}});
         const ctx2=document.getElementById('chartTension');
-        if(ctx2) new Chart(ctx2,{{type:'line',data:{{labels:{json.dumps(labels)},datasets:[{{label:'Systolique',data:{json.dumps(ts_data)},borderColor:'#ef4444',tension:.3}},{{label:'Diastolique',data:{json.dumps(td_data)},borderColor:'#0ea5e9',tension:.3}}]}},options:{{responsive:true,plugins:{{legend:{{display:true}}}}}}}});
+        if(ctx2) new Chart(ctx2,{{type:'line',data:{{labels:{json.dumps(labels)},datasets:[{{label:'Systolique',data:{json.dumps(ts_data)},borderColor:'#ef4444',tension:.3}},{{label:'Diastolique',data:{json.dumps(td_data)},borderColor:'#2b7a9e',tension:.3}}]}},options:{{responsive:true,plugins:{{legend:{{display:true}}}}}}}});
         }})();
         </script>"""
 
@@ -2499,7 +2504,7 @@ def p_dossier():
         labels=[_ds(c["date"]) for c in constantes]
         poids_data=[c["poids"] for c in constantes]
         chart_const='<canvas id="chartPoidsP" height="90"></canvas>'
-        chart_const_js=f"""<script>(function(){{const ctx=document.getElementById('chartPoidsP');if(ctx)new Chart(ctx,{{type:'line',data:{{labels:{json.dumps(labels)},datasets:[{{label:'Poids (kg)',data:{json.dumps(poids_data)},borderColor:'#16a34a',backgroundColor:'rgba(22,163,74,.1)',fill:true,tension:.3}}]}},options:{{responsive:true}}}});}})();</script>"""
+        chart_const_js=f"""<script>(function(){{const ctx=document.getElementById('chartPoidsP');if(ctx)new Chart(ctx,{{type:'line',data:{{labels:{json.dumps(labels)},datasets:[{{label:'Poids (kg)',data:{json.dumps(poids_data)},borderColor:'#0d7a52',backgroundColor:'rgba(13,122,82,.1)',fill:true,tension:.3}}]}},options:{{responsive:true}}}});}})();</script>"""
 
     def row_vac(v):
         rappel=v.get("rappel_prevu")
@@ -2560,14 +2565,14 @@ def p_documents():
                         "<hr style='margin:12px 0;'>","<div style='font-weight:600;color:var(--g3);margin-bottom:8px;'><i class='fas fa-pills me-1'></i>Médicaments prescrits</div>",
                     ]
                     for l in o["lignes"]:
-                        contenu_lignes.append(f"<div style='background:#f0fdf4;border-radius:8px;padding:10px 14px;margin-bottom:8px;border-left:3px solid var(--g1);'><strong>{l['libelle']}</strong><br><small>Posologie : {l['posologie']} | Durée : {l['duree']}</small></div>")
+                        contenu_lignes.append(f"<div style='background:#f6f8f6;border-radius:8px;padding:10px 14px;margin-bottom:8px;border-left:3px solid var(--g1);'><strong>{l['libelle']}</strong><br><small>Posologie : {l['posologie']} | Durée : {l['duree']}</small></div>")
             elif ref_type=="resultat":
                 r=next((x for x in DB["resultats_examens"] if x["id"]==ref_id),None)
                 if r:
                     contenu_lignes=[f"<div style='font-weight:700;font-size:1.05rem;color:var(--g3);margin-bottom:12px;'>RÉSULTAT D'EXAMEN</div>",
                         f"<div class='row g-2'><div class='col-md-6'><small style='color:var(--muted);'>Type</small><div><strong>{r['type']}</strong></div></div><div class='col-md-6'><small style='color:var(--muted);'>Date</small><div>{r['date']}</div></div><div class='col-12'><small style='color:var(--muted);'>Médecin</small><div>{mname(r['matricule'])}</div></div></div>",
                         "<hr style='margin:12px 0;'>",
-                        f"<div style='background:#f0fdf4;border-radius:8px;padding:14px;'><i class='fas fa-microscope me-2' style='color:var(--g3);'></i>{r['commentaire']}</div>",
+                        f"<div style='background:#f6f8f6;border-radius:8px;padding:14px;'><i class='fas fa-microscope me-2' style='color:var(--g3);'></i>{r['commentaire']}</div>",
                         f"<div class='mt-2'><span class='bk ok'>{r['statut']}</span></div>",
                     ]
             elif ref_type=="facture":
@@ -2727,7 +2732,7 @@ def p_resultats():
     <div class="col-md-4"><small style="color:var(--muted);">Date</small><div>{r["date"]}</div></div>
     <div class="col-md-4"><small style="color:var(--muted);">Medecin</small><div>{mname(r["matricule"])}</div></div>
   </div>
-  <div style="background:#f0fdf4;border-radius:10px;padding:18px;border-left:4px solid var(--g1);">
+  <div style="background:#f6f8f6;border-radius:10px;padding:18px;border-left:4px solid var(--g1);">
     <div style="font-weight:600;color:var(--g3);margin-bottom:8px;"><i class="fas fa-flask me-2"></i>Résultats et commentaires</div>
     <div style="font-size:.93rem;line-height:1.7;">{r["commentaire"]}</div>
   </div>
@@ -2792,7 +2797,7 @@ def p_factures():
   <div class="col-md-3"><div class="sc bg-g"><div class="sv" style="font-size:.95rem;">{contrat["plafond_annuel"]:,} F</div><div class="sl">Plafond annuel</div></div></div>
   <div class="col-md-3"><div class="sc bg-o"><div class="sv" style="font-size:.95rem;">{contrat.get("montant_utilise",0):,} F</div><div class="sl">Utilise cette annee</div></div></div>
   <div class="col-md-3"><div class="sc {"bg-g" if reste_plaf>0 else "bg-r"}"><div class="sv" style="font-size:.95rem;">{reste_plaf:,} F</div><div class="sl">Reste disponible</div></div></div>
-  <div class="col-12"><div style="background:#f0fdf4;border-radius:8px;padding:10px 14px;font-size:.82rem;"><b>N° Contrat :</b> {contrat["num_contrat"]} &nbsp;|&nbsp; <b>Validite :</b> {contrat["date_debut"]} au {contrat["date_fin"]} &nbsp;|&nbsp; <b>Statut :</b> <span class="bk ok">{contrat["statut"]}</span></div></div>
+  <div class="col-12"><div style="background:#f6f8f6;border-radius:8px;padding:10px 14px;font-size:.82rem;"><b>N° Contrat :</b> {contrat["num_contrat"]} &nbsp;|&nbsp; <b>Validite :</b> {contrat["date_debut"]} au {contrat["date_fin"]} &nbsp;|&nbsp; <b>Statut :</b> <span class="bk ok">{contrat["statut"]}</span></div></div>
   <div class="col-12"><label style="font-size:.8rem;color:var(--muted);">Utilisation plafond ({pct}%)</label><div style="background:#e5e7eb;border-radius:20px;height:10px;margin-top:4px;"><div style="background:{"var(--g1)" if pct<80 else "var(--warn)" if pct<100 else "var(--err)"};width:{min(pct,100)}%;height:10px;border-radius:20px;transition:.4s;"></div></div></div>
 </div></div></div>'''
     body=f"""<div class="card"><div class="card-hdr"><div class="title"><i class="fas fa-file-invoice-dollar"></i>Mes Factures ({len(facts)})</div></div>
@@ -2842,20 +2847,20 @@ def p_tickets():
             contrat=get_contrat_assurance(pid)
             voir_html=f"""<div class="card mb-3" style="border:2px solid var(--g1);"><div class="card-hdr" style="background:var(--g3);"><div class="title" style="color:#fff;"><i class="fas fa-ticket-alt"></i>Detail Ticket — {t['num_ticket']}</div><a href="/p-tickets" class="btn btn-sm" style="background:rgba(255,255,255,.2);color:#fff;"><i class="fas fa-times"></i>Fermer</a></div>
 <div class="card-body"><div style="text-align:center;margin-bottom:20px;">
-  <div style="background:linear-gradient(135deg,#14532d,#16a34a);border-radius:14px;padding:24px 32px;color:#fff;display:inline-block;min-width:240px;">
+  <div style="background:linear-gradient(135deg,#0a3b28,#0d7a52);border-radius:14px;padding:24px 32px;color:#fff;display:inline-block;min-width:240px;">
     <div style="font-size:2.2rem;font-weight:800;letter-spacing:3px;">{t['num_ticket']}</div>
     <div style="font-size:1.05rem;margin-top:6px;opacity:.9;">{t['type_ticket']}</div>
     <div style="font-size:.75rem;opacity:.65;margin-top:4px;">Centre de Sante LE TROPICAL</div>
   </div>
 </div>
 <table style="width:100%;font-size:.9rem;border-collapse:separate;border-spacing:0 4px;">
-  <tr style="background:#f0fdf4;"><td style="padding:8px 10px;color:var(--muted);">Service</td><td style="font-weight:600;">{t['type_ticket']}</td></tr>
+  <tr style="background:#f6f8f6;"><td style="padding:8px 10px;color:var(--muted);">Service</td><td style="font-weight:600;">{t['type_ticket']}</td></tr>
   <tr><td style="padding:8px 10px;color:var(--muted);">Patient</td><td><strong>{pat['prenom']} {pat['nom']}</strong></td></tr>
-  <tr style="background:#f0fdf4;"><td style="padding:8px 10px;color:var(--muted);">Telephone</td><td>{pat['telephone']}</td></tr>
+  <tr style="background:#f6f8f6;"><td style="padding:8px 10px;color:var(--muted);">Telephone</td><td>{pat['telephone']}</td></tr>
   <tr><td style="padding:8px 10px;color:var(--muted);">Assurance</td><td><span class="bk inf">{pat['assurance']}</span></td></tr>
-  <tr style="background:#f0fdf4;"><td style="padding:8px 10px;color:var(--muted);">Prix</td><td style="font-weight:700;">{t['prix']:,} FCFA</td></tr>
+  <tr style="background:#f6f8f6;"><td style="padding:8px 10px;color:var(--muted);">Prix</td><td style="font-weight:700;">{t['prix']:,} FCFA</td></tr>
   <tr><td style="padding:8px 10px;color:var(--muted);">Date emission</td><td>{t['date_emission']}</td></tr>
-  <tr style="background:#f0fdf4;"><td style="padding:8px 10px;color:var(--muted);">Statut</td><td><span class="bk att">{t['statut']}</span></td></tr>
+  <tr style="background:#f6f8f6;"><td style="padding:8px 10px;color:var(--muted);">Statut</td><td><span class="bk att">{t['statut']}</span></td></tr>
   {"<tr><td style='padding:8px 10px;color:var(--muted);'>Contrat assur.</td><td>"+contrat['num_contrat']+" ("+contrat['assureur']+")</td></tr>" if contrat else ""}
 </table>
 <div class="al al-i mt-3" style="font-size:.78rem;"><i class="fas fa-info-circle"></i>Montrez cet ecran au receptionniste pour validation. Le ticket sera visible dans son interface.</div>
@@ -3136,23 +3141,23 @@ def r_ticket_detail(tid):
     contrat=get_contrat_assurance(t["id_patient"]) if pat else None
     body=f"""<div class="row justify-content-center"><div class="col-lg-6">
   <div class="card" style="border:2px solid var(--g1);">
-    <div class="card-hdr" style="background:var(--g3);"><div class="title" style="color:#fff;"><i class="fas fa-ticket-alt" style="color:#86efac;"></i>Detail Ticket {t['num_ticket']}</div></div>
+    <div class="card-hdr" style="background:var(--g3);"><div class="title" style="color:#fff;"><i class="fas fa-ticket-alt" style="color:#8fc4a8;"></i>Detail Ticket {t['num_ticket']}</div></div>
     <div class="card-body">
       <div style="text-align:center;margin-bottom:20px;">
-        <div style="background:linear-gradient(135deg,#14532d,#16a34a);border-radius:14px;padding:24px;color:#fff;display:inline-block;min-width:220px;">
+        <div style="background:linear-gradient(135deg,#0a3b28,#0d7a52);border-radius:14px;padding:24px;color:#fff;display:inline-block;min-width:220px;">
           <div style="font-size:2rem;font-weight:700;letter-spacing:2px;">{t['num_ticket']}</div>
           <div style="font-size:1rem;margin-top:4px;opacity:.9;">{t['type_ticket']}</div>
           <div style="font-size:.8rem;opacity:.7;margin-top:6px;">Centre de Sante LE TROPICAL</div>
         </div>
       </div>
       <table style="width:100%;font-size:.9rem;">
-        <tr style="background:#f0fdf4;"><td style="padding:7px;color:var(--muted);">Service</td><td style="font-weight:600;">{t['type_ticket']}</td></tr>
+        <tr style="background:#f6f8f6;"><td style="padding:7px;color:var(--muted);">Service</td><td style="font-weight:600;">{t['type_ticket']}</td></tr>
         <tr><td style="padding:7px;color:var(--muted);">Patient</td><td><strong>{"" if not pat else pat["prenom"]+" "+pat["nom"]}</strong></td></tr>
-        <tr style="background:#f0fdf4;"><td style="padding:7px;color:var(--muted);">Telephone</td><td>{"" if not pat else pat["telephone"]}</td></tr>
+        <tr style="background:#f6f8f6;"><td style="padding:7px;color:var(--muted);">Telephone</td><td>{"" if not pat else pat["telephone"]}</td></tr>
         <tr><td style="padding:7px;color:var(--muted);">Assurance</td><td><span class="bk inf">{"" if not pat else pat["assurance"]}</span></td></tr>
-        <tr style="background:#f0fdf4;"><td style="padding:7px;color:var(--muted);">Prix</td><td style="font-weight:700;">{t['prix']:,} FCFA</td></tr>
+        <tr style="background:#f6f8f6;"><td style="padding:7px;color:var(--muted);">Prix</td><td style="font-weight:700;">{t['prix']:,} FCFA</td></tr>
         <tr><td style="padding:7px;color:var(--muted);">Date emission</td><td>{t['date_emission']}</td></tr>
-        <tr style="background:#f0fdf4;"><td style="padding:7px;color:var(--muted);">Statut</td><td><span class="bk att">{t['statut']}</span></td></tr>
+        <tr style="background:#f6f8f6;"><td style="padding:7px;color:var(--muted);">Statut</td><td><span class="bk att">{t['statut']}</span></td></tr>
         {"<tr><td style=padding:7px;color:var(--muted);>Contrat assur.</td><td>"+contrat['num_contrat']+" ("+contrat['assureur']+")</td></tr>" if contrat else ""}
       </table>
       <div class="al al-i mt-3" style="font-size:.78rem;"><i class="fas fa-info-circle"></i>Le patient a presente ce ticket depuis son espace personnel. Verifiez les informations avant validation.</div>
