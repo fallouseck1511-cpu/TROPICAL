@@ -55,6 +55,35 @@ MODEL_MAP = {
 
 
 import datetime as _dt
+from sqlalchemy import inspect as _sa_inspect, text as _sa_text
+
+
+def sync_schema(app):
+    """Ajoute automatiquement les colonnes/tables manquantes en base sans
+    toucher aux données existantes. Nécessaire car db.create_all() ne crée
+    que les tables absentes — il ne modifie jamais une table déjà existante,
+    même si le modèle a évolué depuis (nouvelle colonne ajoutée). Sur le
+    plan gratuit Render (pas de Shell, pas d'Alembic), c'est la seule
+    manière fiable d'appliquer une migration automatiquement au démarrage."""
+    with app.app_context():
+        db.create_all()  # crée les tables entièrement nouvelles (ex: lignes_facture)
+        insp = _sa_inspect(db.engine)
+        existing_tables = set(insp.get_table_names())
+        for model in db.Model.registry.mappers:
+            table = model.local_table
+            if table is None or table.name not in existing_tables:
+                continue  # table absente : déjà gérée par create_all() ci-dessus
+            existing_cols = {c["name"] for c in insp.get_columns(table.name)}
+            for col in table.columns:
+                if col.name in existing_cols:
+                    continue
+                try:
+                    col_type = col.type.compile(dialect=db.engine.dialect)
+                    with db.engine.begin() as conn:
+                        conn.execute(_sa_text(f'ALTER TABLE "{table.name}" ADD COLUMN "{col.name}" {col_type}'))
+                    print(f"🔧 Migration auto : colonne {table.name}.{col.name} ajoutée")
+                except Exception as _mig_err:
+                    print(f"⚠️  Migration auto ignorée pour {table.name}.{col.name} : {_mig_err}")
 
 
 def _coerce(col, value):
@@ -412,7 +441,7 @@ class DBProxy:
         numéros (les compteurs eux-mêmes ne vivent qu'en mémoire, l'id réel
         vient toujours de l'auto-increment de la base)."""
         with app.app_context():
-            db.create_all()
+            sync_schema(app)
             for key, model in COUNTER_TABLE_MAP.items():
                 try:
                     self._counters[key] = model.query.count()
