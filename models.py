@@ -158,6 +158,7 @@ class DemandeRdv(db.Model):
     motif          = db.Column(db.Text)
     statut         = db.Column(db.String(20), default="En attente")  # En attente|Traite|Annule
     date_demande   = db.Column(db.Date, default=date.today)
+    date_traite    = db.Column(db.Date)  # date de traitement par la reception (calcul du delai moyen)
     traite_par     = db.Column(db.String(60))
     id_patient     = db.Column(db.Integer, db.ForeignKey("patients.id"), nullable=False)
     id_service     = db.Column(db.Integer, db.ForeignKey("services.id"))

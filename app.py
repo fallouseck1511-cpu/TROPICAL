@@ -525,6 +525,7 @@ def sidebar(role,username):
             ("","Centres","hospital","a_centres"),("","Staff","users-cog","a_staff"),
             ("","Patients","users","a_patients"),("","Toutes factures","file-invoice","a_factures"),
             ("","Rapports financiers","chart-line","a_rapports_financiers"),
+            ("","Statistiques","chart-bar","a_statistiques"),
             ("","Assurances","shield-alt","a_assurances"),
             ("","Notifications globales","bell","a_notifs"),
             ("","Historiques","history","a_historiques"),("","Mon Profil","user-cog","profil"),
@@ -1448,6 +1449,134 @@ def a_rapports_financiers_export():
     for f in sorted(factures_p,key=lambda x:_ds(x["date"])):
         w.writerow([f["num_facture"],f["date"],f.get("date_echeance","-"),pname(f["id_patient"]),f["montant"],f["part_assurance"],f["part_patient"],f["montant_paye"],f["reste_a_payer"],f["statut"],f["mode_paiement"]])
     return Response(buf.getvalue(),mimetype="text/csv",headers={"Content-Disposition":f"attachment; filename=rapport_financier_{debut}_a_{fin}.csv"})
+
+def _mins(hhmm):
+    try:
+        h,m=hhmm.split(":"); return int(h)*60+int(m)
+    except (ValueError,AttributeError):
+        return 0
+
+@app.route("/a-statistiques")
+@login_required
+@role_required("admin")
+def a_statistiques():
+    debut=request.args.get("debut") or (date.today()-timedelta(days=30)).strftime("%Y-%m-%d")
+    fin=request.args.get("fin") or date.today().strftime("%Y-%m-%d")
+
+    conss_p=[c for c in DB["consultations"] if debut<=_ds(c["date"])<=fin]
+    rdvs_p=[r for r in DB["rdvs"] if debut<=_ds(r["date"])<=fin]
+
+    # --- Evolution temporelle (6 derniers mois, consultations et RDV) ---
+    mois_labels=[]; cons_mois=[]; rdv_mois=[]
+    ref=date.today().replace(day=1)
+    for i in range(5,-1,-1):
+        m=ref.month-i; y=ref.year
+        while m<=0: m+=12; y-=1
+        mois_str=f"{y}-{m:02d}"
+        mois_labels.append(mois_str)
+        cons_mois.append(len([c for c in DB["consultations"] if _ds(c["date"]).startswith(mois_str)]))
+        rdv_mois.append(len([r for r in DB["rdvs"] if _ds(r["date"]).startswith(mois_str)]))
+
+    # --- Taux d'annulation RDV ---
+    nb_rdv_p=len(rdvs_p)
+    nb_annules_p=len([r for r in rdvs_p if r["statut"]=="Annule"])
+    taux_annulation=round(nb_annules_p/nb_rdv_p*100,1) if nb_rdv_p else 0
+
+    # --- Delai moyen de traitement des demandes de RDV ---
+    demandes_traitees=[d for d in DB["demandes_rdv"] if d.get("date_traite") and debut<=_ds(d["date_demande"])<=fin]
+    if demandes_traitees:
+        delais=[(datetime.strptime(_ds(d["date_traite"]),"%Y-%m-%d")-datetime.strptime(_ds(d["date_demande"]),"%Y-%m-%d")).days for d in demandes_traitees]
+        delai_moyen=round(sum(delais)/len(delais),1)
+    else:
+        delai_moyen=None
+
+    # --- Taux d'occupation des creneaux par medecin ---
+    nb_semaines=max(1,(datetime.strptime(fin,"%Y-%m-%d")-datetime.strptime(debut,"%Y-%m-%d")).days/7)
+    occ_rows=[]
+    for m in DB["medecins"]:
+        creneaux_m=[c for c in DB["creneaux"] if c["matricule"]==m["matricule"] and c.get("actif",True)]
+        capacite_hebdo=sum(max(0,_mins(c["heure_fin"])-_mins(c["heure_debut"]))/30 for c in creneaux_m)
+        capacite_totale=capacite_hebdo*nb_semaines
+        rdv_pris=len([r for r in rdvs_p if r["matricule"]==m["matricule"] and r["statut"]!="Annule"])
+        taux=round(rdv_pris/capacite_totale*100,1) if capacite_totale>0 else None
+        occ_rows.append((f"Dr. {m['prenom']} {m['nom']}",rdv_pris,int(capacite_totale),taux))
+    occ_rows.sort(key=lambda x:(-x[3] if x[3] is not None else -1))
+
+    # --- Top motifs de consultation ---
+    motifs={}
+    for c in conss_p:
+        diag=(c.get("diagnostic") or "Non precise").strip() or "Non precise"
+        motifs[diag]=motifs.get(diag,0)+1
+    top_motifs=sorted(motifs.items(),key=lambda x:-x[1])[:10]
+
+    def row_occ(nom,pris,cap,taux):
+        if taux is None:
+            return f'<tr><td>{nom}</td><td>{pris}</td><td>{cap}</td><td><span style="color:var(--muted);">Aucun creneau defini</span></td></tr>'
+        col="var(--err)" if taux>90 else "var(--g1)" if taux>=40 else "#f59e0b"
+        return f'<tr><td>{nom}</td><td>{pris}</td><td>{cap}</td><td><div style="display:flex;align-items:center;gap:8px;"><div style="flex:1;background:#e5e7eb;border-radius:6px;height:8px;overflow:hidden;"><div style="width:{min(100,taux)}%;background:{col};height:100%;"></div></div><strong style="color:{col};min-width:42px;">{taux}%</strong></div></td></tr>'
+    rows_occ="".join(row_occ(*r) for r in occ_rows)
+    rows_motifs="".join(f'<tr><td>{i+1}</td><td>{m}</td><td><strong>{n}</strong></td></tr>' for i,(m,n) in enumerate(top_motifs))
+
+    extra_js=f"""<script>
+const ctxE=document.getElementById('chartEvolution');
+if(ctxE){{new Chart(ctxE,{{type:'line',data:{{labels:{json.dumps(mois_labels)},datasets:[{{label:'Consultations',data:{json.dumps(cons_mois)},borderColor:'#16a34a',backgroundColor:'rgba(22,163,74,.1)',fill:true,tension:.3}},{{label:'Rendez-vous',data:{json.dumps(rdv_mois)},borderColor:'#0ea5e9',backgroundColor:'rgba(14,165,233,.08)',fill:true,tension:.3}}]}},options:{{responsive:true,plugins:{{legend:{{display:true}}}},scales:{{y:{{beginAtZero:true,ticks:{{stepSize:1}}}}}}}}}})}}
+const ctxM=document.getElementById('chartMotifs');
+if(ctxM){{new Chart(ctxM,{{type:'bar',indexAxis:'y',data:{{labels:{json.dumps([m for m,n in top_motifs])},datasets:[{{label:'Nb consultations',data:{json.dumps([n for m,n in top_motifs])},backgroundColor:'#8b5cf6',borderRadius:4}}]}},options:{{responsive:true,plugins:{{legend:{{display:false}}}},scales:{{x:{{beginAtZero:true,ticks:{{stepSize:1}}}}}}}}}})}}
+</script>"""
+
+    body=f"""
+<div class="card mb-3"><div class="card-body">
+  <form method="GET" class="row g-2 align-items-end">
+    <div class="col-md-3"><label class="form-label">Du</label><input type="date" name="debut" class="form-control" value="{debut}"></div>
+    <div class="col-md-3"><label class="form-label">Au</label><input type="date" name="fin" class="form-control" value="{fin}"></div>
+    <div class="col-md-3"><button type="submit" class="btn btn-g"><i class="fas fa-filter"></i>Filtrer</button></div>
+    <div class="col-md-3"><a href="/a-statistiques/export?debut={debut}&fin={fin}" class="btn btn-outline-g w-100"><i class="fas fa-file-csv"></i>Exporter CSV</a></div>
+  </form>
+</div></div>
+<div class="row g-3 mb-3">
+  <div class="col-md-3"><div class="sc bg-g"><div class="sv">{len(conss_p)}</div><div class="sl">Consultations (periode)</div></div></div>
+  <div class="col-md-3"><div class="sc bg-b"><div class="sv">{nb_rdv_p}</div><div class="sl">RDV (periode)</div></div></div>
+  <div class="col-md-3"><div class="sc bg-r"><div class="sv">{taux_annulation}%</div><div class="sl">Taux d'annulation RDV</div></div></div>
+  <div class="col-md-3"><div class="sc bg-o"><div class="sv">{delai_moyen if delai_moyen is not None else "-"}{" j" if delai_moyen is not None else ""}</div><div class="sl">Delai moyen traitement demande</div></div></div>
+</div>
+<div class="row g-3 mb-3">
+  <div class="col-lg-7"><div class="card"><div class="card-hdr"><div class="title"><i class="fas fa-chart-line"></i>Evolution (6 derniers mois)</div></div>
+    <div class="card-body"><canvas id="chartEvolution" height="130"></canvas></div></div></div>
+  <div class="col-lg-5"><div class="card"><div class="card-hdr"><div class="title"><i class="fas fa-list-ol"></i>Top motifs de consultation</div></div>
+    <div class="card-body"><canvas id="chartMotifs" height="160"></canvas></div></div></div>
+</div>
+<div class="row g-3">
+  <div class="col-lg-7"><div class="card"><div class="card-hdr"><div class="title"><i class="fas fa-user-clock"></i>Taux d'occupation des creneaux medecins</div></div>
+    <div style="overflow-x:auto;"><table class="table"><thead><tr><th>Medecin</th><th>RDV pris</th><th>Capacite (creneaux)</th><th>Occupation</th></tr></thead><tbody>{rows_occ if rows_occ else "<tr><td colspan=4 class='text-center' style='color:var(--muted);padding:16px;'>Aucun medecin</td></tr>"}</tbody></table></div></div></div>
+  <div class="col-lg-5"><div class="card"><div class="card-hdr"><div class="title"><i class="fas fa-stethoscope"></i>Detail des motifs</div></div>
+    <div style="overflow-x:auto;"><table class="table"><thead><tr><th>#</th><th>Motif / Diagnostic</th><th>Nb</th></tr></thead><tbody>{rows_motifs if rows_motifs else "<tr><td colspan=3 class='text-center' style='color:var(--muted);padding:16px;'>Aucune consultation sur la periode</td></tr>"}</tbody></table></div></div></div>
+</div>"""
+    return page("Statistiques","admin",session["user"],body,extra_js=extra_js)
+
+@app.route("/a-statistiques/export")
+@login_required
+@role_required("admin")
+def a_statistiques_export():
+    debut=request.args.get("debut") or (date.today()-timedelta(days=30)).strftime("%Y-%m-%d")
+    fin=request.args.get("fin") or date.today().strftime("%Y-%m-%d")
+    conss_p=[c for c in DB["consultations"] if debut<=_ds(c["date"])<=fin]
+    rdvs_p=[r for r in DB["rdvs"] if debut<=_ds(r["date"])<=fin]
+    buf=io.StringIO()
+    w=csv.writer(buf)
+    w.writerow([f"Statistiques du {debut} au {fin}"])
+    w.writerow([])
+    w.writerow(["Consultations sur la periode",len(conss_p)])
+    w.writerow(["RDV sur la periode",len(rdvs_p)])
+    w.writerow(["RDV annules",len([r for r in rdvs_p if r["statut"]=="Annule"])])
+    w.writerow([])
+    w.writerow(["Motif de consultation","Nombre"])
+    motifs={}
+    for c in conss_p:
+        diag=(c.get("diagnostic") or "Non precise").strip() or "Non precise"
+        motifs[diag]=motifs.get(diag,0)+1
+    for m,n in sorted(motifs.items(),key=lambda x:-x[1]):
+        w.writerow([m,n])
+    return Response(buf.getvalue(),mimetype="text/csv",headers={"Content-Disposition":f"attachment; filename=statistiques_{debut}_a_{fin}.csv"})
 
 @app.route("/a-notifs",methods=["GET","POST"])
 @login_required
@@ -2864,7 +2993,7 @@ def r_rdvs():
             dem_id=int(d.get("dem_id",0))
             if dem_id:
                 dem=next((x for x in DB["demandes_rdv"] if x["id"]==dem_id),None)
-                if dem: dem["statut"]="Traite"; dem["traite_par"]=session["user"]
+                if dem: dem["statut"]="Traite"; dem["traite_par"]=session["user"]; dem["date_traite"]=date.today().strftime("%Y-%m-%d")
             add_hist(f"RDV cree — {pname(nr['id_patient'])} / {mname(nr['matricule'])} le {nr['date']}","Rendez-vous",session["user"],nr["id_patient"],nr["matricule"])
             add_notif(nr["id_patient"],"RDV confirme",f"Votre RDV est confirme le {nr['date']} a {nr['heure']}",f"RDV avec {mname(nr['matricule'])} confirme le {nr['date']} a {nr['heure']}.",expediteur=session["user"])
             flash("RDV cree. Patient notifie.","success")
