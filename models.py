@@ -111,6 +111,9 @@ class Patient(db.Model):
     resultats        = db.relationship("ResultatExamen",      back_populates="patient")
     demandes_rdv     = db.relationship("DemandeRdv",          back_populates="patient")
     sms              = db.relationship("SmsEnvoye",           back_populates="patient")
+    antecedents      = db.relationship("Antecedent",          back_populates="patient")
+    constantes       = db.relationship("ConstanteVitale",     back_populates="patient")
+    vaccinations     = db.relationship("Vaccination",         back_populates="patient")
 
 # ─────────────────────────────────────────────────────────────
 # 6. DOSSIER MÉDICAL
@@ -383,15 +386,68 @@ class ResultatExamen(db.Model):
 class DocumentPatient(db.Model):
     __tablename__   = "documents_patient"
     id              = db.Column(db.Integer, primary_key=True)
-    type_document   = db.Column(db.String(60))   # Ordonnance|Facture|Resultat examen
+    type_document   = db.Column(db.String(60))   # Ordonnance|Facture|Resultat examen|Piece jointe
     nom_fichier     = db.Column(db.String(120))
     type_fichier    = db.Column(db.String(10), default="PDF")
     date_creation   = db.Column(db.Date, default=date.today)
     ref_id          = db.Column(db.Integer)
-    ref_type        = db.Column(db.String(30))   # ordonnance|facture|resultat
+    ref_type        = db.Column(db.String(30))   # ordonnance|facture|resultat|upload
+    contenu_base64  = db.Column(db.Text)          # présent uniquement pour les pièces jointes uploadées manuellement
+    ajoute_par      = db.Column(db.String(60))    # username de la personne ayant ajouté la pièce jointe
     id_patient      = db.Column(db.Integer, db.ForeignKey("patients.id"), nullable=False)
 
     patient = db.relationship("Patient", back_populates="documents")
+
+# ─────────────────────────────────────────────────────────────
+# 20bis. ANTÉCÉDENT MÉDICAL
+# ─────────────────────────────────────────────────────────────
+class Antecedent(db.Model):
+    __tablename__     = "antecedents"
+    id                = db.Column(db.Integer, primary_key=True)
+    type_antecedent   = db.Column(db.String(30))    # Medical|Chirurgical|Familial|Gyneco-obstetrical
+    libelle           = db.Column(db.String(200), nullable=False)
+    periode           = db.Column(db.String(40))    # texte libre : "2019", "Enfance", "Depuis 2020"...
+    notes             = db.Column(db.Text)
+    statut            = db.Column(db.String(20), default="Actif")  # Actif|Resolu
+    date_ajout        = db.Column(db.Date, default=date.today)
+    ajoute_par        = db.Column(db.String(60))
+    id_patient        = db.Column(db.Integer, db.ForeignKey("patients.id"), nullable=False)
+
+    patient = db.relationship("Patient", back_populates="antecedents")
+
+# ─────────────────────────────────────────────────────────────
+# 20ter. CONSTANTE VITALE
+# ─────────────────────────────────────────────────────────────
+class ConstanteVitale(db.Model):
+    __tablename__          = "constantes_vitales"
+    id                     = db.Column(db.Integer, primary_key=True)
+    date                   = db.Column(db.Date, default=date.today)
+    poids                  = db.Column(db.Float)     # kg
+    taille                 = db.Column(db.Float)     # cm
+    tension_systolique     = db.Column(db.Integer)
+    tension_diastolique    = db.Column(db.Integer)
+    temperature            = db.Column(db.Float)
+    frequence_cardiaque    = db.Column(db.Integer)
+    saturation             = db.Column(db.Integer)
+    releve_par             = db.Column(db.String(60))
+    id_patient             = db.Column(db.Integer, db.ForeignKey("patients.id"), nullable=False)
+    id_consultation        = db.Column(db.Integer, db.ForeignKey("consultations.id"))
+
+    patient = db.relationship("Patient", back_populates="constantes")
+
+# ─────────────────────────────────────────────────────────────
+# 20quater. VACCINATION
+# ─────────────────────────────────────────────────────────────
+class Vaccination(db.Model):
+    __tablename__        = "vaccinations"
+    id                   = db.Column(db.Integer, primary_key=True)
+    vaccin               = db.Column(db.String(100), nullable=False)
+    date_administration  = db.Column(db.Date)
+    rappel_prevu         = db.Column(db.Date)
+    effectue_par         = db.Column(db.String(60))
+    id_patient           = db.Column(db.Integer, db.ForeignKey("patients.id"), nullable=False)
+
+    patient = db.relationship("Patient", back_populates="vaccinations")
 
 # ─────────────────────────────────────────────────────────────
 # 21. LISTE D'ATTENTE

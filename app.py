@@ -29,6 +29,7 @@ elif _db_url.startswith("postgresql://"):
     _db_url = _db_url.replace("postgresql://", "postgresql+psycopg://", 1)
 app.config["SQLALCHEMY_DATABASE_URI"] = _db_url
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+app.config["MAX_CONTENT_LENGTH"] = 4*1024*1024  # 4 Mo max par requete (pieces jointes stockees en base)
 db.init_app(app)
 
 @app.teardown_appcontext
@@ -468,7 +469,7 @@ JS_BASE="""<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/j
 function srch(tid,fid){const v=document.getElementById(fid).value.toLowerCase();document.querySelectorAll('#'+tid+' tbody tr').forEach(r=>{r.style.display=r.textContent.toLowerCase().includes(v)?'':'none';});}
 document.querySelectorAll('#sb a.nl').forEach(a=>{try{if(window.location.pathname===new URL(a.href,window.location.origin).pathname)a.classList.add('active');}catch(e){}});
 function toggleSB(){document.getElementById('sb').classList.toggle('show');document.getElementById('sbOverlay').classList.toggle('show');}
-function showTab(id,btn){document.querySelectorAll('.tab-pane').forEach(t=>t.style.display='none');document.querySelectorAll('.nav-tab').forEach(b=>b.classList.remove('active'));document.getElementById(id).style.display='block';btn.classList.add('active');}
+function showTab(id,btn){document.querySelectorAll('.tab-pane').forEach(t=>t.style.display='none');document.querySelectorAll('.nav-tab').forEach(b=>b.classList.remove('active'));document.getElementById(id).style.display='block';btn.classList.add('active');document.getElementById(id).querySelectorAll('canvas').forEach(cv=>{const ch=Chart.getChart(cv);if(ch)ch.resize();});}
 document.querySelectorAll('.al:not(.al-keep)').forEach(a=>{setTimeout(()=>{a.style.transition='opacity .5s';a.style.opacity='0';setTimeout(()=>a.remove(),500);},5000);});
 function confirmAction(msg,form){if(confirm(msg)){form.submit();}return false;}
 </script>"""
@@ -1630,6 +1631,117 @@ def m_patients():
 <div style="overflow-x:auto;"><table class="table" id="tmp"><thead><tr><th>Nom Prenom</th><th>Telephone</th><th>Groupe sg.</th><th>Assurance</th><th>Dossier</th></tr></thead><tbody>{rows if rows else "<tr><td colspan=5 class='text-center' style='color:var(--muted);padding:20px;'>Aucun patient assigne</td></tr>"}</tbody></table></div></div>"""
     return page("Mes Patients","medecin",session["user"],body)
 
+@app.route("/m-antecedent-add/<int:pid>",methods=["POST"])
+@login_required
+@role_required("medecin")
+def m_antecedent_add(pid):
+    pat=next((p for p in DB["patients"] if p["id"]==pid),None)
+    if not pat: flash("Patient introuvable","danger"); return redirect(url_for("m_patients"))
+    d=request.form
+    lib=d.get("libelle","").strip()
+    if not lib:
+        flash("Le libelle de l'antecedent est requis.","danger")
+        return redirect(url_for("m_dossier",pid=pid)+"#antecedents")
+    na={"id":nid("antec"),"type_antecedent":d.get("type_antecedent","Medical"),"libelle":lib,
+        "periode":d.get("periode","").strip(),"notes":d.get("notes","").strip(),"statut":d.get("statut","Actif"),
+        "date_ajout":date.today().strftime("%Y-%m-%d"),"ajoute_par":session["user"],"id_patient":pid}
+    DB["antecedents"].append(na)
+    add_hist(f"Antecedent ajoute — {pname(pid)} : {lib}","Dossier medical",session["user"],pid)
+    flash(f"Antecedent « {lib} » ajoute au dossier.","success")
+    return redirect(url_for("m_dossier",pid=pid))
+
+@app.route("/m-constante-add/<int:pid>",methods=["POST"])
+@login_required
+@role_required("medecin")
+def m_constante_add(pid):
+    pat=next((p for p in DB["patients"] if p["id"]==pid),None)
+    if not pat: flash("Patient introuvable","danger"); return redirect(url_for("m_patients"))
+    d=request.form
+    def fnum(key):
+        v=d.get(key,"").strip()
+        try: return float(v) if v else None
+        except ValueError: return None
+    def inum(key):
+        v=d.get(key,"").strip()
+        try: return int(v) if v else None
+        except ValueError: return None
+    nc={"id":nid("constantes"),"date":date.today().strftime("%Y-%m-%d"),"poids":fnum("poids"),"taille":fnum("taille"),
+        "tension_systolique":inum("ts"),"tension_diastolique":inum("td"),"temperature":fnum("temperature"),
+        "frequence_cardiaque":inum("fc"),"saturation":inum("spo2"),"releve_par":session["user"],"id_patient":pid}
+    if all(nc[k] is None for k in ("poids","taille","tension_systolique","tension_diastolique","temperature","frequence_cardiaque","saturation")):
+        flash("Renseignez au moins une constante.","danger")
+        return redirect(url_for("m_dossier",pid=pid))
+    DB["constantes_vitales"].append(nc)
+    add_hist(f"Constantes vitales relevees — {pname(pid)}","Dossier medical",session["user"],pid)
+    flash("Constantes vitales enregistrees.","success")
+    return redirect(url_for("m_dossier",pid=pid))
+
+@app.route("/m-vaccination-add/<int:pid>",methods=["POST"])
+@login_required
+@role_required("medecin")
+def m_vaccination_add(pid):
+    pat=next((p for p in DB["patients"] if p["id"]==pid),None)
+    if not pat: flash("Patient introuvable","danger"); return redirect(url_for("m_patients"))
+    d=request.form
+    vac=d.get("vaccin","").strip()
+    if not vac:
+        flash("Le nom du vaccin est requis.","danger")
+        return redirect(url_for("m_dossier",pid=pid))
+    nv={"id":nid("vaccins"),"vaccin":vac,"date_administration":d.get("date_administration") or date.today().strftime("%Y-%m-%d"),
+        "rappel_prevu":d.get("rappel_prevu") or None,"effectue_par":session["user"],"id_patient":pid}
+    DB["vaccinations"].append(nv)
+    add_hist(f"Vaccination enregistree — {pname(pid)} : {vac}","Dossier medical",session["user"],pid)
+    flash(f"Vaccination « {vac} » enregistree.","success")
+    return redirect(url_for("m_dossier",pid=pid))
+
+ALLOWED_UPLOAD_EXT={"pdf","png","jpg","jpeg","webp"}
+
+@app.route("/m-document-upload/<int:pid>",methods=["POST"])
+@login_required
+@role_required("medecin")
+def m_document_upload(pid):
+    pat=next((p for p in DB["patients"] if p["id"]==pid),None)
+    if not pat: flash("Patient introuvable","danger"); return redirect(url_for("m_patients"))
+    fichier=request.files.get("fichier")
+    if not fichier or not fichier.filename:
+        flash("Aucun fichier selectionne.","danger")
+        return redirect(url_for("m_dossier",pid=pid))
+    ext=fichier.filename.rsplit(".",1)[-1].lower() if "." in fichier.filename else ""
+    if ext not in ALLOWED_UPLOAD_EXT:
+        flash("Format non autorise (PDF, PNG, JPG uniquement).","danger")
+        return redirect(url_for("m_dossier",pid=pid))
+    contenu=fichier.read()
+    if len(contenu)>3*1024*1024:
+        flash("Fichier trop volumineux (3 Mo max).","danger")
+        return redirect(url_for("m_dossier",pid=pid))
+    b64=base64.b64encode(contenu).decode("ascii")
+    libelle=request.form.get("libelle","").strip() or fichier.filename
+    nd={"id":nid("docs"),"id_patient":pid,"type_document":"Piece jointe","nom_fichier":libelle,
+        "type_fichier":ext.upper(),"date_creation":date.today().strftime("%Y-%m-%d"),
+        "ref_id":0,"ref_type":"upload","contenu_base64":b64,"ajoute_par":session["user"]}
+    DB["documents_patient"].append(nd)
+    add_hist(f"Document ajoute au dossier — {pname(pid)} : {libelle}","Dossier medical",session["user"],pid)
+    flash(f"Document « {libelle} » ajoute au dossier.","success")
+    return redirect(url_for("m_dossier",pid=pid))
+
+@app.route("/doc-view/<int:did>")
+@login_required
+def doc_view(did):
+    """Affiche/telecharge une piece jointe (image ou PDF) stockee en base64."""
+    doc=next((d for d in DB["documents_patient"] if d["id"]==did),None)
+    if not doc or not doc.get("contenu_base64"):
+        flash("Document introuvable","danger"); return redirect(url_for("dashboard"))
+    role=session.get("role")
+    if role=="patient":
+        pat=get_pat(session["user"])
+        if not pat or doc["id_patient"]!=pat["id"]:
+            flash("Acces non autorise","danger"); return redirect(url_for("dashboard"))
+    contenu=base64.b64decode(doc["contenu_base64"])
+    ext=(doc.get("type_fichier") or "PDF").lower()
+    mime={"pdf":"application/pdf","png":"image/png","jpg":"image/jpeg","jpeg":"image/jpeg","webp":"image/webp"}.get(ext,"application/octet-stream")
+    disposition="inline" if ext in ("pdf","png","jpg","jpeg","webp") else "attachment"
+    return Response(contenu,mimetype=mime,headers={"Content-Disposition":f"{disposition}; filename={doc['nom_fichier']}"})
+
 @app.route("/m-dossier/<int:pid>")
 @login_required
 @role_required("medecin")
@@ -1641,6 +1753,10 @@ def m_dossier(pid):
     ress=[r for r in DB["resultats_examens"] if r["id_patient"]==pid]
     ords=[o for o in DB["ordonnances"] if o["id_patient"]==pid]
     allergies=[a for a in DB.get("allergies_patient",[]) if a["id_patient"]==pid]
+    antecs=sorted([a for a in DB["antecedents"] if a["id_patient"]==pid],key=lambda x:_ds(x["date_ajout"]),reverse=True)
+    constantes=sorted([c for c in DB["constantes_vitales"] if c["id_patient"]==pid],key=lambda x:_ds(x["date"]))
+    vaccins=sorted([v for v in DB["vaccinations"] if v["id_patient"]==pid],key=lambda x:_ds(x["date_administration"]),reverse=True)
+    docs_joints=[d for d in DB["documents_patient"] if d["id_patient"]==pid and d.get("ref_type")=="upload"]
     gs=pat.get("groupe_sanguin","Non connu"); gc="att" if gs=="Non connu" else "ok"
     rows_c="".join(f'<tr><td>{c["date"]}</td><td>{c["diagnostic"]}</td><td>{c["observation"][:60]}</td><td><a href="/m-ordo/{c["id"]}" class="btn btn-sm btn-outline-b"><i class="fas fa-prescription"></i></a></td></tr>' for c in conss)
     rows_r="".join(f'<tr><td>{r["date"]}</td><td>{r["type"]}</td><td>{r["commentaire"][:60]}</td><td><span class="bk ok">{r["statut"]}</span></td></tr>' for r in ress)
@@ -1650,6 +1766,83 @@ def m_dossier(pid):
         allergies_html="".join(f'<span class="badge" style="background:{"#dc3545" if a["severite"] in ("Elevee","Critique") else "#ffc107"};color:#fff;margin:2px;padding:4px 8px;border-radius:6px;font-size:.75rem;display:inline-block;"><i class="fas fa-exclamation-triangle"></i> {a["libelle"]} ({a["severite"]})</span>' for a in allergies)
     else:
         allergies_html='<span style="color:var(--muted);font-size:.8rem;">Aucune allergie connue</span>'
+
+    # --- Antecedents ---
+    def row_antec(a):
+        cls="ok" if a["statut"]=="Resolu" else "att"
+        return f'<tr><td><span class="bk inf">{a["type_antecedent"]}</span></td><td><strong>{a["libelle"]}</strong></td><td>{a.get("periode") or "-"}</td><td>{a.get("notes") or "-"}</td><td><span class="bk {cls}">{a["statut"]}</span></td></tr>'
+    rows_antec="".join(row_antec(a) for a in antecs)
+    form_antec=f"""<form method="POST" action="/m-antecedent-add/{pid}" class="row g-2 mb-3">
+      <div class="col-md-3"><select name="type_antecedent" class="form-select form-select-sm"><option>Medical</option><option>Chirurgical</option><option>Familial</option><option>Gyneco-obstetrical</option></select></div>
+      <div class="col-md-3"><input type="text" name="libelle" class="form-control form-control-sm" placeholder="Libelle *" required></div>
+      <div class="col-md-2"><input type="text" name="periode" class="form-control form-control-sm" placeholder="Periode (ex: 2019)"></div>
+      <div class="col-md-2"><select name="statut" class="form-select form-select-sm"><option>Actif</option><option>Resolu</option></select></div>
+      <div class="col-md-2"><button class="btn btn-sm btn-g w-100"><i class="fas fa-plus"></i>Ajouter</button></div>
+      <div class="col-12"><input type="text" name="notes" class="form-control form-control-sm" placeholder="Notes complementaires"></div>
+    </form>"""
+
+    # --- Constantes vitales ---
+    def row_const(c):
+        return (f'<tr><td>{c["date"]}</td><td>{c["poids"] or "-"}</td><td>{c["taille"] or "-"}</td>'
+                f'<td>{(str(c["tension_systolique"])+"/"+str(c["tension_diastolique"])) if c["tension_systolique"] else "-"}</td>'
+                f'<td>{c["temperature"] or "-"}</td><td>{c["frequence_cardiaque"] or "-"}</td><td>{c["saturation"] or "-"}</td></tr>')
+    rows_const="".join(row_const(c) for c in reversed(constantes))
+    form_const=f"""<form method="POST" action="/m-constante-add/{pid}" class="row g-2 mb-3">
+      <div class="col"><input type="number" step="0.1" name="poids" class="form-control form-control-sm" placeholder="Poids (kg)"></div>
+      <div class="col"><input type="number" step="0.1" name="taille" class="form-control form-control-sm" placeholder="Taille (cm)"></div>
+      <div class="col"><input type="number" name="ts" class="form-control form-control-sm" placeholder="Tension sys."></div>
+      <div class="col"><input type="number" name="td" class="form-control form-control-sm" placeholder="Tension dia."></div>
+      <div class="col"><input type="number" step="0.1" name="temperature" class="form-control form-control-sm" placeholder="Temp. (°C)"></div>
+      <div class="col"><input type="number" name="fc" class="form-control form-control-sm" placeholder="FC (bpm)"></div>
+      <div class="col"><input type="number" name="spo2" class="form-control form-control-sm" placeholder="SpO2 (%)"></div>
+      <div class="col-12"><button class="btn btn-sm btn-g mt-1"><i class="fas fa-heartbeat"></i>Enregistrer</button></div>
+    </form>"""
+    chart_const=""
+    chart_const_js=""
+    if len(constantes)>=2:
+        labels=[_ds(c["date"]) for c in constantes]
+        poids_data=[c["poids"] for c in constantes]
+        ts_data=[c["tension_systolique"] for c in constantes]
+        td_data=[c["tension_diastolique"] for c in constantes]
+        chart_const=f"""<div class="row g-2 mb-3">
+          <div class="col-md-6"><canvas id="chartPoids" height="140"></canvas></div>
+          <div class="col-md-6"><canvas id="chartTension" height="140"></canvas></div>
+        </div>"""
+        chart_const_js=f"""<script>
+        (function(){{
+        const ctx1=document.getElementById('chartPoids');
+        if(ctx1) new Chart(ctx1,{{type:'line',data:{{labels:{json.dumps(labels)},datasets:[{{label:'Poids (kg)',data:{json.dumps(poids_data)},borderColor:'#16a34a',backgroundColor:'rgba(22,163,74,.1)',fill:true,tension:.3}}]}},options:{{responsive:true,plugins:{{legend:{{display:true}}}}}}}});
+        const ctx2=document.getElementById('chartTension');
+        if(ctx2) new Chart(ctx2,{{type:'line',data:{{labels:{json.dumps(labels)},datasets:[{{label:'Systolique',data:{json.dumps(ts_data)},borderColor:'#ef4444',tension:.3}},{{label:'Diastolique',data:{json.dumps(td_data)},borderColor:'#0ea5e9',tension:.3}}]}},options:{{responsive:true,plugins:{{legend:{{display:true}}}}}}}});
+        }})();
+        </script>"""
+
+    # --- Vaccinations ---
+    def row_vac(v):
+        rappel=v.get("rappel_prevu")
+        en_retard = rappel and _ds(rappel)<date.today().strftime("%Y-%m-%d")
+        rappel_html=f'<span style="color:var(--err);font-weight:700;">{_ds(rappel)} (a faire)</span>' if en_retard else (_ds(rappel) if rappel else "-")
+        return f'<tr><td><strong>{v["vaccin"]}</strong></td><td>{_ds(v["date_administration"])}</td><td>{rappel_html}</td></tr>'
+    rows_vac="".join(row_vac(v) for v in vaccins)
+    form_vac=f"""<form method="POST" action="/m-vaccination-add/{pid}" class="row g-2 mb-3">
+      <div class="col-md-4"><input type="text" name="vaccin" class="form-control form-control-sm" placeholder="Nom du vaccin *" required></div>
+      <div class="col-md-3"><input type="date" name="date_administration" class="form-control form-control-sm"></div>
+      <div class="col-md-3"><input type="date" name="rappel_prevu" class="form-control form-control-sm" placeholder="Rappel prevu"></div>
+      <div class="col-md-2"><button class="btn btn-sm btn-g w-100"><i class="fas fa-syringe"></i>Ajouter</button></div>
+    </form>"""
+
+    # --- Documents joints ---
+    def row_doc(d):
+        icon={"PDF":"file-pdf","PNG":"file-image","JPG":"file-image","JPEG":"file-image","WEBP":"file-image"}.get(d.get("type_fichier","PDF"),"file")
+        return f'<tr><td><i class="fas fa-{icon}"></i> {d["nom_fichier"]}</td><td>{d["date_creation"]}</td><td>{d.get("ajoute_par","-")}</td><td><a href="/doc-view/{d["id"]}" target="_blank" class="btn btn-sm btn-outline-b"><i class="fas fa-eye"></i>Voir</a></td></tr>'
+    rows_doc="".join(row_doc(d) for d in sorted(docs_joints,key=lambda x:x["id"],reverse=True))
+    form_doc=f"""<form method="POST" action="/m-document-upload/{pid}" enctype="multipart/form-data" class="row g-2 mb-3">
+      <div class="col-md-5"><input type="text" name="libelle" class="form-control form-control-sm" placeholder="Libelle (optionnel)"></div>
+      <div class="col-md-5"><input type="file" name="fichier" class="form-control form-control-sm" accept=".pdf,.png,.jpg,.jpeg,.webp" required></div>
+      <div class="col-md-2"><button class="btn btn-sm btn-g w-100"><i class="fas fa-upload"></i>Joindre</button></div>
+      <div class="col-12"><small style="color:var(--muted);">PDF, PNG, JPG — 3 Mo max</small></div>
+    </form>"""
+
     body=f"""<div class="row g-3">
   <div class="col-md-3"><div class="card"><div class="card-body p-4 text-center">
     <i class="fas fa-user-circle fa-3x" style="color:var(--g1);"></i>
@@ -1666,13 +1859,21 @@ def m_dossier(pid):
       <button class="nav-tab active" onclick="showTab('dc1',this)">Consultations ({len(conss)})</button>
       <button class="nav-tab" onclick="showTab('dc2',this)">Ordonnances ({len(ords)})</button>
       <button class="nav-tab" onclick="showTab('dc3',this)">Resultats ({len(ress)})</button>
+      <button class="nav-tab" onclick="showTab('dc4',this)">Antecedents ({len(antecs)})</button>
+      <button class="nav-tab" onclick="showTab('dc5',this)">Constantes ({len(constantes)})</button>
+      <button class="nav-tab" onclick="showTab('dc6',this)">Vaccinations ({len(vaccins)})</button>
+      <button class="nav-tab" onclick="showTab('dc7',this)">Documents ({len(docs_joints)})</button>
     </div>
     <div id="dc1" class="tab-pane"><div class="card"><div style="overflow-x:auto;"><table class="table"><thead><tr><th>Date</th><th>Diagnostic</th><th>Observation</th><th>Ordo</th></tr></thead><tbody>{rows_c if rows_c else "<tr><td colspan=4 class='text-center' style='color:var(--muted);padding:20px;'>Aucune</td></tr>"}</tbody></table></div></div></div>
     <div id="dc2" class="tab-pane" style="display:none;"><div class="card"><div style="overflow-x:auto;"><table class="table"><thead><tr><th>N</th><th>Date</th><th>Medicaments</th><th>Duree</th></tr></thead><tbody>{rows_o if rows_o else "<tr><td colspan=4 class='text-center' style='color:var(--muted);padding:20px;'>Aucune</td></tr>"}</tbody></table></div></div></div>
     <div id="dc3" class="tab-pane" style="display:none;"><div class="card"><div style="overflow-x:auto;"><table class="table"><thead><tr><th>Date</th><th>Type</th><th>Resultat</th><th>Statut</th></tr></thead><tbody>{rows_r if rows_r else "<tr><td colspan=4 class='text-center' style='color:var(--muted);padding:20px;'>Aucun</td></tr>"}</tbody></table></div></div></div>
+    <div id="dc4" class="tab-pane" style="display:none;"><div class="card"><div class="card-body">{form_antec}<div style="overflow-x:auto;"><table class="table"><thead><tr><th>Type</th><th>Libelle</th><th>Periode</th><th>Notes</th><th>Statut</th></tr></thead><tbody>{rows_antec if rows_antec else "<tr><td colspan=5 class='text-center' style='color:var(--muted);padding:20px;'>Aucun antecedent renseigne</td></tr>"}</tbody></table></div></div></div></div>
+    <div id="dc5" class="tab-pane" style="display:none;"><div class="card"><div class="card-body">{form_const}{chart_const}<div style="overflow-x:auto;"><table class="table"><thead><tr><th>Date</th><th>Poids</th><th>Taille</th><th>Tension</th><th>Temp.</th><th>FC</th><th>SpO2</th></tr></thead><tbody>{rows_const if rows_const else "<tr><td colspan=7 class='text-center' style='color:var(--muted);padding:20px;'>Aucune constante relevee</td></tr>"}</tbody></table></div></div></div></div>
+    <div id="dc6" class="tab-pane" style="display:none;"><div class="card"><div class="card-body">{form_vac}<div style="overflow-x:auto;"><table class="table"><thead><tr><th>Vaccin</th><th>Date</th><th>Rappel prevu</th></tr></thead><tbody>{rows_vac if rows_vac else "<tr><td colspan=3 class='text-center' style='color:var(--muted);padding:20px;'>Aucune vaccination enregistree</td></tr>"}</tbody></table></div></div></div></div>
+    <div id="dc7" class="tab-pane" style="display:none;"><div class="card"><div class="card-body">{form_doc}<div style="overflow-x:auto;"><table class="table"><thead><tr><th>Fichier</th><th>Ajoute le</th><th>Par</th><th></th></tr></thead><tbody>{rows_doc if rows_doc else "<tr><td colspan=4 class='text-center' style='color:var(--muted);padding:20px;'>Aucun document joint</td></tr>"}</tbody></table></div></div></div></div>
   </div>
 </div>"""
-    return page(f"Dossier — {pat['prenom']} {pat['nom']}","medecin",session["user"],body)
+    return page(f"Dossier — {pat['prenom']} {pat['nom']}","medecin",session["user"],body,extra_js=chart_const_js)
 
 @app.route("/m-creneaux",methods=["GET","POST"])
 @login_required
@@ -2143,6 +2344,9 @@ def p_dossier():
     dos=next((d for d in DB["dossiers"] if d["id_patient"]==pid),None)
     conss=[c for c in DB["consultations"] if c["id_patient"]==pid]
     allergies=[a for a in DB.get("allergies_patient",[]) if a["id_patient"]==pid]
+    antecs=sorted([a for a in DB["antecedents"] if a["id_patient"]==pid],key=lambda x:_ds(x["date_ajout"]),reverse=True)
+    constantes=sorted([c for c in DB["constantes_vitales"] if c["id_patient"]==pid],key=lambda x:_ds(x["date"]))
+    vaccins=sorted([v for v in DB["vaccinations"] if v["id_patient"]==pid],key=lambda x:_ds(x["date_administration"]),reverse=True)
     gs=pat.get("groupe_sanguin","Non connu"); gc="att" if gs=="Non connu" else "ok"
     rows_c="".join(f'<tr><td>{c["date"]}</td><td>{mname(c["matricule"])}</td><td><strong>{c["diagnostic"]}</strong></td><td>{c.get("observation","")[:60]}</td><td>{c["type"]}</td></tr>' for c in conss)
     infos="".join(f'<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--gl);font-size:.82rem;"><span style="color:var(--muted);">{k}</span><span style="font-weight:600;">{v}</span></div>' for k,v in [("Nom complet",f'{pat["prenom"]} {pat["nom"]}'),("Sexe",pat["sexe"]),("Naissance",pat["date_naissance"]),("Telephone",pat["telephone"]),("Email",pat.get("email","-")),("Adresse",pat.get("adresse","-")),("Assurance",pat["assurance"]),("Groupe sanguin",f'<span class="bk {gc}">{gs}</span>'),("Statut",pat.get("statut","Actif")),("N° Dossier",dos["num_dossier"] if dos else "-"),("Depuis",dos["date_creation"] if dos else "-"),("Diagnostic gen.",dos["diagnostic_general"] if dos else "-")])
@@ -2150,6 +2354,31 @@ def p_dossier():
         allergies_html="".join(f'<span class="badge" style="background:{"#dc3545" if a["severite"] in ("Elevee","Critique") else "#ffc107"};color:#fff;margin:2px;padding:4px 8px;border-radius:6px;font-size:.75rem;display:inline-block;"><i class="fas fa-exclamation-triangle"></i> {a["libelle"]} ({a["severite"]})</span>' for a in allergies)
     else:
         allergies_html='<span style="color:var(--muted);font-size:.8rem;">Aucune allergie connue</span>'
+
+    def row_antec(a):
+        cls="ok" if a["statut"]=="Resolu" else "att"
+        return f'<tr><td><span class="bk inf">{a["type_antecedent"]}</span></td><td><strong>{a["libelle"]}</strong></td><td>{a.get("periode") or "-"}</td><td><span class="bk {cls}">{a["statut"]}</span></td></tr>'
+    rows_antec="".join(row_antec(a) for a in antecs)
+
+    def row_const(c):
+        return (f'<tr><td>{c["date"]}</td><td>{c["poids"] or "-"}</td>'
+                f'<td>{(str(c["tension_systolique"])+"/"+str(c["tension_diastolique"])) if c["tension_systolique"] else "-"}</td>'
+                f'<td>{c["temperature"] or "-"}</td><td>{c["frequence_cardiaque"] or "-"}</td></tr>')
+    rows_const="".join(row_const(c) for c in reversed(constantes))
+    chart_const=""; chart_const_js=""
+    if len(constantes)>=2:
+        labels=[_ds(c["date"]) for c in constantes]
+        poids_data=[c["poids"] for c in constantes]
+        chart_const='<canvas id="chartPoidsP" height="90"></canvas>'
+        chart_const_js=f"""<script>(function(){{const ctx=document.getElementById('chartPoidsP');if(ctx)new Chart(ctx,{{type:'line',data:{{labels:{json.dumps(labels)},datasets:[{{label:'Poids (kg)',data:{json.dumps(poids_data)},borderColor:'#16a34a',backgroundColor:'rgba(22,163,74,.1)',fill:true,tension:.3}}]}},options:{{responsive:true}}}});}})();</script>"""
+
+    def row_vac(v):
+        rappel=v.get("rappel_prevu")
+        en_retard = rappel and _ds(rappel)<date.today().strftime("%Y-%m-%d")
+        rappel_html=f'<span style="color:var(--err);font-weight:700;">{_ds(rappel)} (a faire)</span>' if en_retard else (_ds(rappel) if rappel else "-")
+        return f'<tr><td><strong>{v["vaccin"]}</strong></td><td>{_ds(v["date_administration"])}</td><td>{rappel_html}</td></tr>'
+    rows_vac="".join(row_vac(v) for v in vaccins)
+
     body=f"""<div class="row g-3">
   <div class="col-md-4"><div class="card"><div class="card-body p-4">
     <div style="text-align:center;margin-bottom:16px;">
@@ -2163,12 +2392,22 @@ def p_dossier():
       {allergies_html}
     </div>
   </div></div></div>
-  <div class="col-md-8"><div class="card"><div class="card-hdr"><div class="title"><i class="fas fa-stethoscope"></i>Historique de mes consultations ({len(conss)})</div></div>
-  <div style="overflow-x:auto;"><table class="table"><thead><tr><th>Date</th><th>Medecin</th><th>Diagnostic</th><th>Observation</th><th>Type</th></tr></thead><tbody>
-  {rows_c if rows_c else "<tr><td colspan=5 class='text-center' style='color:var(--muted);padding:20px;'>Aucune consultation</td></tr>"}
-  </tbody></table></div></div></div>
+  <div class="col-md-8">
+    <div class="nav-tabs">
+      <button class="nav-tab active" onclick="showTab('pd1',this)">Consultations ({len(conss)})</button>
+      <button class="nav-tab" onclick="showTab('pd2',this)">Antecedents ({len(antecs)})</button>
+      <button class="nav-tab" onclick="showTab('pd3',this)">Constantes ({len(constantes)})</button>
+      <button class="nav-tab" onclick="showTab('pd4',this)">Vaccinations ({len(vaccins)})</button>
+    </div>
+    <div id="pd1" class="tab-pane"><div class="card"><div style="overflow-x:auto;"><table class="table"><thead><tr><th>Date</th><th>Medecin</th><th>Diagnostic</th><th>Observation</th><th>Type</th></tr></thead><tbody>
+    {rows_c if rows_c else "<tr><td colspan=5 class='text-center' style='color:var(--muted);padding:20px;'>Aucune consultation</td></tr>"}
+    </tbody></table></div></div></div>
+    <div id="pd2" class="tab-pane" style="display:none;"><div class="card"><div style="overflow-x:auto;"><table class="table"><thead><tr><th>Type</th><th>Libelle</th><th>Periode</th><th>Statut</th></tr></thead><tbody>{rows_antec if rows_antec else "<tr><td colspan=4 class='text-center' style='color:var(--muted);padding:20px;'>Aucun antecedent renseigne</td></tr>"}</tbody></table></div></div></div>
+    <div id="pd3" class="tab-pane" style="display:none;"><div class="card"><div class="card-body">{chart_const}<div style="overflow-x:auto;margin-top:12px;"><table class="table"><thead><tr><th>Date</th><th>Poids</th><th>Tension</th><th>Temp.</th><th>FC</th></tr></thead><tbody>{rows_const if rows_const else "<tr><td colspan=5 class='text-center' style='color:var(--muted);padding:20px;'>Aucune constante relevee</td></tr>"}</tbody></table></div></div></div></div>
+    <div id="pd4" class="tab-pane" style="display:none;"><div class="card"><div style="overflow-x:auto;"><table class="table"><thead><tr><th>Vaccin</th><th>Date</th><th>Rappel prevu</th></tr></thead><tbody>{rows_vac if rows_vac else "<tr><td colspan=3 class='text-center' style='color:var(--muted);padding:20px;'>Aucune vaccination enregistree</td></tr>"}</tbody></table></div></div></div>
+  </div>
 </div>"""
-    return page("Mon Dossier","patient",session["user"],body)
+    return page("Mon Dossier","patient",session["user"],body,extra_js=chart_const_js)
 
 @app.route("/p-documents")
 @login_required
@@ -2212,7 +2451,12 @@ def p_documents():
                     ]
             if contenu_lignes:
                 viewer_html=f"""<div class="card mb-3" style="border:2px solid var(--g1);"><div class="card-hdr" style="background:var(--g3);"><div class="title" style="color:#fff;"><i class="fas fa-eye"></i>Visualisation — {doc_v['type_document']}</div><a href="/p-documents" class="btn btn-sm" style="background:rgba(255,255,255,.2);color:#fff;"><i class="fas fa-times"></i>Fermer</a></div><div class="card-body">{"".join(contenu_lignes)}<div style="margin-top:16px;display:flex;gap:8px;"><a href="/p-download/{doc_v['ref_type']}/{doc_v['ref_id']}" class="btn btn-g"><i class="fas fa-download"></i>Telecharger PDF</a></div></div></div>"""
-    rows="".join(f'<tr><td><i class="fas fa-{"file-pdf" if d["type_fichier"]=="PDF" else "image"}" style="color:var(--{"err" if d["type_fichier"]=="PDF" else "b1"});"></i> {d["nom_fichier"]}</td><td><span class="bk inf">{d["type_document"]}</span></td><td>{d["date_creation"]}</td><td style="white-space:nowrap;"><a href="/p-documents?voir={d["id"]}" class="btn btn-sm btn-outline-g me-1"><i class="fas fa-eye"></i>Voir</a><a href="/p-download/{d["ref_type"]}/{d["ref_id"]}" class="btn btn-sm btn-g"><i class="fas fa-download"></i>PDF</a></td></tr>' for d in docs)
+    def row_doc_p(d):
+        if d.get("ref_type")=="upload":
+            icon="file-pdf" if d.get("type_fichier")=="PDF" else "file-image"
+            return f'<tr><td><i class="fas fa-{icon}" style="color:var(--g1);"></i> {d["nom_fichier"]}</td><td><span class="bk inf">Piece jointe</span></td><td>{d["date_creation"]}</td><td style="white-space:nowrap;"><a href="/doc-view/{d["id"]}" target="_blank" class="btn btn-sm btn-g"><i class="fas fa-eye"></i>Voir</a></td></tr>'
+        return f'<tr><td><i class="fas fa-{"file-pdf" if d["type_fichier"]=="PDF" else "image"}" style="color:var(--{"err" if d["type_fichier"]=="PDF" else "b1"});"></i> {d["nom_fichier"]}</td><td><span class="bk inf">{d["type_document"]}</span></td><td>{d["date_creation"]}</td><td style="white-space:nowrap;"><a href="/p-documents?voir={d["id"]}" class="btn btn-sm btn-outline-g me-1"><i class="fas fa-eye"></i>Voir</a><a href="/p-download/{d["ref_type"]}/{d["ref_id"]}" class="btn btn-sm btn-g"><i class="fas fa-download"></i>PDF</a></td></tr>'
+    rows="".join(row_doc_p(d) for d in docs)
     body=f"""
 {viewer_html}
 <div class="card"><div class="card-hdr"><div class="title"><i class="fas fa-folder-open"></i>Mes Documents ({len(docs)})</div></div>
