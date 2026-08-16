@@ -472,6 +472,7 @@ JS_BASE="""<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/j
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script>
 function srch(tid,fid){const v=document.getElementById(fid).value.toLowerCase();document.querySelectorAll('#'+tid+' tbody tr').forEach(r=>{r.style.display=r.textContent.toLowerCase().includes(v)?'':'none';});}
+function srchFilter(tid,searchId,filterId){const v=searchId?document.getElementById(searchId).value.toLowerCase():'';const f=filterId?document.getElementById(filterId).value:'';document.querySelectorAll('#'+tid+' tbody tr').forEach(r=>{const okText=!v||r.textContent.toLowerCase().includes(v);const okFilter=!f||r.dataset.f===f;r.style.display=(okText&&okFilter)?'':'none';});}
 document.querySelectorAll('#sb a.nl').forEach(a=>{try{if(window.location.pathname===new URL(a.href,window.location.origin).pathname)a.classList.add('active');}catch(e){}});
 function toggleSB(){document.getElementById('sb').classList.toggle('show');document.getElementById('sbOverlay').classList.toggle('show');}
 function showTab(id,btn){document.querySelectorAll('.tab-pane').forEach(t=>t.style.display='none');document.querySelectorAll('.nav-tab').forEach(b=>b.classList.remove('active'));document.getElementById(id).style.display='block';btn.classList.add('active');document.getElementById(id).querySelectorAll('canvas').forEach(cv=>{const ch=Chart.getChart(cv);if(ch)ch.resize();});}
@@ -1021,8 +1022,8 @@ def a_medecins():
       <div class="col-12"><label class="form-label">Email</label><input type="email" name="email" class="form-control"></div>
       <div class="col-12"><label class="form-label">Service</label><select name="service" class="form-select">{opts_s}</select></div>
       <div class="col-12"><label class="form-label">Centre</label><select name="centre" class="form-select">{opts_c}</select></div>
-      <div class="col-8"><label class="form-label">Identifiant</label><input type="text" name="uname" class="form-control" placeholder="dr.prenom"></div>
-      <div class="col-4"><label class="form-label">Mot de passe</label><input type="text" name="pwd" class="form-control" value="med123"></div>
+      <div class="col-12 col-md-8"><label class="form-label">Identifiant</label><input type="text" name="uname" class="form-control" placeholder="dr.prenom"></div>
+      <div class="col-12 col-md-4"><label class="form-label">Mot de passe</label><input type="text" name="pwd" class="form-control" value="med123"></div>
       <div class="col-12"><label style="display:flex;align-items:center;gap:8px;font-size:.82rem;cursor:pointer;"><input type="checkbox" name="chef"> Chef de service</label></div>
       <div class="col-12"><button type="submit" class="btn btn-g w-100" style="justify-content:center;"><i class="fas fa-save"></i>Ajouter</button></div>
     </div></form>
@@ -1169,7 +1170,7 @@ def a_staff():
         return redirect(url_for("a_staff"))
     # Liste réceptionnistes et pharmaciens
     staff=[{"uname":u,"role":d["role"],"nom":d.get("nom",""),"prenom":d.get("prenom",""),"email":d.get("email",""),"tel":d.get("telephone",""),"centre":cname(d.get("id_ref",1))} for u,d in DB["users"].items() if d.get("role") in ["receptionniste","pharmacien"]]
-    rows="".join(f"""<tr>
+    rows="".join(f"""<tr data-f="{s['role']}">
         <td><strong>{s['uname']}</strong></td>
         <td>{s['prenom']} {s['nom']}</td>
         <td><span class="bk {'inf' if s['role']=='receptionniste' else 'vio'}">{s['role'].capitalize()}</span></td>
@@ -1185,7 +1186,12 @@ def a_staff():
     body=f"""<div class="row g-3">
   <div class="col-lg-8"><div class="card"><div class="card-hdr"><div class="title"><i class="fas fa-users-cog"></i>Receptionnistes & Pharmaciens ({len(staff)})</div>
     <button class="btn btn-sm btn-g" onclick="document.getElementById('fst').classList.toggle('d-none')"><i class="fas fa-plus"></i>Ajouter</button>
-  </div><div style="overflow-x:auto;"><table class="table"><thead><tr><th>Identifiant</th><th>Nom</th><th>Role</th><th>Email</th><th>Tel</th><th>Centre</th><th>Action</th></tr></thead><tbody>
+  </div>
+  <div style="padding:12px 18px;display:flex;gap:10px;flex-wrap:wrap;">
+    <input type="text" id="sst" class="form-control" placeholder="Rechercher (nom, identifiant...)" oninput="srchFilter('tst','sst','fst2')" style="max-width:280px;">
+    <select id="fst2" class="form-select" onchange="srchFilter('tst','sst','fst2')" style="max-width:170px;"><option value="">Tous roles</option><option value="receptionniste">Receptionniste</option><option value="pharmacien">Pharmacien</option></select>
+  </div>
+  <div style="overflow-x:auto;"><table class="table" id="tst"><thead><tr><th>Identifiant</th><th>Nom</th><th>Role</th><th>Email</th><th>Tel</th><th>Centre</th><th>Action</th></tr></thead><tbody>
   {rows if rows else "<tr><td colspan=7 class='text-center' style='color:var(--muted);padding:20px;'>Aucun staff enregistre</td></tr>"}
   </tbody></table></div></div></div>
   <div class="col-lg-4"><div id="fst" class="card d-none"><div class="card-hdr"><div class="title">Ajouter un membre du staff</div></div><div class="card-body">
@@ -1196,8 +1202,8 @@ def a_staff():
       <div class="col-12"><label class="form-label">Email</label><input type="email" name="email" class="form-control"></div>
       <div class="col-12"><label class="form-label">Telephone</label><input type="text" name="tel" class="form-control" placeholder="77 000 00 00"></div>
       <div class="col-12"><label class="form-label">Centre</label><select name="centre" class="form-select">{opts_c}</select></div>
-      <div class="col-8"><label class="form-label">Identifiant *</label><input type="text" name="uname" class="form-control" required placeholder="recep2"></div>
-      <div class="col-4"><label class="form-label">Mot de passe</label><input type="text" name="pwd" class="form-control" value="pass123"></div>
+      <div class="col-12 col-md-8"><label class="form-label">Identifiant *</label><input type="text" name="uname" class="form-control" required placeholder="recep2"></div>
+      <div class="col-12 col-md-4"><label class="form-label">Mot de passe</label><input type="text" name="pwd" class="form-control" value="pass123"></div>
       <div class="col-12"><button type="submit" class="btn btn-g w-100" style="justify-content:center;"><i class="fas fa-save"></i>Ajouter</button></div>
     </div></form>
   </div></div></div>
@@ -1329,7 +1335,7 @@ def a_factures():
     def row_af(f):
         cls="ok" if f["statut"]=="Payee" else "att" if f["statut"]=="Partielle" else "err"
         voir=f'<a href="/view-doc/facture/{f["id"]}" class="btn btn-sm btn-outline-b ms-1"><i class="fas fa-eye"></i></a>'
-        return (f'<tr><td><strong>{f["num_facture"]}</strong></td><td>{pname(f["id_patient"])}</td>'
+        return (f'<tr data-f="{f["statut"]}"><td><strong>{f["num_facture"]}</strong></td><td>{pname(f["id_patient"])}</td>'
                 f'<td>{f["date"]}</td><td><strong>{f["montant"]:,}</strong></td>'
                 f'<td>{f["part_assurance"]:,}</td><td>{f["part_patient"]:,}</td>'
                 f'<td>{f["montant_paye"]:,}</td><td>{f["reste_a_payer"]:,}</td>'
@@ -1342,7 +1348,11 @@ def a_factures():
   <div class="col-md-4"><div class="sc bg-o"><div class="sv">{reste_total:,} F</div><div class="sl">Reste a recouvrer</div></div></div>
 </div>
 <div class="card"><div class="card-hdr"><div class="title"><i class="fas fa-file-invoice-dollar"></i>Toutes les factures ({len(DB["factures"])})</div></div>
-<div style="overflow-x:auto;"><table class="table"><thead><tr><th>Facture</th><th>Patient</th><th>Date</th><th>Total</th><th>Assur.</th><th>Patient</th><th>Paye</th><th>Reste</th><th>Statut</th><th>Actions</th></tr></thead><tbody>
+<div style="padding:12px 18px;display:flex;gap:10px;flex-wrap:wrap;">
+  <input type="text" id="sf" class="form-control" placeholder="Rechercher (n° facture, patient...)" oninput="srchFilter('taf','sf','ff')" style="max-width:300px;">
+  <select id="ff" class="form-select" onchange="srchFilter('taf','sf','ff')" style="max-width:180px;"><option value="">Tous statuts</option><option>Impayee</option><option>Partielle</option><option>Payee</option></select>
+</div>
+<div style="overflow-x:auto;"><table class="table" id="taf"><thead><tr><th>Facture</th><th>Patient</th><th>Date</th><th>Total</th><th>Assur.</th><th>Patient</th><th>Paye</th><th>Reste</th><th>Statut</th><th>Actions</th></tr></thead><tbody>
 {rows if rows else "<tr><td colspan=10 class='text-center' style='color:var(--muted);padding:20px;'>Aucune facture</td></tr>"}
 </tbody></table></div></div>"""
     return page("Toutes les factures","admin",session["user"],body)
@@ -1643,11 +1653,16 @@ def a_assurances():
     for c in DB.get("contrats_assurance",[]):
         reste=max(0,c["plafond_annuel"]-c.get("montant_utilise",0))
         pct=int((c.get("montant_utilise",0)/c["plafond_annuel"])*100) if c["plafond_annuel"]>0 else 0
-        rows+=f'<tr><td><strong>{c["num_contrat"]}</strong></td><td>{pname(c["id_patient"])}</td><td><span class="bk inf">{c["assureur"]}</span></td><td>{c["taux_prise_en_charge"]}%</td><td>{c["plafond_annuel"]:,}</td><td style="color:var(--warn);font-weight:600;">{c.get("montant_utilise",0):,}</td><td style="color:{f"var(--g1)" if reste>0 else "var(--err)"};font-weight:700;">{reste:,}</td><td>{c["date_debut"]} → {c["date_fin"]}</td><td><span class="bk {"ok" if c["statut"]=="Actif" else "err"}">{c["statut"]}</span></td><td><div style="background:#e5e7eb;border-radius:20px;height:8px;min-width:80px;"><div style="background:{"var(--g1)" if pct<80 else "var(--warn)" if pct<100 else "var(--err)"};width:{min(pct,100)}%;height:8px;border-radius:20px;"></div></div><small>{pct}%</small></td></tr>'
+        rows+=f'<tr data-f="{c["assureur"]}"><td><strong>{c["num_contrat"]}</strong></td><td>{pname(c["id_patient"])}</td><td><span class="bk inf">{c["assureur"]}</span></td><td>{c["taux_prise_en_charge"]}%</td><td>{c["plafond_annuel"]:,}</td><td style="color:var(--warn);font-weight:600;">{c.get("montant_utilise",0):,}</td><td style="color:{f"var(--g1)" if reste>0 else "var(--err)"};font-weight:700;">{reste:,}</td><td>{c["date_debut"]} → {c["date_fin"]}</td><td><span class="bk {"ok" if c["statut"]=="Actif" else "err"}">{c["statut"]}</span></td><td><div style="background:#e5e7eb;border-radius:20px;height:8px;min-width:80px;"><div style="background:{"var(--g1)" if pct<80 else "var(--warn)" if pct<100 else "var(--err)"};width:{min(pct,100)}%;height:8px;border-radius:20px;"></div></div><small>{pct}%</small></td></tr>'
     opts_p="".join(f'<option value="{p["id"]}">{p["prenom"]} {p["nom"]}</option>' for p in DB["patients"])
     body=f"""<div class="card mb-3"><div class="card-hdr"><div class="title"><i class="fas fa-shield-alt"></i>Contrats d assurance ({len(DB.get("contrats_assurance",[]))})</div>
     <button class="btn btn-sm btn-g" onclick="document.getElementById('fc').classList.toggle('d-none')"><i class="fas fa-plus"></i>Nouveau</button>
-  </div><div style="overflow-x:auto;"><table class="table"><thead><tr><th>N Contrat</th><th>Patient</th><th>Assureur</th><th>Taux</th><th>Plafond</th><th>Utilise</th><th>Reste</th><th>Validite</th><th>Statut</th><th>Utilisation</th></tr></thead><tbody>{rows if rows else "<tr><td colspan=10 class='text-center' style='color:var(--muted);padding:20px;'>Aucun contrat</td></tr>"}</tbody></table></div></div>
+  </div>
+  <div style="padding:12px 18px;display:flex;gap:10px;flex-wrap:wrap;">
+    <input type="text" id="sca" class="form-control" placeholder="Rechercher (n° contrat, patient...)" oninput="srchFilter('tca','sca','fca')" style="max-width:280px;">
+    <select id="fca" class="form-select" onchange="srchFilter('tca','sca','fca')" style="max-width:170px;"><option value="">Tous assureurs</option><option>IPRES</option><option>CSS</option><option>LONASE</option><option>IPM</option><option>Autre</option></select>
+  </div>
+  <div style="overflow-x:auto;"><table class="table" id="tca"><thead><tr><th>N Contrat</th><th>Patient</th><th>Assureur</th><th>Taux</th><th>Plafond</th><th>Utilise</th><th>Reste</th><th>Validite</th><th>Statut</th><th>Utilisation</th></tr></thead><tbody>{rows if rows else "<tr><td colspan=10 class='text-center' style='color:var(--muted);padding:20px;'>Aucun contrat</td></tr>"}</tbody></table></div></div>
   <div id="fc" class="card d-none"><div class="card-hdr"><div class="title">Nouveau contrat</div></div><div class="card-body">
     <form method="POST"><div class="row g-3">
       <div class="col-md-6"><label class="form-label">Patient *</label><select name="patient" class="form-select" required><option value="">--</option>{opts_p}</select></div>
@@ -1922,13 +1937,13 @@ def m_dossier(pid):
                 f'<td>{c["temperature"] or "-"}</td><td>{c["frequence_cardiaque"] or "-"}</td><td>{c["saturation"] or "-"}</td></tr>')
     rows_const="".join(row_const(c) for c in reversed(constantes))
     form_const=f"""<form method="POST" action="/m-constante-add/{pid}" class="row g-2 mb-3">
-      <div class="col"><input type="number" step="0.1" name="poids" class="form-control form-control-sm" placeholder="Poids (kg)"></div>
-      <div class="col"><input type="number" step="0.1" name="taille" class="form-control form-control-sm" placeholder="Taille (cm)"></div>
-      <div class="col"><input type="number" name="ts" class="form-control form-control-sm" placeholder="Tension sys."></div>
-      <div class="col"><input type="number" name="td" class="form-control form-control-sm" placeholder="Tension dia."></div>
-      <div class="col"><input type="number" step="0.1" name="temperature" class="form-control form-control-sm" placeholder="Temp. (°C)"></div>
-      <div class="col"><input type="number" name="fc" class="form-control form-control-sm" placeholder="FC (bpm)"></div>
-      <div class="col"><input type="number" name="spo2" class="form-control form-control-sm" placeholder="SpO2 (%)"></div>
+      <div class="col-6 col-md"><input type="number" step="0.1" name="poids" class="form-control form-control-sm" placeholder="Poids (kg)"></div>
+      <div class="col-6 col-md"><input type="number" step="0.1" name="taille" class="form-control form-control-sm" placeholder="Taille (cm)"></div>
+      <div class="col-6 col-md"><input type="number" name="ts" class="form-control form-control-sm" placeholder="Tension sys."></div>
+      <div class="col-6 col-md"><input type="number" name="td" class="form-control form-control-sm" placeholder="Tension dia."></div>
+      <div class="col-6 col-md"><input type="number" step="0.1" name="temperature" class="form-control form-control-sm" placeholder="Temp. (°C)"></div>
+      <div class="col-6 col-md"><input type="number" name="fc" class="form-control form-control-sm" placeholder="FC (bpm)"></div>
+      <div class="col-6 col-md"><input type="number" name="spo2" class="form-control form-control-sm" placeholder="SpO2 (%)"></div>
       <div class="col-12"><button class="btn btn-sm btn-g mt-1"><i class="fas fa-heartbeat"></i>Enregistrer</button></div>
     </form>"""
     chart_const=""
@@ -3056,7 +3071,7 @@ def r_rdvs():
                 <input type="text" name="motif_ann" class="form-control form-control-sm mb-1" placeholder="Motif annulation" required>
                 <button type="submit" class="btn btn-sm btn-r"><i class="fas fa-check"></i>Confirmer</button>
               </form></div>"""
-        rows+=f'<tr><td><strong>{r["date"]}</strong></td><td>{r["heure"]}</td><td>{pname(r["id_patient"])}</td><td>{mname(r["matricule"])}</td><td>{r.get("motif","")}</td><td><span class="bk inf">{r["type"]}</span></td><td><span class="bk {sc}">{r["statut"]}</span></td><td>{actions}</td></tr>'
+        rows+=f'<tr data-f="{r["statut"]}"><td><strong>{r["date"]}</strong></td><td>{r["heure"]}</td><td>{pname(r["id_patient"])}</td><td>{mname(r["matricule"])}</td><td>{r.get("motif","")}</td><td><span class="bk inf">{r["type"]}</span></td><td><span class="bk {sc}">{r["statut"]}</span></td><td>{actions}</td></tr>'
     opts_p="".join(f'<option value="{p["id"]}" {"selected" if str(p["id"])==pid_pre else ""}>{p["prenom"]} {p["nom"]}</option>' for p in DB["patients"])
     # Afficher les créneaux de chaque médecin dans le select
     def med_opt(m):
@@ -3066,7 +3081,11 @@ def r_rdvs():
     opts_m="".join(med_opt(m) for m in DB["medecins"])
     body=f"""<div class="row g-3">
   <div class="col-lg-8"><div class="card"><div class="card-hdr"><div class="title"><i class="fas fa-calendar-check"></i>Tous les RDV ({len(DB["rdvs"])})</div></div>
-  <div style="overflow-x:auto;"><table class="table"><thead><tr><th>Date</th><th>Heure</th><th>Patient</th><th>Medecin</th><th>Motif</th><th>Type</th><th>Statut</th><th>Actions</th></tr></thead><tbody>
+  <div style="padding:12px 18px;display:flex;gap:10px;flex-wrap:wrap;">
+    <input type="text" id="srr" class="form-control" placeholder="Rechercher (patient, medecin, motif...)" oninput="srchFilter('trr','srr','frr')" style="max-width:280px;">
+    <select id="frr" class="form-select" onchange="srchFilter('trr','srr','frr')" style="max-width:170px;"><option value="">Tous statuts</option><option>Confirme</option><option>Annule</option><option>Termine</option><option>En attente</option></select>
+  </div>
+  <div style="overflow-x:auto;"><table class="table" id="trr"><thead><tr><th>Date</th><th>Heure</th><th>Patient</th><th>Medecin</th><th>Motif</th><th>Type</th><th>Statut</th><th>Actions</th></tr></thead><tbody>
   {rows if rows else "<tr><td colspan=8 class='text-center' style='color:var(--muted);padding:20px;'>Aucun RDV</td></tr>"}
   </tbody></table></div></div></div>
   <div class="col-lg-4"><div class="card"><div class="card-hdr"><div class="title">Nouveau RDV</div></div><div class="card-body">
@@ -3491,7 +3510,7 @@ def r_facturation():
         ech=f.get("date_echeance") or "-"
         en_retard = f["reste_a_payer"]>0 and ech!="-" and _ds(ech)<date.today().strftime("%Y-%m-%d")
         ech_html=f'<span style="color:var(--err);font-weight:700;"><i class="fas fa-exclamation-circle"></i> {ech}</span>' if en_retard else ech
-        return (f'<tr><td><strong>{f["num_facture"]}</strong></td><td>{pname(f["id_patient"])}</td>'
+        return (f'<tr data-f="{f["statut"]}"><td><strong>{f["num_facture"]}</strong></td><td>{pname(f["id_patient"])}</td>'
                 f'<td>{f["date"]}</td><td>{ech_html}</td><td><strong>{f["montant"]:,}</strong></td>'
                 f'<td>{f["part_assurance"]:,}</td><td>{f["part_patient"]:,}</td>'
                 f'<td style="color:var(--g1);font-weight:600;">{f["montant_paye"]:,}</td>'
@@ -3509,10 +3528,10 @@ def r_facturation():
       <label class="form-label">Delai de paiement (jours)</label><input type="number" name="jours_echeance" class="form-control mb-2" value="30" min="1">
       <label class="form-label">Lignes de facturation *</label>
       <div id="lignes"><div class="row g-1 mb-2 ligne">
-        <div class="col-4"><input type="text" name="libelle[]" class="form-control form-control-sm" placeholder="Libelle"></div>
-        <div class="col-3"><select name="type_ligne[]" class="form-select form-select-sm">{types_opts}</select></div>
-        <div class="col-2"><input type="number" name="qte[]" class="form-control form-control-sm" placeholder="Qte" value="1" min="1"></div>
-        <div class="col-3"><input type="number" name="pu[]" class="form-control form-control-sm" placeholder="Prix unit." min="0"></div>
+        <div class="col-6 col-md-4"><input type="text" name="libelle[]" class="form-control form-control-sm" placeholder="Libelle"></div>
+        <div class="col-6 col-md-3"><select name="type_ligne[]" class="form-select form-select-sm">{types_opts}</select></div>
+        <div class="col-6 col-md-2"><input type="number" name="qte[]" class="form-control form-control-sm" placeholder="Qte" value="1" min="1"></div>
+        <div class="col-6 col-md-3"><input type="number" name="pu[]" class="form-control form-control-sm" placeholder="Prix unit." min="0"></div>
       </div></div>
       <button type="button" class="btn btn-sm btn-outline-g mb-2" onclick="addLigneFac()"><i class="fas fa-plus"></i>Ajouter une ligne</button>
       <div class="al al-i mb-2" style="font-size:.78rem;"><i class="fas fa-info-circle"></i>Part assurance calculee auto sur le total : IPRES 40%, CSS 50%, LONASE 30%</div>
@@ -3522,7 +3541,11 @@ def r_facturation():
   <div class="col-lg-8">
     {alerte_cons}{alerte_retard}
     <div class="card"><div class="card-hdr"><div class="title"><i class="fas fa-file-invoice"></i>Factures ({len(DB["factures"])})</div></div>
-    <div style="overflow-x:auto;"><table class="table"><thead><tr><th>Facture</th><th>Patient</th><th>Date</th><th>Echeance</th><th>Total F</th><th>Part assur.</th><th>Part pat.</th><th>Paye</th><th>Reste</th><th>Statut</th><th>Mode</th><th>Actions</th></tr></thead><tbody>
+    <div style="padding:12px 18px;display:flex;gap:10px;flex-wrap:wrap;">
+      <input type="text" id="sfr" class="form-control" placeholder="Rechercher (n° facture, patient...)" oninput="srchFilter('trf','sfr','ffr')" style="max-width:280px;">
+      <select id="ffr" class="form-select" onchange="srchFilter('trf','sfr','ffr')" style="max-width:170px;"><option value="">Tous statuts</option><option>Impayee</option><option>Partielle</option><option>Payee</option></select>
+    </div>
+    <div style="overflow-x:auto;"><table class="table" id="trf"><thead><tr><th>Facture</th><th>Patient</th><th>Date</th><th>Echeance</th><th>Total F</th><th>Part assur.</th><th>Part pat.</th><th>Paye</th><th>Reste</th><th>Statut</th><th>Mode</th><th>Actions</th></tr></thead><tbody>
     {rows if rows else "<tr><td colspan=12 class='text-center' style='color:var(--muted);padding:20px;'>Aucune facture</td></tr>"}
     </tbody></table></div></div>
   </div>
@@ -3702,11 +3725,16 @@ def ph_medicaments():
         s=next((x for x in DB["stocks"] if x["id"]==m["id_stock"]),None)
         qte=s["quantite"] if s else 0; stat=s["statut"] if s else "?"
         sc="ok" if stat=="Normal" else "err" if "pui" in stat.lower() else "att"
-        rows+=f'<tr><td><strong>{m["libelle"]}</strong></td><td>{m["type"]}</td><td>{m["dosage"]}</td><td>{m["prix"]:,}</td><td><strong>{qte}</strong></td><td><span class="bk {sc}">{stat}</span></td><td>{m.get("notice","-")}</td><td><button class="btn btn-sm btn-outline-g" onclick="openRestock({m["id"]},\'{m["libelle"]}\',{qte})"><i class="fas fa-plus"></i>Stock</button></td></tr>'
+        rows+=f'<tr data-f="{stat}"><td><strong>{m["libelle"]}</strong></td><td>{m["type"]}</td><td>{m["dosage"]}</td><td>{m["prix"]:,}</td><td><strong>{qte}</strong></td><td><span class="bk {sc}">{stat}</span></td><td>{m.get("notice","-")}</td><td><button class="btn btn-sm btn-outline-g" onclick="openRestock({m["id"]},\'{m["libelle"]}\',{qte})"><i class="fas fa-plus"></i>Stock</button></td></tr>'
     body=f"""<div class="row g-3">
   <div class="col-lg-8"><div class="card"><div class="card-hdr"><div class="title"><i class="fas fa-pills"></i>Medicaments & Stock ({len(DB["medicaments"])})</div>
     <button class="btn btn-sm btn-g" onclick="document.getElementById('fm').classList.toggle('d-none')"><i class="fas fa-plus"></i>Ajouter</button>
-  </div><div style="overflow-x:auto;"><table class="table"><thead><tr><th>Medicament</th><th>Type</th><th>Dosage</th><th>Prix FCFA</th><th>Stock</th><th>Statut</th><th>Notice</th><th>Action</th></tr></thead><tbody>{rows}</tbody></table></div></div></div>
+  </div>
+  <div style="padding:12px 18px;display:flex;gap:10px;flex-wrap:wrap;">
+    <input type="text" id="sm" class="form-control" placeholder="Rechercher un medicament..." oninput="srchFilter('tm','sm','fm2')" style="max-width:280px;">
+    <select id="fm2" class="form-select" onchange="srchFilter('tm','sm','fm2')" style="max-width:170px;"><option value="">Tous statuts</option><option>Normal</option><option>Faible</option><option>Epuise</option></select>
+  </div>
+  <div style="overflow-x:auto;"><table class="table" id="tm"><thead><tr><th>Medicament</th><th>Type</th><th>Dosage</th><th>Prix FCFA</th><th>Stock</th><th>Statut</th><th>Notice</th><th>Action</th></tr></thead><tbody>{rows}</tbody></table></div></div></div>
   <div class="col-lg-4"><div id="fm" class="card d-none"><div class="card-hdr"><div class="title">Nouveau medicament</div></div><div class="card-body">
     <form method="POST"><div class="row g-2">
       <div class="col-12"><label class="form-label">Libelle *</label><input type="text" name="libelle" class="form-control" required></div>
@@ -3721,7 +3749,7 @@ def ph_medicaments():
     </div></form>
   </div></div></div>
 </div>
-<div id="restockModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:2000;align-items:center;justify-content:center;">
+<div id="restockModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:2000;align-items:center;justify-content:center;padding:16px;overflow-y:auto;">
   <div style="background:#fff;border-radius:14px;width:100%;max-width:380px;padding:24px;">
     <h6 style="color:var(--g3);margin-bottom:12px;"><i class="fas fa-plus-circle me-2"></i>Mettre a jour le stock</h6>
     <p id="rm_lbl" style="font-size:.85rem;color:var(--muted);margin-bottom:16px;"></p>
@@ -3896,14 +3924,14 @@ def ph_ordonnances():
 <div style="overflow-x:auto;"><table class="table"><thead><tr><th>Ref</th><th>Patient</th><th>Date</th><th>Medicaments</th><th>Duree</th><th>Statut</th><th>Actions</th></tr></thead><tbody>
 {rows if rows else "<tr><td colspan=7 class='text-center' style='color:var(--muted);padding:20px;'>Aucune ordonnance</td></tr>"}
 </tbody></table></div></div>
-<div id="ordoModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:2000;align-items:center;justify-content:center;">
+<div id="ordoModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:2000;align-items:center;justify-content:center;padding:16px;overflow-y:auto;">
   <div style="background:#fff;border-radius:14px;width:100%;max-width:520px;padding:24px;max-height:90vh;overflow-y:auto;">
     <div style="display:flex;justify-content:space-between;margin-bottom:16px;"><h6 style="color:var(--g3);margin:0;"><i class="fas fa-prescription me-2"></i>Detail ordonnance</h6>
     <button onclick="document.getElementById('ordoModal').style.display='none'" class="btn btn-sm btn-outline-r"><i class="fas fa-times"></i></button></div>
     <div id="ordo_content"></div>
   </div>
 </div>
-<div id="delivModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:2000;align-items:center;justify-content:center;">
+<div id="delivModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:2000;align-items:center;justify-content:center;padding:16px;overflow-y:auto;">
   <div style="background:#fff;border-radius:14px;width:100%;max-width:580px;padding:24px;max-height:90vh;overflow-y:auto;">
     <div style="display:flex;justify-content:space-between;margin-bottom:16px;"><h6 style="color:var(--g3);margin:0;"><i class="fas fa-pills me-2"></i>Delivrer l ordonnance</h6>
     <button onclick="document.getElementById('delivModal').style.display='none'" class="btn btn-sm btn-outline-r"><i class="fas fa-times"></i></button></div>
