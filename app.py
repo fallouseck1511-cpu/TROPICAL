@@ -21,7 +21,7 @@ app=Flask(__name__)
 app.secret_key=os.environ.get("SECRET_KEY","tropical_sgrdms_v12_2026_change_me")
 
 # ─── Base de données réelle (PostgreSQL sur Render / SQLite en local) ───
-from models import db
+from models import db, SignalMessage
 _db_url = os.environ.get("DATABASE_URL", "sqlite:///tropical_local.db")
 if _db_url.startswith("postgres://"):  # Render fournit "postgres://"
     _db_url = _db_url.replace("postgres://", "postgresql+psycopg://", 1)  # SQLAlchemy + pilote psycopg (v3)
@@ -2310,19 +2310,16 @@ def m_teleconsult():
         if not rdv:
             flash("RDV introuvable.","danger"); return redirect(url_for("m_teleconsult"))
         if action=="creer":
-            # ── Génération automatique du lien Jitsi ──
-            import hashlib
-            room=f"sgrdms-{hashlib.md5(f'rdv{rdv_id}-{mat}'.encode()).hexdigest()[:10]}"
-            lien=f"https://meet.jit.si/{room}"
             existing=next((t for t in DB["teleconsultations"] if t["id_rdv"]==rdv_id),None)
             if existing:
-                existing["lien"]=lien; existing["lien_envoye"]=True; existing["statut"]="Planifiee"
+                existing["statut"]="Planifiee"
+                tele_id=existing["id"]
             else:
-                nt={"id":nid("teles"),"id_patient":rdv["id_patient"],"matricule":mat,"id_rdv":rdv_id,"date_debut":f"{rdv['date']} {rdv['heure']}","statut":"Planifiee","lien":lien,"lien_envoye":True}
-                DB["teleconsultations"].append(nt)
-            rdv["lien_teleconsult"]=lien
-            add_notif(rdv["id_patient"],"Lien teleconsultation pret",f"Teleconsultation du {rdv['date']}",f"Votre teleconsultation du {rdv['date']} a {rdv['heure']} avec Dr. {med['prenom']} {med['nom']} est prete. Cliquez sur Rejoindre dans votre espace.",expediteur=session["user"])
-            flash(f"Lien Jitsi genere et patient notifie. Salle : {room}","success")
+                nt={"id":nid("teles"),"id_patient":rdv["id_patient"],"matricule":mat,"id_rdv":rdv_id,"date_debut":f"{rdv['date']} {rdv['heure']}","statut":"Planifiee","lien":"","lien_envoye":True}
+                row=DB["teleconsultations"].append(nt)
+                tele_id=nt["id"]
+            add_notif(rdv["id_patient"],"Teleconsultation prete",f"Teleconsultation du {rdv['date']}",f"Votre teleconsultation du {rdv['date']} a {rdv['heure']} avec Dr. {med['prenom']} {med['nom']} est prete. Rejoignez-la directement depuis votre espace patient, aucune installation requise.",expediteur=session["user"])
+            flash("Salle de teleconsultation creee et patient notifie.","success")
         elif action=="demarrer":
             tele=next((t for t in DB["teleconsultations"] if t["id_rdv"]==rdv_id),None)
             if tele: tele["statut"]="En cours"; rdv["statut"]="En cours"
@@ -2340,23 +2337,19 @@ def m_teleconsult():
     def row_tele(t):
         rdv=next((r for r in DB["rdvs"] if r["id"]==t.get("id_rdv")),None)
         st_cls={"Planifiee":"att","En cours":"ok","Terminee":"grey"}.get(t["statut"],"att")
-        btn_rejoindre=f'<a href="{t["lien"]}" target="_blank" class="btn btn-sm btn-b"><i class="fas fa-video"></i>Rejoindre</a>' if t.get("lien") else "-"
-        btn_demarrer=""
-        btn_terminer=""
-        if rdv and t.get("lien"):
-            if t["statut"]=="Planifiee":
-                btn_demarrer=f'<form method="POST" style="display:inline;"><input type="hidden" name="action" value="demarrer"><input type="hidden" name="rdv" value="{rdv["id"]}"><button type="submit" class="btn btn-sm btn-g ms-1"><i class="fas fa-play"></i>Demarrer</button></form>'
-            elif t["statut"]=="En cours":
-                btn_terminer=f'<form method="POST" style="display:inline;"><input type="hidden" name="action" value="terminer"><input type="hidden" name="rdv" value="{rdv["id"]}"><button type="submit" class="btn btn-sm btn-danger ms-1"><i class="fas fa-stop"></i>Terminer</button></form>'
-        return f'<tr><td>{t["date_debut"]}</td><td>{pname(t["id_patient"])}</td><td><span class="bk {st_cls}">{t["statut"]}</span></td><td style="white-space:nowrap;">{btn_rejoindre}{btn_demarrer}{btn_terminer}</td></tr>'
+        if t["statut"] in ("Planifiee","En cours"):
+            btn_rejoindre=f'<a href="/m-teleconsult-room/{t["id"]}" class="btn btn-sm btn-g"><i class="fas fa-video"></i>{"Rejoindre" if t["statut"]=="En cours" else "Demarrer l\'appel"}</a>'
+        else:
+            btn_rejoindre='<span style="color:var(--muted);font-size:.8rem;">Terminee</span>'
+        return f'<tr><td>{t["date_debut"]}</td><td>{pname(t["id_patient"])}</td><td><span class="bk {st_cls}">{t["statut"]}</span></td><td style="white-space:nowrap;">{btn_rejoindre}</td></tr>'
     rows="".join(row_tele(t) for t in sorted(teles,key=lambda x:x["date_debut"],reverse=True))
     form_html=""
     if rdv_sans_lien:
-        form_html=f"""<div class="card mb-3"><div class="card-hdr"><div class="title"><i class="fas fa-link"></i>Generer un lien Jitsi</div></div><div class="card-body">
-  <div class="al al-i mb-3" style="font-size:.82rem;"><i class="fas fa-info-circle"></i>Le lien Jitsi est genere automatiquement. Aucune installation requise — fonctionne dans le navigateur.</div>
+        form_html=f"""<div class="card mb-3"><div class="card-hdr"><div class="title"><i class="fas fa-video"></i>Creer une salle de teleconsultation</div></div><div class="card-body">
+  <div class="al al-i mb-3" style="font-size:.82rem;"><i class="fas fa-info-circle"></i>La visioconference se fait directement dans l'application — aucun lien externe, aucune installation.</div>
   <form method="POST"><input type="hidden" name="action" value="creer"><div class="row g-2">
     <div class="col-12"><label class="form-label">RDV teleconsultation *</label><select name="rdv" class="form-select" required><option value="">-- Choisir --</option>{opts_r}</select></div>
-    <div class="col-12"><button type="submit" class="btn btn-g"><i class="fas fa-video"></i>Generer le lien et notifier le patient</button></div>
+    <div class="col-12"><button type="submit" class="btn btn-g"><i class="fas fa-video"></i>Creer la salle et notifier le patient</button></div>
   </div></form>
 </div></div>"""
     body=f"""{form_html}<div class="card"><div class="card-hdr"><div class="title"><i class="fas fa-video"></i>Mes Teleconsultations ({len(teles)})</div></div>
@@ -2364,6 +2357,203 @@ def m_teleconsult():
 {rows if rows else "<tr><td colspan=4 class='text-center' style='color:var(--muted);padding:20px;'>Aucune teleconsultation</td></tr>"}
 </tbody></table></div></div>"""
     return page("Mes Teleconsultations","medecin",session["user"],body)
+
+def _room_body(tid,role):
+    """Page d'appel video (medecin ou patient) — WebRTC pair-a-pair, aucun
+    service externe. Le role determine qui initie l'offre SDP."""
+    html = """
+<div style="max-width:900px;margin:0 auto;">
+  <div class="card">
+    <div class="card-body" style="padding:0;">
+      <div id="callStatus" class="al al-i" style="margin:16px;font-size:.85rem;"><i class="fas fa-circle-notch fa-spin"></i> Initialisation de la camera...</div>
+      <div style="position:relative;background:#0a1410;border-radius:0 0 var(--r-md) var(--r-md);overflow:hidden;aspect-ratio:16/9;">
+        <video id="remoteVideo" autoplay playsinline style="width:100%;height:100%;object-fit:cover;background:#0a1410;"></video>
+        <div id="waitingOverlay" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;background:rgba(6,20,14,.85);">
+          <i class="fas fa-user-md fa-3x" style="opacity:.5;margin-bottom:14px;"></i>
+          <div style="font-weight:600;">En attente de l'autre participant...</div>
+        </div>
+        <video id="localVideo" autoplay playsinline muted style="position:absolute;bottom:14px;right:14px;width:150px;border-radius:10px;border:2px solid rgba(255,255,255,.3);box-shadow:0 4px 14px rgba(0,0,0,.4);"></video>
+      </div>
+      <div style="display:flex;justify-content:center;gap:12px;padding:18px;">
+        <button id="btnMic" class="btn btn-outline-g" style="border-radius:50%;width:52px;height:52px;justify-content:center;padding:0;" title="Couper le micro"><i class="fas fa-microphone"></i></button>
+        <button id="btnCam" class="btn btn-outline-g" style="border-radius:50%;width:52px;height:52px;justify-content:center;padding:0;" title="Couper la camera"><i class="fas fa-video"></i></button>
+        <button id="btnHangup" class="btn btn-danger" style="border-radius:50%;width:52px;height:52px;justify-content:center;padding:0;" title="Raccrocher"><i class="fas fa-phone-slash"></i></button>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+(function(){
+const TID="__TID__", ROLE="__ROLE__";
+const isInitiator = (ROLE === "medecin");
+const statusEl=document.getElementById('callStatus'), waitEl=document.getElementById('waitingOverlay');
+const localVideo=document.getElementById('localVideo'), remoteVideo=document.getElementById('remoteVideo');
+let pc=null, localStream=null, lastSignalId=0, pollTimer=null, ended=false;
+const pendingIce=[];
+
+function setStatus(html,cls){statusEl.className='al '+(cls||'al-i');statusEl.innerHTML=html;}
+
+async function sendSignal(type,payload){
+  await fetch('/api/signal/'+TID+'/send',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({type:type,payload:payload,role:ROLE})});
+}
+
+function newPC(){
+  const conn=new RTCPeerConnection({iceServers:[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun1.l.google.com:19302'}]});
+  conn.onicecandidate=e=>{ if(e.candidate) sendSignal('ice',e.candidate); };
+  conn.ontrack=e=>{ remoteVideo.srcObject=e.streams[0]; waitEl.style.display='none'; setStatus('<i class="fas fa-check-circle"></i> Appel en cours','al-s'); };
+  conn.onconnectionstatechange=()=>{
+    if(conn.connectionState==='disconnected'||conn.connectionState==='failed'){ setStatus('<i class="fas fa-exclamation-triangle"></i> Connexion perdue','al-w'); }
+  };
+  return conn;
+}
+
+async function start(){
+  try{
+    localStream = await navigator.mediaDevices.getUserMedia({video:true,audio:true});
+  }catch(err){
+    setStatus('<i class="fas fa-video-slash"></i> Impossible d\\'acceder a la camera/micro : '+err.message,'al-w');
+    return;
+  }
+  localVideo.srcObject=localStream;
+  pc=newPC();
+  localStream.getTracks().forEach(t=>pc.addTrack(t,localStream));
+  setStatus('<i class="fas fa-circle-notch fa-spin"></i> En attente de l\\'autre participant...','al-i');
+  if(isInitiator){
+    const offer=await pc.createOffer();
+    await pc.setLocalDescription(offer);
+    await sendSignal('offer',offer);
+  }
+  pollTimer=setInterval(poll,1300);
+}
+
+async function handleSignal(msg){
+  if(msg.role===ROLE) return; // ignorer ses propres messages
+  if(msg.type==='hangup'){ closeCall('L\\'autre participant a raccroche.'); return; }
+  if(msg.type==='offer' && !isInitiator){
+    await pc.setRemoteDescription(new RTCSessionDescription(msg.payload));
+    flushIce();
+    const answer=await pc.createAnswer();
+    await pc.setLocalDescription(answer);
+    await sendSignal('answer',answer);
+  } else if(msg.type==='answer' && isInitiator){
+    await pc.setRemoteDescription(new RTCSessionDescription(msg.payload));
+    flushIce();
+  } else if(msg.type==='ice'){
+    if(pc.remoteDescription && pc.remoteDescription.type){
+      try{ await pc.addIceCandidate(msg.payload); }catch(e){}
+    } else {
+      pendingIce.push(msg.payload);
+    }
+  }
+}
+function flushIce(){ while(pendingIce.length){ pc.addIceCandidate(pendingIce.shift()).catch(()=>{}); } }
+
+async function poll(){
+  if(ended) return;
+  try{
+    const r=await fetch('/api/signal/'+TID+'/poll?since='+lastSignalId);
+    const data=await r.json();
+    for(const msg of data.messages){ lastSignalId=Math.max(lastSignalId,msg.id); await handleSignal(msg); }
+  }catch(e){}
+}
+
+function closeCall(msg){
+  ended=true;
+  if(pollTimer) clearInterval(pollTimer);
+  if(pc){ pc.close(); pc=null; }
+  if(localStream){ localStream.getTracks().forEach(t=>t.stop()); }
+  setStatus('<i class="fas fa-phone-slash"></i> '+(msg||'Appel termine.'),'al-w');
+  waitEl.style.display='none';
+}
+
+document.getElementById('btnHangup').onclick=async()=>{
+  await sendSignal('hangup',{});
+  closeCall('Vous avez raccroche.');
+  await fetch('/api/signal/'+TID+'/end',{method:'POST'});
+  setTimeout(()=>{ window.location.href = ROLE==='medecin' ? '/m-teleconsult' : '/p-teleconsult'; },1500);
+};
+document.getElementById('btnMic').onclick=function(){
+  if(!localStream) return;
+  const t=localStream.getAudioTracks()[0]; if(!t) return;
+  t.enabled=!t.enabled;
+  this.classList.toggle('btn-danger',!t.enabled); this.classList.toggle('btn-outline-g',t.enabled);
+  this.querySelector('i').className = t.enabled ? 'fas fa-microphone' : 'fas fa-microphone-slash';
+};
+document.getElementById('btnCam').onclick=function(){
+  if(!localStream) return;
+  const t=localStream.getVideoTracks()[0]; if(!t) return;
+  t.enabled=!t.enabled;
+  this.classList.toggle('btn-danger',!t.enabled); this.classList.toggle('btn-outline-g',t.enabled);
+  this.querySelector('i').className = t.enabled ? 'fas fa-video' : 'fas fa-video-slash';
+};
+window.addEventListener('beforeunload',()=>{ if(!ended) sendSignal('hangup',{}); });
+start();
+})();
+</script>"""
+    return html.replace("__TID__",str(tid)).replace("__ROLE__",role)
+
+@app.route("/m-teleconsult-room/<int:tid>")
+@login_required
+@role_required("medecin")
+def m_teleconsult_room(tid):
+    med=get_med(session["user"])
+    t=next((x for x in DB["teleconsultations"] if x["id"]==tid and x["matricule"]==med["matricule"]),None)
+    if not t:
+        flash("Teleconsultation introuvable.","danger"); return redirect(url_for("m_teleconsult"))
+    if t["statut"]=="Planifiee":
+        t["statut"]="En cours"
+        rdv=next((r for r in DB["rdvs"] if r["id"]==t.get("id_rdv")),None)
+        if rdv: rdv["statut"]="En cours"
+    body=f'<h5 style="color:var(--g3);margin-bottom:12px;"><i class="fas fa-video"></i> Teleconsultation avec {pname(t["id_patient"])}</h5>'+_room_body(tid,"medecin")
+    return page("Salle de teleconsultation","medecin",session["user"],body)
+
+@app.route("/api/signal/<int:tid>/send",methods=["POST"])
+@login_required
+def api_signal_send(tid):
+    t=next((x for x in DB["teleconsultations"] if x["id"]==tid),None)
+    if not t: return jsonify({"error":"not found"}),404
+    role=session.get("role")
+    if role=="medecin":
+        med=get_med(session["user"])
+        if not med or t["matricule"]!=med["matricule"]: return jsonify({"error":"forbidden"}),403
+    elif role=="patient":
+        pat=get_pat(session["user"])
+        if not pat or t["id_patient"]!=pat["id"]: return jsonify({"error":"forbidden"}),403
+    else:
+        return jsonify({"error":"forbidden"}),403
+    d=request.get_json(force=True,silent=True) or {}
+    sm=SignalMessage(id_teleconsultation=tid,expediteur_role=d.get("role",role),type_signal=d.get("type","ice"),payload=json.dumps(d.get("payload")))
+    db.session.add(sm); db.session.commit()
+    return jsonify({"ok":True})
+
+@app.route("/api/signal/<int:tid>/poll")
+@login_required
+def api_signal_poll(tid):
+    t=next((x for x in DB["teleconsultations"] if x["id"]==tid),None)
+    if not t: return jsonify({"error":"not found"}),404
+    role=session.get("role")
+    if role=="medecin":
+        med=get_med(session["user"])
+        if not med or t["matricule"]!=med["matricule"]: return jsonify({"error":"forbidden"}),403
+    elif role=="patient":
+        pat=get_pat(session["user"])
+        if not pat or t["id_patient"]!=pat["id"]: return jsonify({"error":"forbidden"}),403
+    else:
+        return jsonify({"error":"forbidden"}),403
+    since=int(request.args.get("since",0))
+    msgs=SignalMessage.query.filter(SignalMessage.id_teleconsultation==tid,SignalMessage.id>since).order_by(SignalMessage.id.asc()).limit(50).all()
+    return jsonify({"messages":[{"id":m.id,"type":m.type_signal,"role":m.expediteur_role,"payload":json.loads(m.payload) if m.payload else None} for m in msgs]})
+
+@app.route("/api/signal/<int:tid>/end",methods=["POST"])
+@login_required
+def api_signal_end(tid):
+    t=next((x for x in DB["teleconsultations"] if x["id"]==tid),None)
+    if t and t["statut"]!="Terminee":
+        t["statut"]="Terminee"; t["date_fin"]=datetime.now().strftime("%Y-%m-%d %H:%M")
+        rdv=next((r for r in DB["rdvs"] if r["id"]==t.get("id_rdv")),None)
+        if rdv: rdv["statut"]="Termine"
+    return jsonify({"ok":True})
 
 @app.route("/m-service")
 @login_required
@@ -2710,25 +2900,38 @@ def p_teleconsult():
     teles=[t for t in DB["teleconsultations"] if t["id_patient"]==pid]
     def row_tele_p(t):
         st_cls={"Planifiee":"att","En cours":"ok","Terminee":"grey"}.get(t["statut"],"att")
-        if t.get("lien") and t["statut"] in ["Planifiee","En cours"]:
-            btn=f'<a href="{t["lien"]}" target="_blank" class="btn btn-sm btn-b"><i class="fas fa-video"></i>Rejoindre</a>'
-        elif t["statut"]=="Terminee":
-            btn='<span style="color:var(--muted);font-size:.82rem;">Terminee</span>'
+        if t["statut"] in ["Planifiee","En cours"]:
+            btn=f'<a href="/p-teleconsult-room/{t["id"]}" class="btn btn-sm btn-g"><i class="fas fa-video"></i>Rejoindre</a>'
         else:
-            btn='<span style="color:var(--muted);font-size:.82rem;">En attente du lien...</span>'
+            btn='<span style="color:var(--muted);font-size:.82rem;">Terminee</span>'
         return f'<tr><td>{t["date_debut"]}</td><td>{mname(t["matricule"])}</td><td><span class="bk {st_cls}">{t["statut"]}</span></td><td>{btn}</td></tr>'
     rows="".join(row_tele_p(t) for t in sorted(teles,key=lambda x:x["date_debut"],reverse=True))
-    # Alerte si une téléconsultation est "En cours"
-    en_cours=next((t for t in teles if t["statut"]=="En cours"),None)
+    # Alerte si une téléconsultation est planifiée ou en cours
+    dispo=next((t for t in teles if t["statut"] in ("Planifiee","En cours")),None)
     alerte=""
-    if en_cours:
-        alerte=f'<div class="al al-w mb-3" style="border-left:4px solid var(--g1);"><i class="fas fa-video" style="color:var(--g1);"></i><strong>Teleconsultation en cours !</strong> Votre medecin vous attend. <a href="{en_cours["lien"]}" target="_blank" class="btn btn-sm btn-g ms-2"><i class="fas fa-video"></i>Rejoindre maintenant</a></div>'
+    if dispo:
+        alerte=f'<div class="al al-w mb-3" style="border-left:4px solid var(--g1);"><i class="fas fa-video" style="color:var(--g1);"></i><strong>Votre teleconsultation est prete !</strong> <a href="/p-teleconsult-room/{dispo["id"]}" class="btn btn-sm btn-g ms-2"><i class="fas fa-video"></i>Rejoindre maintenant</a></div>'
     body=f"""{alerte}<div class="card"><div class="card-hdr"><div class="title"><i class="fas fa-video"></i>Mes Teleconsultations ({len(teles)})</div></div>
-<div class="al al-i" style="margin:12px 18px 0;font-size:.82rem;"><i class="fas fa-info-circle"></i>Le lien est genere par votre medecin. Aucune installation requise — la visioconference s'ouvre dans votre navigateur.</div>
+<div class="al al-i" style="margin:12px 18px 0;font-size:.82rem;"><i class="fas fa-info-circle"></i>La visioconference se fait directement dans l'application — aucune installation requise, aucun lien externe.</div>
 <div style="overflow-x:auto;"><table class="table"><thead><tr><th>Date</th><th>Medecin</th><th>Statut</th><th>Action</th></tr></thead><tbody>
 {rows if rows else "<tr><td colspan=4 class='text-center' style='color:var(--muted);padding:20px;'>Aucune teleconsultation</td></tr>"}
 </tbody></table></div></div>"""
     return page("Mes Teleconsultations","patient",session["user"],body)
+
+@app.route("/p-teleconsult-room/<int:tid>")
+@login_required
+@role_required("patient")
+def p_teleconsult_room(tid):
+    pat=get_pat(session["user"])
+    t=next((x for x in DB["teleconsultations"] if x["id"]==tid and x["id_patient"]==pat["id"]),None)
+    if not t:
+        flash("Teleconsultation introuvable.","danger"); return redirect(url_for("p_teleconsult"))
+    if t["statut"]=="Planifiee":
+        t["statut"]="En cours"
+        rdv=next((r for r in DB["rdvs"] if r["id"]==t.get("id_rdv")),None)
+        if rdv: rdv["statut"]="En cours"
+    body=f'<h5 style="color:var(--g3);margin-bottom:12px;"><i class="fas fa-video"></i> Teleconsultation avec {mname(t["matricule"])}</h5>'+_room_body(tid,"patient")
+    return page("Salle de teleconsultation","patient",session["user"],body)
 
 @app.route("/p-resultats")
 @login_required

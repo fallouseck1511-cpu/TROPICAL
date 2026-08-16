@@ -362,6 +362,25 @@ class Teleconsultation(db.Model):
     patient = db.relationship("Patient", back_populates="teleconsultations")
     medecin = db.relationship("Medecin", back_populates="teleconsultations")
     rdv     = db.relationship("Rdv",     back_populates="teleconsultation")
+    signaux = db.relationship("SignalMessage", back_populates="teleconsultation", cascade="all, delete-orphan")
+
+# ─────────────────────────────────────────────────────────────
+# 18bis. MESSAGE DE SIGNALISATION (appel video WebRTC)
+# ─────────────────────────────────────────────────────────────
+class SignalMessage(db.Model):
+    """Relai des messages WebRTC (offre/reponse SDP, candidats ICE) entre
+    le medecin et le patient pour etablir un appel video pair-a-pair,
+    directement dans l'application (sans service externe type Jitsi/Meet).
+    Recuperes par polling HTTP cote client (pas de WebSocket necessaire)."""
+    __tablename__          = "signal_messages"
+    id                     = db.Column(db.Integer, primary_key=True)
+    id_teleconsultation    = db.Column(db.Integer, db.ForeignKey("teleconsultations.id"), nullable=False)
+    expediteur_role        = db.Column(db.String(10))   # medecin|patient
+    type_signal            = db.Column(db.String(20))   # offer|answer|ice|hangup|ready
+    payload                = db.Column(db.Text)          # JSON (SDP ou candidat ICE)
+    date_creation          = db.Column(db.DateTime, default=datetime.utcnow)
+
+    teleconsultation = db.relationship("Teleconsultation", back_populates="signaux")
 
 # ─────────────────────────────────────────────────────────────
 # 19. RÉSULTAT EXAMEN

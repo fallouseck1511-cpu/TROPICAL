@@ -19,7 +19,7 @@ from models import (
     VentePharmacie, Facture, FactureLigne, Paiement, ContratAssurance, Teleconsultation,
     ResultatExamen, DocumentPatient, ListeAttente, Triage,
     InteractionMedicamenteuse, AllergiePatient, Notification, Historique,
-    SmsEnvoye, Creneau, AlerteStock, Ticket, Antecedent, ConstanteVitale, Vaccination,
+    SmsEnvoye, Creneau, AlerteStock, Ticket, Antecedent, ConstanteVitale, Vaccination, SignalMessage,
 )
 
 MODEL_MAP = {
@@ -52,6 +52,7 @@ MODEL_MAP = {
     "antecedents": Antecedent,
     "constantes_vitales": ConstanteVitale,
     "vaccinations": Vaccination,
+    "signal_messages": SignalMessage,
     # "ordonnances" et "factures" sont gérées à part (lignes imbriquées) —
     # voir OrdonnanceRow / FactureRow
 }
