@@ -3175,27 +3175,60 @@ def p_tickets():
     pat=get_pat(session["user"]); pid=pat["id"]
     if request.method=="POST":
         d=request.form
-        sid=int(d.get("service_id",0))
-        srv=next((s for s in DB["services"] if s["id"]==sid),None)
+        base=d.get("base","")  # rdv|consultation|autre
+        rdv_id=int(d.get("rdv_id",0) or 0)
+        cons_id=int(d.get("cons_id",0) or 0)
+        justif=d.get("justificatif","").strip()
+        sid=None; mat=None
+        if base=="rdv":
+            rdv=next((r for r in DB["rdvs"] if r["id"]==rdv_id and r["id_patient"]==pid),None)
+            if not rdv: flash("RDV invalide.","danger"); return redirect(url_for("p_tickets"))
+            if any(t.get("id_rdv")==rdv_id for t in DB.get("tickets",[])):
+                flash("Un ticket existe deja pour ce RDV.","warning"); return redirect(url_for("p_tickets"))
+            mat=rdv["matricule"]
+        elif base=="consultation":
+            cons=next((c for c in DB["consultations"] if c["id"]==cons_id and c["id_patient"]==pid),None)
+            if not cons: flash("Consultation invalide.","danger"); return redirect(url_for("p_tickets"))
+            if any(t.get("id_consultation")==cons_id for t in DB.get("tickets",[])):
+                flash("Un ticket existe deja pour cette consultation.","warning"); return redirect(url_for("p_tickets"))
+            mat=cons["matricule"]
+        elif base=="autre":
+            if not justif:
+                flash("Merci de preciser le motif — il sera verifie par la reception avant validation.","danger"); return redirect(url_for("p_tickets"))
+        else:
+            flash("Choisissez un RDV, une consultation, ou precisez un motif.","danger"); return redirect(url_for("p_tickets"))
+        if mat:
+            med=next((m for m in DB["medecins"] if m["matricule"]==mat),None)
+            sid=med["id_service"] if med else None
+        else:
+            sid=int(d.get("service_id",0) or 0) or None
+        srv=next((s for s in DB["services"] if s["id"]==sid),None) if sid else None
         if not srv:
-            flash("Service introuvable.","danger"); return redirect(url_for("p_tickets"))
+            flash("Impossible de determiner le service associe.","danger"); return redirect(url_for("p_tickets"))
         prix=srv.get("tarif_ticket",0)
-        nt={"id":nid("tickets"),"id_patient":pid,"id_service":sid,"type_ticket":srv["libelle"],"num_ticket":f"TKT-{DB['_c']['tickets']:03d}","statut":"Emis","date_emission":date.today().strftime("%Y-%m-%d"),"prix":prix}
+        nt={"id":nid("tickets"),"id_patient":pid,"id_service":sid,"type_ticket":srv["libelle"],"num_ticket":f"TKT-{DB['_c']['tickets']:04d}","statut":"En attente","date_emission":date.today().strftime("%Y-%m-%d"),"prix":prix,"id_rdv":rdv_id if base=="rdv" else None,"id_consultation":cons_id if base=="consultation" else None,"justificatif":justif if base=="autre" else None}
         DB["tickets"].append(nt)
-        add_hist(f"Ticket {nt['num_ticket']} — {nt['type_ticket']} — {prix:,} FCFA","Ticket",session["user"],pid)
-        add_notif(None,"Nouveau ticket",f"Ticket {nt['num_ticket']}",f"{pname(pid)} a achete un ticket pour {nt['type_ticket']} ({prix:,} FCFA).",dest_role="receptionniste",expediteur=session["user"])
-        flash(f"Ticket {nt['num_ticket']} emis pour {nt['type_ticket']} — {prix:,} FCFA.","success")
+        add_hist(f"Demande de ticket {nt['num_ticket']} — {nt['type_ticket']} — {prix:,} FCFA","Ticket",session["user"],pid)
+        add_notif(None,"Ticket a valider",f"Ticket {nt['num_ticket']} en attente",f"{pname(pid)} a demande un ticket pour {nt['type_ticket']} ({prix:,} FCFA) — a valider avant utilisation.",dest_role="receptionniste",expediteur=session["user"])
+        flash(f"Demande de ticket {nt['num_ticket']} envoyee — en attente de validation par la reception.","success")
         return redirect(url_for("p_tickets"))
     mes_tickets=[t for t in DB.get("tickets",[]) if t["id_patient"]==pid]
+    ids_tickets_rdv={t["id_rdv"] for t in mes_tickets if t.get("id_rdv")}
+    ids_tickets_cons={t["id_consultation"] for t in mes_tickets if t.get("id_consultation")}
+    rdv_eligibles=[r for r in DB["rdvs"] if r["id_patient"]==pid and r["statut"] not in ("Annule","Refuse") and r["id"] not in ids_tickets_rdv]
+    cons_eligibles=[c for c in DB["consultations"] if c["id_patient"]==pid and c["id"] not in ids_tickets_cons]
     voir_id=request.args.get("voir")
     voir_html=""
     if voir_id:
         t=next((x for x in mes_tickets if str(x["id"])==str(voir_id)),None)
         if t:
             contrat=get_contrat_assurance(pid)
+            st_cls={"En attente":"att","Valide":"ok","Refuse":"err"}.get(t["statut"],"att")
+            origine="RDV du "+_ds(next((r["date"] for r in DB["rdvs"] if r["id"]==t.get("id_rdv")),"")) if t.get("id_rdv") else ("Consultation du "+_ds(next((c["date"] for c in DB["consultations"] if c["id"]==t.get("id_consultation")),""))) if t.get("id_consultation") else f"Motif : {t.get('justificatif','-')}"
             voir_html=f"""<div class="card mb-3" style="border:2px solid var(--g1);"><div class="card-hdr" style="background:var(--g3);"><div class="title" style="color:#fff;"><i class="fas fa-ticket-alt"></i>Detail Ticket — {t['num_ticket']}</div><a href="/p-tickets" class="btn btn-sm" style="background:rgba(255,255,255,.2);color:#fff;"><i class="fas fa-times"></i>Fermer</a></div>
 <div class="card-body"><div style="text-align:center;margin-bottom:20px;">
-  <div style="background:linear-gradient(135deg,#0a3b28,#0d7a52);border-radius:14px;padding:24px 32px;color:#fff;display:inline-block;min-width:240px;">
+  <div style="background:linear-gradient(135deg,#0a3b28,#0d7a52);border-radius:14px;padding:24px 32px;color:#fff;display:inline-block;min-width:240px;position:relative;">
+    <div style="position:absolute;top:12px;right:12px;background:#fff;border-radius:6px;padding:4px;"><canvas id="qrTicket" width="64" height="64"></canvas></div>
     <div style="font-size:2.2rem;font-weight:800;letter-spacing:3px;">{t['num_ticket']}</div>
     <div style="font-size:1.05rem;margin-top:6px;opacity:.9;">{t['type_ticket']}</div>
     <div style="font-size:.75rem;opacity:.65;margin-top:4px;">Centre de Sante LE TROPICAL</div>
@@ -3204,33 +3237,62 @@ def p_tickets():
 <table style="width:100%;font-size:.9rem;border-collapse:separate;border-spacing:0 4px;">
   <tr style="background:#f6f8f6;"><td style="padding:8px 10px;color:var(--muted);">Service</td><td style="font-weight:600;">{t['type_ticket']}</td></tr>
   <tr><td style="padding:8px 10px;color:var(--muted);">Patient</td><td><strong>{pat['prenom']} {pat['nom']}</strong></td></tr>
-  <tr style="background:#f6f8f6;"><td style="padding:8px 10px;color:var(--muted);">Telephone</td><td>{pat['telephone']}</td></tr>
-  <tr><td style="padding:8px 10px;color:var(--muted);">Assurance</td><td><span class="bk inf">{pat['assurance']}</span></td></tr>
-  <tr style="background:#f6f8f6;"><td style="padding:8px 10px;color:var(--muted);">Prix</td><td style="font-weight:700;">{t['prix']:,} FCFA</td></tr>
-  <tr><td style="padding:8px 10px;color:var(--muted);">Date emission</td><td>{t['date_emission']}</td></tr>
-  <tr style="background:#f6f8f6;"><td style="padding:8px 10px;color:var(--muted);">Statut</td><td><span class="bk att">{t['statut']}</span></td></tr>
-  {"<tr><td style='padding:8px 10px;color:var(--muted);'>Contrat assur.</td><td>"+contrat['num_contrat']+" ("+contrat['assureur']+")</td></tr>" if contrat else ""}
+  <tr style="background:#f6f8f6;"><td style="padding:8px 10px;color:var(--muted);">Justificatif</td><td>{origine}</td></tr>
+  <tr><td style="padding:8px 10px;color:var(--muted);">Prix</td><td style="font-weight:700;">{t['prix']:,} FCFA</td></tr>
+  <tr style="background:#f6f8f6;"><td style="padding:8px 10px;color:var(--muted);">Date emission</td><td>{t['date_emission']}</td></tr>
+  <tr><td style="padding:8px 10px;color:var(--muted);">Statut</td><td><span class="bk {st_cls}">{t['statut']}</span></td></tr>
+  {"<tr style='background:#f6f8f6;'><td style='padding:8px 10px;color:var(--muted);'>Contrat assur.</td><td>"+contrat['num_contrat']+" ("+contrat['assureur']+")</td></tr>" if contrat else ""}
 </table>
-<div class="al al-i mt-3" style="font-size:.78rem;"><i class="fas fa-info-circle"></i>Montrez cet ecran au receptionniste pour validation. Le ticket sera visible dans son interface.</div>
-</div></div>"""
-    opts_s="".join(f'<option value="{s["id"]}" data-prix="{s.get("tarif_ticket",0)}">{s["libelle"]} — {s.get("tarif_ticket",0):,} FCFA</option>' for s in DB["services"])
-    rows="".join(f'<tr><td><strong style="color:var(--g3);">{t["num_ticket"]}</strong></td><td>{t["type_ticket"]}</td><td>{t["prix"]:,} FCFA</td><td>{t["date_emission"]}</td><td><span class="bk att">{t["statut"]}</span></td><td><a href="/p-tickets?voir={t["id"]}" class="btn btn-sm btn-outline-g"><i class="fas fa-eye"></i>Voir</a></td></tr>' for t in sorted(mes_tickets,key=lambda x:x["id"],reverse=True))
+<div class="al al-i mt-3" style="font-size:.78rem;"><i class="fas fa-info-circle"></i>{"Montrez cet ecran au receptionniste — le ticket est deja valide." if t["statut"]=="Valide" else "Ce ticket est en attente de validation par la reception avant utilisation."}</div>
+</div></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>try{{new QRCode(document.getElementById('qrTicket'),{{text:"{t['num_ticket']}",width:56,height:56}});}}catch(e){{}}</script>"""
+    def opt_rdv(r):
+        return f'<option value="{r["id"]}">{r["date"]} {r["heure"]} — Dr. {next((m["nom"] for m in DB["medecins"] if m["matricule"]==r["matricule"]),"?")} ({r["statut"]})</option>'
+    def opt_cons(c):
+        return f'<option value="{c["id"]}">{c["date"]} — Dr. {next((m["nom"] for m in DB["medecins"] if m["matricule"]==c["matricule"]),"?")} — {c["diagnostic"][:30]}</option>'
+    opts_rdv="".join(opt_rdv(r) for r in sorted(rdv_eligibles,key=lambda x:x["date"],reverse=True))
+    opts_cons="".join(opt_cons(c) for c in sorted(cons_eligibles,key=lambda x:x["date"],reverse=True))
+    opts_s="".join(f'<option value="{s["id"]}">{s["libelle"]} — {s.get("tarif_ticket",0):,} FCFA</option>' for s in DB["services"])
+    def row_t(t):
+        st_cls={"En attente":"att","Valide":"ok","Refuse":"err"}.get(t["statut"],"att")
+        return f'<tr><td><strong style="color:var(--g3);">{t["num_ticket"]}</strong></td><td>{t["type_ticket"]}</td><td>{t["prix"]:,} FCFA</td><td>{t["date_emission"]}</td><td><span class="bk {st_cls}">{t["statut"]}</span></td><td><a href="/p-tickets?voir={t["id"]}" class="btn btn-sm btn-outline-g"><i class="fas fa-eye"></i>Voir</a></td></tr>'
+    rows="".join(row_t(t) for t in sorted(mes_tickets,key=lambda x:x["id"],reverse=True))
     body=f"""
 {voir_html}
 <div class="row g-3">
   <div class="col-lg-8"><div class="card"><div class="card-hdr"><div class="title"><i class="fas fa-ticket-alt"></i>Mes Tickets ({len(mes_tickets)})</div></div>
-  <div style="overflow-x:auto;"><table class="table"><thead><tr><th>Numero</th><th>Service</th><th>Prix</th><th>Date</th><th>Statut</th><th>Detail</th></tr></thead><tbody>
-  {rows if rows else "<tr><td colspan=6 class='text-center' style='color:var(--muted);padding:20px;'>Aucun ticket — Achetez votre premier ticket ci-contre.</td></tr>"}
+  <div style="overflow-x:auto;"><table class="table"><thead><tr><th>Numero</th><th>Service</th><th>Prix</th><th>Date</th><th>Statut</th><th></th></tr></thead><tbody>
+  {rows if rows else "<tr><td colspan=6 class='text-center' style='color:var(--muted);padding:20px;'>Aucun ticket</td></tr>"}
   </tbody></table></div></div></div>
-  <div class="col-lg-4"><div class="card"><div class="card-hdr"><div class="title"><i class="fas fa-plus-circle"></i>Acheter un ticket</div></div><div class="card-body">
-    <div class="al al-i mb-3" style="font-size:.78rem;"><i class="fas fa-info-circle"></i>Apres achat, cliquez sur <strong>Voir</strong> pour afficher le detail a presenter a la reception.</div>
-    <form method="POST"><div class="row g-2">
-      <div class="col-12"><label class="form-label">Service *</label><select name="service_id" id="sel_srv" class="form-select" onchange="var o=this.options[this.selectedIndex];document.getElementById('prix_display').textContent=parseInt(o.getAttribute('data-prix')||0).toLocaleString('fr-FR')+' FCFA';">{opts_s}</select></div>
-      <div class="col-12"><label class="form-label">Prix du ticket</label><div class="al al-i" id="prix_display" style="font-size:1rem;font-weight:700;color:var(--g3);text-align:center;padding:10px;">-- FCFA</div></div>
-      <div class="col-12"><button type="submit" class="btn btn-g w-100" style="justify-content:center;"><i class="fas fa-ticket-alt"></i>Acheter le ticket</button></div>
+  <div class="col-lg-4"><div class="card"><div class="card-hdr"><div class="title">Demander un ticket</div></div><div class="card-body">
+    <div class="al al-i mb-2" style="font-size:.78rem;"><i class="fas fa-info-circle"></i>Chaque ticket doit etre rattache a un RDV ou une consultation, ou justifie — et sera valide par la reception avant utilisation.</div>
+    <form method="POST" id="formTicket"><div class="row g-2">
+      <div class="col-12"><label class="form-label">Base du ticket *</label><select name="base" id="tk_base" class="form-select" required onchange="tkSwitch()">
+        <option value="">-- Choisir --</option>
+        <option value="rdv" {"disabled" if not opts_rdv else ""}>Sur la base d'un RDV</option>
+        <option value="consultation" {"disabled" if not opts_cons else ""}>Sur la base d'une consultation</option>
+        <option value="autre">Autre motif (a justifier)</option>
+      </select></div>
+      <div class="col-12 tk-block" id="tk_rdv_block" style="display:none;"><label class="form-label">RDV</label><select name="rdv_id" class="form-select"><option value="">--</option>{opts_rdv}</select></div>
+      <div class="col-12 tk-block" id="tk_cons_block" style="display:none;"><label class="form-label">Consultation</label><select name="cons_id" class="form-select"><option value="">--</option>{opts_cons}</select></div>
+      <div class="col-12 tk-block" id="tk_autre_block" style="display:none;">
+        <label class="form-label">Service concerne</label><select name="service_id" class="form-select mb-2">{opts_s}</select>
+        <label class="form-label">Motif *</label><input type="text" name="justificatif" class="form-control" placeholder="Ex: retrait resultats, renseignement...">
+      </div>
+      <div class="col-12"><button type="submit" class="btn btn-o w-100" style="justify-content:center;color:#fff;"><i class="fas fa-paper-plane"></i>Envoyer la demande</button></div>
     </div></form>
   </div></div></div>
-</div>"""
+</div>
+<script>
+function tkSwitch(){{
+  const v=document.getElementById('tk_base').value;
+  document.querySelectorAll('.tk-block').forEach(b=>b.style.display='none');
+  if(v==='rdv') document.getElementById('tk_rdv_block').style.display='block';
+  else if(v==='consultation') document.getElementById('tk_cons_block').style.display='block';
+  else if(v==='autre') document.getElementById('tk_autre_block').style.display='block';
+}}
+</script>"""
     return page("Mes Tickets","patient",session["user"],body)
 
 
@@ -3514,34 +3576,108 @@ def r_demandes():
 def r_tickets():
     if request.method=="POST":
         d=request.form
-        sid=int(d.get("service_id",0))
-        srv=next((s for s in DB["services"] if s["id"]==sid),None)
+        base=d.get("base","")
+        pid_t=int(d.get("patient",0) or 0)
+        rdv_id=int(d.get("rdv_id",0) or 0)
+        cons_id=int(d.get("cons_id",0) or 0)
+        justif=d.get("justificatif","").strip()
+        pat=next((p for p in DB["patients"] if p["id"]==pid_t),None)
+        if not pat:
+            flash("Patient invalide.","danger"); return redirect(url_for("r_tickets"))
+        sid=None; mat=None
+        if base=="rdv":
+            rdv=next((r for r in DB["rdvs"] if r["id"]==rdv_id and r["id_patient"]==pid_t),None)
+            if not rdv: flash("RDV invalide pour ce patient.","danger"); return redirect(url_for("r_tickets"))
+            if any(t.get("id_rdv")==rdv_id for t in DB.get("tickets",[])):
+                flash("Un ticket existe deja pour ce RDV.","warning"); return redirect(url_for("r_tickets"))
+            mat=rdv["matricule"]
+        elif base=="consultation":
+            cons=next((c for c in DB["consultations"] if c["id"]==cons_id and c["id_patient"]==pid_t),None)
+            if not cons: flash("Consultation invalide pour ce patient.","danger"); return redirect(url_for("r_tickets"))
+            if any(t.get("id_consultation")==cons_id for t in DB.get("tickets",[])):
+                flash("Un ticket existe deja pour cette consultation.","warning"); return redirect(url_for("r_tickets"))
+            mat=cons["matricule"]
+        elif base=="autre":
+            if not justif:
+                flash("Motif requis pour un ticket sans RDV/consultation.","danger"); return redirect(url_for("r_tickets"))
+        else:
+            flash("Choisissez un RDV, une consultation, ou precisez un motif.","danger"); return redirect(url_for("r_tickets"))
+        if mat:
+            med=next((m for m in DB["medecins"] if m["matricule"]==mat),None)
+            sid=med["id_service"] if med else None
+        else:
+            sid=int(d.get("service_id",0) or 0) or None
+        srv=next((s for s in DB["services"] if s["id"]==sid),None) if sid else None
         if not srv:
-            flash("Service introuvable.","danger"); return redirect(url_for("r_tickets"))
+            flash("Impossible de determiner le service associe.","danger"); return redirect(url_for("r_tickets"))
         prix=srv.get("tarif_ticket",0)
-        pid_t=int(d["patient"])
-        nt={"id":nid("tickets"),"id_patient":pid_t,"id_service":sid,"type_ticket":srv["libelle"],"num_ticket":f"TKT-{DB['_c']['tickets']:03d}","statut":"Emis","date_emission":date.today().strftime("%Y-%m-%d"),"prix":prix}
+        nt={"id":nid("tickets"),"id_patient":pid_t,"id_service":sid,"type_ticket":srv["libelle"],"num_ticket":f"TKT-{DB['_c']['tickets']:04d}","statut":"En attente","date_emission":date.today().strftime("%Y-%m-%d"),"prix":prix,"id_rdv":rdv_id if base=="rdv" else None,"id_consultation":cons_id if base=="consultation" else None,"justificatif":justif if base=="autre" else None}
         DB["tickets"].append(nt)
         add_hist(f"Ticket {nt['num_ticket']} — {nt['type_ticket']} — {pname(pid_t)} — {prix:,} FCFA","Ticket",session["user"],pid_t)
-        flash(f"Ticket {nt['num_ticket']} emis pour {pname(pid_t)} — {nt['type_ticket']} — {prix:,} FCFA.","success")
+        flash(f"Ticket {nt['num_ticket']} enregistre pour {pname(pid_t)} — en attente de validation.","success")
         return redirect(url_for("r_tickets"))
-    rows="".join(f'<tr><td><strong>{t["num_ticket"]}</strong></td><td>{pname(t["id_patient"])}</td><td>{t["type_ticket"]}</td><td>{t["prix"]:,} FCFA</td><td>{t["date_emission"]}</td><td><span class="bk att">{t["statut"]}</span></td><td><a href="/r-ticket-detail/{t["id"]}" class="btn btn-sm btn-outline-g"><i class="fas fa-eye"></i>Voir</a></td></tr>' for t in sorted(DB.get("tickets",[]),key=lambda x:x["id"],reverse=True))
+    def opt_rdv_r(r):
+        return f'<option value="{r["id"]}" data-patient="{r["id_patient"]}">{r["date"]} {r["heure"]} — {pname(r["id_patient"])} — Dr. {next((m["nom"] for m in DB["medecins"] if m["matricule"]==r["matricule"]),"?")}</option>'
+    def opt_cons_r(c):
+        return f'<option value="{c["id"]}" data-patient="{c["id_patient"]}">{c["date"]} — {pname(c["id_patient"])} — Dr. {next((m["nom"] for m in DB["medecins"] if m["matricule"]==c["matricule"]),"?")} — {c["diagnostic"][:25]}</option>'
+    ids_tickets_rdv={t["id_rdv"] for t in DB.get("tickets",[]) if t.get("id_rdv")}
+    ids_tickets_cons={t["id_consultation"] for t in DB.get("tickets",[]) if t.get("id_consultation")}
+    rdv_elig=[r for r in DB["rdvs"] if r["statut"] not in ("Annule","Refuse") and r["id"] not in ids_tickets_rdv]
+    cons_elig=[c for c in DB["consultations"] if c["id"] not in ids_tickets_cons]
+    opts_rdv="".join(opt_rdv_r(r) for r in sorted(rdv_elig,key=lambda x:x["date"],reverse=True)[:100])
+    opts_cons="".join(opt_cons_r(c) for c in sorted(cons_elig,key=lambda x:x["date"],reverse=True)[:100])
+    def row_tr(t):
+        st_cls={"En attente":"att","Valide":"ok","Refuse":"err"}.get(t["statut"],"att")
+        return f'<tr data-f="{t["statut"]}"><td><strong>{t["num_ticket"]}</strong></td><td>{pname(t["id_patient"])}</td><td>{t["type_ticket"]}</td><td>{t["prix"]:,} FCFA</td><td>{t["date_emission"]}</td><td><span class="bk {st_cls}">{t["statut"]}</span></td><td><a href="/r-ticket-detail/{t["id"]}" class="btn btn-sm btn-outline-g"><i class="fas fa-eye"></i>Voir</a></td></tr>'
+    rows="".join(row_tr(t) for t in sorted(DB.get("tickets",[]),key=lambda x:x["id"],reverse=True))
+    n_attente=len([t for t in DB.get("tickets",[]) if t["statut"]=="En attente"])
     opts_p="".join(f'<option value="{p["id"]}">{p["prenom"]} {p["nom"]}</option>' for p in DB["patients"])
-    opts_s="".join(f'<option value="{s["id"]}" data-prix="{s.get("tarif_ticket",0)}">{s["libelle"]} — {s.get("tarif_ticket",0):,} FCFA</option>' for s in DB["services"])
+    opts_s="".join(f'<option value="{s["id"]}">{s["libelle"]} — {s.get("tarif_ticket",0):,} FCFA</option>' for s in DB["services"])
+    alerte=f'<div class="al al-w mb-2"><i class="fas fa-exclamation-triangle"></i><strong>{n_attente} ticket(s)</strong> en attente de validation.</div>' if n_attente else ""
     body=f"""<div class="row g-3">
-  <div class="col-lg-8"><div class="card"><div class="card-hdr"><div class="title"><i class="fas fa-ticket-alt"></i>Tickets emis</div></div>
-  <div style="overflow-x:auto;"><table class="table"><thead><tr><th>Numero</th><th>Patient</th><th>Service</th><th>Prix</th><th>Date</th><th>Statut</th><th>Detail</th></tr></thead><tbody>
-  {rows if rows else "<tr><td colspan=6 class='text-center' style='color:var(--muted);padding:20px;'>Aucun ticket</td></tr>"}
+  <div class="col-lg-8"><div class="card"><div class="card-hdr"><div class="title"><i class="fas fa-ticket-alt"></i>Tickets ({len(DB.get("tickets",[]))})</div></div>
+  {alerte}
+  <div style="padding:12px 18px;display:flex;gap:10px;flex-wrap:wrap;">
+    <input type="text" id="stk" class="form-control" placeholder="Rechercher (numero, patient...)" oninput="srchFilter('ttk','stk','ftk')" style="max-width:260px;">
+    <select id="ftk" class="form-select" onchange="srchFilter('ttk','stk','ftk')" style="max-width:170px;"><option value="">Tous statuts</option><option>En attente</option><option>Valide</option><option>Refuse</option></select>
+  </div>
+  <div style="overflow-x:auto;"><table class="table" id="ttk"><thead><tr><th>Numero</th><th>Patient</th><th>Service</th><th>Prix</th><th>Date</th><th>Statut</th><th>Detail</th></tr></thead><tbody>
+  {rows if rows else "<tr><td colspan=7 class='text-center' style='color:var(--muted);padding:20px;'>Aucun ticket</td></tr>"}
   </tbody></table></div></div></div>
-  <div class="col-lg-4"><div class="card"><div class="card-hdr"><div class="title">Vendre un ticket</div></div><div class="card-body">
-    <form method="POST"><div class="row g-2">
-      <div class="col-12"><label class="form-label">Patient *</label><select name="patient" class="form-select" required><option value="">--</option>{opts_p}</select></div>
-      <div class="col-12"><label class="form-label">Service *</label><select name="service_id" id="sel_srv_r" class="form-select" onchange="var o=this.options[this.selectedIndex];document.getElementById('prix_display_r').textContent=parseInt(o.getAttribute('data-prix')||0).toLocaleString('fr-FR')+' FCFA';">{opts_s}</select></div>
-      <div class="col-12"><label class="form-label">Prix du ticket</label><div class="al al-i" id="prix_display_r" style="font-size:1rem;font-weight:700;color:var(--g3);text-align:center;padding:10px;">-- FCFA</div></div>
-      <div class="col-12"><button type="submit" class="btn btn-o w-100" style="justify-content:center;color:#fff;"><i class="fas fa-ticket-alt"></i>Emettre</button></div>
+  <div class="col-lg-4"><div class="card"><div class="card-hdr"><div class="title">Emettre un ticket (guichet)</div></div><div class="card-body">
+    <div class="al al-i mb-2" style="font-size:.78rem;"><i class="fas fa-info-circle"></i>Rattachez le ticket a un RDV/consultation du patient, ou justifiez le motif — il restera en attente de validation.</div>
+    <form method="POST" id="formTicketR"><div class="row g-2">
+      <div class="col-12"><label class="form-label">Patient *</label><select name="patient" id="rtk_patient" class="form-select" required><option value="">--</option>{opts_p}</select></div>
+      <div class="col-12"><label class="form-label">Base du ticket *</label><select name="base" id="rtk_base" class="form-select" required onchange="rtkSwitch()">
+        <option value="">-- Choisir --</option>
+        <option value="rdv">Sur la base d'un RDV</option>
+        <option value="consultation">Sur la base d'une consultation</option>
+        <option value="autre">Autre motif (a justifier)</option>
+      </select></div>
+      <div class="col-12 rtk-block" id="rtk_rdv_block" style="display:none;"><label class="form-label">RDV</label><select name="rdv_id" id="rtk_rdv_sel" class="form-select"><option value="">--</option>{opts_rdv}</select></div>
+      <div class="col-12 rtk-block" id="rtk_cons_block" style="display:none;"><label class="form-label">Consultation</label><select name="cons_id" id="rtk_cons_sel" class="form-select"><option value="">--</option>{opts_cons}</select></div>
+      <div class="col-12 rtk-block" id="rtk_autre_block" style="display:none;">
+        <label class="form-label">Service concerne</label><select name="service_id" class="form-select mb-2">{opts_s}</select>
+        <label class="form-label">Motif *</label><input type="text" name="justificatif" class="form-control" placeholder="Ex: retrait resultats, renseignement...">
+      </div>
+      <div class="col-12"><button type="submit" class="btn btn-o w-100" style="justify-content:center;color:#fff;"><i class="fas fa-ticket-alt"></i>Enregistrer</button></div>
     </div></form>
   </div></div></div>
-</div>"""
+</div>
+<script>
+function rtkSwitch(){{
+  const v=document.getElementById('rtk_base').value;
+  document.querySelectorAll('.rtk-block').forEach(b=>b.style.display='none');
+  if(v==='rdv') document.getElementById('rtk_rdv_block').style.display='block';
+  else if(v==='consultation') document.getElementById('rtk_cons_block').style.display='block';
+  else if(v==='autre') document.getElementById('rtk_autre_block').style.display='block';
+}}
+document.getElementById('rtk_patient').addEventListener('change', function(){{
+  const pid=this.value;
+  document.querySelectorAll('#rtk_rdv_sel option[data-patient]').forEach(o=>{{ o.style.display = (!pid || o.dataset.patient===pid) ? 'block' : 'none'; }});
+  document.querySelectorAll('#rtk_cons_sel option[data-patient]').forEach(o=>{{ o.style.display = (!pid || o.dataset.patient===pid) ? 'block' : 'none'; }});
+}});
+</script>"""
     return page("Tickets","receptionniste",session["user"],body)
 
 @app.route("/r-ticket-detail/<int:tid>")
@@ -3552,12 +3688,19 @@ def r_ticket_detail(tid):
     if not t: flash("Ticket introuvable","danger"); return redirect(url_for("r_tickets"))
     pat=next((p for p in DB["patients"] if p["id"]==t["id_patient"]),None)
     contrat=get_contrat_assurance(t["id_patient"]) if pat else None
+    origine="RDV du "+_ds(next((r["date"] for r in DB["rdvs"] if r["id"]==t.get("id_rdv")),"")) if t.get("id_rdv") else ("Consultation du "+_ds(next((c["date"] for c in DB["consultations"] if c["id"]==t.get("id_consultation")),""))) if t.get("id_consultation") else f"Motif : {t.get('justificatif','-')}"
+    st_cls={"En attente":"att","Valide":"ok","Refuse":"err"}.get(t["statut"],"att")
+    actions_html=""
+    if t["statut"]=="En attente":
+        actions_html=f"""<form method="POST" action="/r-ticket-valider/{t['id']}" style="display:inline;"><button type="submit" class="btn btn-g"><i class="fas fa-check"></i>Valider</button></form>
+        <form method="POST" action="/r-ticket-refuser/{t['id']}" style="display:inline;margin-left:6px;" onsubmit="return confirm('Refuser ce ticket ?')"><button type="submit" class="btn btn-danger"><i class="fas fa-times"></i>Refuser</button></form>"""
     body=f"""<div class="row justify-content-center"><div class="col-lg-6">
   <div class="card" style="border:2px solid var(--g1);">
     <div class="card-hdr" style="background:var(--g3);"><div class="title" style="color:#fff;"><i class="fas fa-ticket-alt" style="color:#8fc4a8;"></i>Detail Ticket {t['num_ticket']}</div></div>
     <div class="card-body">
       <div style="text-align:center;margin-bottom:20px;">
-        <div style="background:linear-gradient(135deg,#0a3b28,#0d7a52);border-radius:14px;padding:24px;color:#fff;display:inline-block;min-width:220px;">
+        <div style="background:linear-gradient(135deg,#0a3b28,#0d7a52);border-radius:14px;padding:24px;color:#fff;display:inline-block;min-width:220px;position:relative;">
+          <div style="position:absolute;top:12px;right:12px;background:#fff;border-radius:6px;padding:4px;"><canvas id="qrTicketR" width="56" height="56"></canvas></div>
           <div style="font-size:2rem;font-weight:700;letter-spacing:2px;">{t['num_ticket']}</div>
           <div style="font-size:1rem;margin-top:4px;opacity:.9;">{t['type_ticket']}</div>
           <div style="font-size:.8rem;opacity:.7;margin-top:6px;">Centre de Sante LE TROPICAL</div>
@@ -3567,27 +3710,46 @@ def r_ticket_detail(tid):
         <tr style="background:#f6f8f6;"><td style="padding:7px;color:var(--muted);">Service</td><td style="font-weight:600;">{t['type_ticket']}</td></tr>
         <tr><td style="padding:7px;color:var(--muted);">Patient</td><td><strong>{"" if not pat else pat["prenom"]+" "+pat["nom"]}</strong></td></tr>
         <tr style="background:#f6f8f6;"><td style="padding:7px;color:var(--muted);">Telephone</td><td>{"" if not pat else pat["telephone"]}</td></tr>
-        <tr><td style="padding:7px;color:var(--muted);">Assurance</td><td><span class="bk inf">{"" if not pat else pat["assurance"]}</span></td></tr>
+        <tr><td style="padding:7px;color:var(--muted);">Justificatif</td><td>{origine}</td></tr>
         <tr style="background:#f6f8f6;"><td style="padding:7px;color:var(--muted);">Prix</td><td style="font-weight:700;">{t['prix']:,} FCFA</td></tr>
         <tr><td style="padding:7px;color:var(--muted);">Date emission</td><td>{t['date_emission']}</td></tr>
-        <tr style="background:#f6f8f6;"><td style="padding:7px;color:var(--muted);">Statut</td><td><span class="bk att">{t['statut']}</span></td></tr>
-        {"<tr><td style=padding:7px;color:var(--muted);>Contrat assur.</td><td>"+contrat['num_contrat']+" ("+contrat['assureur']+")</td></tr>" if contrat else ""}
+        <tr style="background:#f6f8f6;"><td style="padding:7px;color:var(--muted);">Statut</td><td><span class="bk {st_cls}">{t['statut']}</span></td></tr>
+        {"<tr><td style='padding:7px;color:var(--muted);'>Valide par</td><td>"+(t.get('valide_par') or '-')+" le "+str(t.get('date_validation') or '-')+"</td></tr>" if t["statut"]!="En attente" else ""}
+        {"<tr style='background:#f6f8f6;'><td style='padding:7px;color:var(--muted);'>Contrat assur.</td><td>"+contrat['num_contrat']+" ("+contrat['assureur']+")</td></tr>" if contrat else ""}
       </table>
-      <div class="al al-i mt-3" style="font-size:.78rem;"><i class="fas fa-info-circle"></i>Le patient a presente ce ticket depuis son espace personnel. Verifiez les informations avant validation.</div>
-      <div style="margin-top:16px;display:flex;gap:8px;justify-content:center;">
-        <a href="/r-ticket-valider/{t['id']}" class="btn btn-g"><i class="fas fa-check"></i>Valider le ticket</a>
+      <div class="al al-i mt-3" style="font-size:.78rem;"><i class="fas fa-info-circle"></i>{"Verifiez que le justificatif correspond bien avant validation." if t["statut"]=="En attente" else "Ticket deja traite."}</div>
+      <div style="margin-top:16px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">
+        {actions_html}
         <a href="/r-tickets" class="btn btn-outline-g">Retour</a>
       </div>
     </div>
-  </div></div></div>"""
+  </div></div></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>try{{new QRCode(document.getElementById('qrTicketR'),{{text:"{t['num_ticket']}",width:48,height:48}});}}catch(e){{}}</script>"""
     return page(f"Ticket {t['num_ticket']}","receptionniste",session["user"],body)
 
-@app.route("/r-ticket-valider/<int:tid>")
+@app.route("/r-ticket-valider/<int:tid>",methods=["POST"])
 @login_required
 @role_required("receptionniste")
 def r_ticket_valider(tid):
     t=next((x for x in DB.get("tickets",[]) if x["id"]==tid),None)
-    if t: t["statut"]="Valide"; flash(f"Ticket {t['num_ticket']} valide.","success")
+    if t and t["statut"]=="En attente":
+        t["statut"]="Valide"; t["valide_par"]=session["user"]; t["date_validation"]=date.today().strftime("%Y-%m-%d")
+        add_hist(f"Ticket {t['num_ticket']} valide","Ticket",session["user"],t["id_patient"])
+        add_notif(t["id_patient"],"Ticket valide",f"Ticket {t['num_ticket']}",f"Votre ticket {t['num_ticket']} a ete valide par la reception. Vous pouvez l'utiliser.",expediteur=session["user"])
+        flash(f"Ticket {t['num_ticket']} valide.","success")
+    return redirect(url_for("r_tickets"))
+
+@app.route("/r-ticket-refuser/<int:tid>",methods=["POST"])
+@login_required
+@role_required("receptionniste")
+def r_ticket_refuser(tid):
+    t=next((x for x in DB.get("tickets",[]) if x["id"]==tid),None)
+    if t and t["statut"]=="En attente":
+        t["statut"]="Refuse"; t["valide_par"]=session["user"]; t["date_validation"]=date.today().strftime("%Y-%m-%d")
+        add_hist(f"Ticket {t['num_ticket']} refuse","Ticket",session["user"],t["id_patient"])
+        add_notif(t["id_patient"],"Ticket refuse",f"Ticket {t['num_ticket']}",f"Votre demande de ticket {t['num_ticket']} a ete refusee par la reception. Contactez l'accueil pour plus d'informations.",expediteur=session["user"])
+        flash(f"Ticket {t['num_ticket']} refuse.","warning")
     return redirect(url_for("r_tickets"))
 
 @app.route("/r-attente",methods=["GET","POST"])

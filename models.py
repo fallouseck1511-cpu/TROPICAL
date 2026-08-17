@@ -606,14 +606,21 @@ class Ticket(db.Model):
     id              = db.Column(db.Integer, primary_key=True)
     num_ticket      = db.Column(db.String(20))
     type_ticket     = db.Column(db.String(80))
-    statut          = db.Column(db.String(20), default="Emis")
+    statut          = db.Column(db.String(20), default="En attente")  # En attente|Valide|Refuse
     date_emission   = db.Column(db.Date, default=date.today)
     prix            = db.Column(db.Integer, default=0)
     id_patient      = db.Column(db.Integer, db.ForeignKey("patients.id"), nullable=False)
     id_service      = db.Column(db.Integer, db.ForeignKey("services.id"), nullable=False)
+    id_rdv          = db.Column(db.Integer, db.ForeignKey("rdvs.id"))            # justificatif : RDV
+    id_consultation = db.Column(db.Integer, db.ForeignKey("consultations.id"))   # justificatif : consultation
+    justificatif    = db.Column(db.String(200))   # motif libre si ni RDV ni consultation (soumis a validation manuelle)
+    valide_par      = db.Column(db.String(60))
+    date_validation = db.Column(db.Date)
 
     patient = db.relationship("Patient", backref="tickets")
     service = db.relationship("Service", backref="tickets")
+    rdv = db.relationship("Rdv", backref="ticket")
+    consultation = db.relationship("Consultation", backref="ticket")
 
 # ─────────────────────────────────────────────────────────────
 # 27. SMS ENVOYÉ
