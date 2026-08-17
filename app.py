@@ -165,7 +165,7 @@ def verifier_creneau(mat,date_str,heure_str):
         plages=", ".join(f"{c['heure_debut']}-{c['heure_fin']}" for c in crens_med)
         return False,f"Heure hors creneau. Dr. {med['prenom']} {med['nom']} consulte le {jour} de {plages}."
     # 4. Vérifier double réservation
-    rdv_existant=next((r for r in DB["rdvs"] if r["matricule"]==mat and r["date"]==date_str and r["heure"]==heure_str and r["statut"] not in ["Annule","Refuse"]),None)
+    rdv_existant=next((r for r in DB["rdvs"] if r["matricule"]==mat and _ds(r["date"])==date_str and r["heure"]==heure_str and r["statut"] not in ["Annule","Refuse"]),None)
     if rdv_existant:
         return False,f"Ce creneau ({date_str} a {heure_str}) est deja pris pour Dr. {med['prenom']} {med['nom']}."
     return True,"OK"
@@ -176,7 +176,7 @@ def get_creneaux_libres(mat,date_str):
     crens=[c for c in DB.get("creneaux",[]) if c["matricule"]==mat and c["actif"] and c["jour"]==jour]
     if not crens: return []
     from datetime import datetime as dt,timedelta
-    rdvs_pris={r["heure"] for r in DB["rdvs"] if r["matricule"]==mat and r["date"]==date_str and r["statut"] not in ["Annule","Refuse"]}
+    rdvs_pris={r["heure"] for r in DB["rdvs"] if r["matricule"]==mat and _ds(r["date"])==date_str and r["statut"] not in ["Annule","Refuse"]}
     libres=[]
     for c in crens:
         hd=dt.strptime(c["heure_debut"],"%H:%M")
@@ -187,6 +187,8 @@ def get_creneaux_libres(mat,date_str):
             if hs not in rdvs_pris: libres.append(hs)
             h+=timedelta(minutes=30)
     return libres
+
+
 def get_pat(username):
     uid=DB["users"].get(username,{}).get("id_ref")
     if uid is None: return None
@@ -196,6 +198,46 @@ def get_med(username):
     return next((m for m in DB["medecins"] if m["matricule"]==mat),None)
 def add_hist(desc,typ,username,id_patient=None,matricule=None):
     DB["historiques"].append({"id":nid("hists"),"date_action":datetime.now().strftime("%Y-%m-%d %H:%M"),"description":desc,"type":typ,"id_user":username,"id_patient":id_patient,"matricule":matricule})
+
+def _creneau_couvre(mat,jour,heure_str):
+    """Verifie si jour/heure tombe dans un des creneaux actifs du medecin,
+    sans tenir compte des reservations existantes (contrairement a
+    verifier_creneau, utilise pour valider une NOUVELLE prise de RDV)."""
+    crens=[c for c in DB["creneaux"] if c["matricule"]==mat and c["actif"] and c["jour"]==jour]
+    if not crens: return False
+    try: h=datetime.strptime(heure_str,"%H:%M").time()
+    except (ValueError,TypeError): return False
+    for c in crens:
+        try:
+            hd=datetime.strptime(c["heure_debut"],"%H:%M").time()
+            hf=datetime.strptime(c["heure_fin"],"%H:%M").time()
+        except (ValueError,TypeError): continue
+        if hd<=h<=hf: return True
+    return False
+
+def notifier_creneaux_impactes(mat,expediteur):
+    """A appeler juste apres avoir modifie/desactive/supprime un creneau.
+    Detecte les RDV futurs deja pris qui ne correspondent plus a aucun
+    creneau actif du medecin, et notifie patients + reception pour
+    reprogrammation. Retourne la liste des RDV impactes."""
+    aujourdhui=date.today().strftime("%Y-%m-%d")
+    futurs=[r for r in DB["rdvs"] if r["matricule"]==mat and _ds(r["date"])>=aujourdhui and r["statut"] not in ("Annule","Termine","Refuse")]
+    impactes=[]
+    for r in futurs:
+        jour=get_jour(_ds(r["date"]))
+        if not _creneau_couvre(mat,jour,r["heure"]):
+            impactes.append(r)
+            add_notif(r["id_patient"],"RDV a reprogrammer",f"Votre RDV du {_ds(r['date'])} necessite une reprogrammation",
+                       f"Suite a une modification des creneaux de {mname(mat)}, votre RDV du {_ds(r['date'])} a {r['heure']} ne correspond plus a une plage de consultation. La reception va vous recontacter pour le reprogrammer.",
+                       expediteur=expediteur)
+    if impactes:
+        detail=", ".join(f"{pname(r['id_patient'])} le {_ds(r['date'])} a {r['heure']}" for r in impactes)
+        add_notif(None,"RDV a reprogrammer",f"{len(impactes)} RDV impacte(s) par un changement de creneau — {mname(mat)}",
+                   f"{mname(mat)} a modifie ses creneaux. Les RDV suivants ne correspondent plus a un creneau actif et doivent etre reprogrammes : {detail}",
+                   dest_role="receptionniste",expediteur=expediteur)
+        add_hist(f"Modification creneaux {mname(mat)} — {len(impactes)} RDV impacte(s)","Creneau modifie",expediteur,matricule=mat)
+    return impactes
+
 def add_notif(id_patient,typ,objet,contenu,dest_user=None,dest_role=None,expediteur=None):
     DB["notifications"].append({"id":nid("notifs"),"type":typ,"objet":objet,"contenu":contenu,"id_patient":id_patient,"date":datetime.now().strftime("%Y-%m-%d %H:%M"),"lu":False,"dest_role":dest_role,"dest_user":dest_user,"expediteur":expediteur})
 def get_notifs_user(username,role,id_patient=None):
@@ -348,6 +390,43 @@ def role_required(*roles):
             return f(*a,**k)
         return d
     return dec
+
+@app.route("/api/creneaux-disponibles")
+@login_required
+def api_creneaux_disponibles():
+    """Renvoie les disponibilites d'un medecin pour une date donnee (et les
+    prochains jours ou il consulte), pour affichage en direct dans le
+    formulaire de prise de RDV, avant meme la validation."""
+    mat=request.args.get("medecin","")
+    date_str=request.args.get("date","")
+    med=next((m for m in DB["medecins"] if m["matricule"]==mat),None)
+    if not med:
+        return jsonify({"error":"medecin introuvable"}),404
+    crens=[c for c in DB["creneaux"] if c["matricule"]==mat and c["actif"]]
+    jours_travail=sorted(set(c["jour"] for c in crens),key=lambda j:JOURS_FR.index(j) if j in JOURS_FR else 9)
+    ud=DB["users"].get(med.get("username",""),{})
+    statut_med=ud.get("status_med","Disponible")
+    indisponible = "conge" in statut_med.lower() or "indisponible" in statut_med.lower()
+    result={"jours_travail":jours_travail,"statut_medecin":statut_med,"indisponible":indisponible,"heures_libres":[],"jour_demande":"","travaille_ce_jour":False}
+    if date_str:
+        jour=get_jour(date_str)
+        result["jour_demande"]=jour
+        result["travaille_ce_jour"]=jour in jours_travail
+        if not indisponible:
+            result["heures_libres"]=get_creneaux_libres(mat,date_str)
+    # Suggestion : les prochains jours ou le medecin a au moins un creneau libre
+    if not indisponible:
+        from datetime import timedelta as _td
+        prochaines_dispos=[]
+        for i in range(1,15):
+            d_iter=(date.today()+_td(days=i)).strftime("%Y-%m-%d")
+            if get_jour(d_iter) in jours_travail:
+                libres=get_creneaux_libres(mat,d_iter)
+                if libres:
+                    prochaines_dispos.append({"date":d_iter,"jour":get_jour(d_iter),"nb_libres":len(libres)})
+            if len(prochaines_dispos)>=5: break
+        result["prochaines_dispos"]=prochaines_dispos
+    return jsonify(result)
 
 # =======================================================
 # CSS, Sidebar, Topbar, Page builder, PDF (gen_pdf), Page Login
@@ -931,7 +1010,7 @@ if(ctxS){{const sn=[{','.join([repr(next((m["libelle"] for m in DB["medicaments"
     # pharmacien
     ruptures=len([s for s in DB["stocks"] if s["statut"]=="Epuise"])
     faibles=len([s for s in DB["stocks"] if s["statut"]=="Faible"])
-    ventes_today=[v for v in DB.get("ventes_pharmacie",[]) if v["date"]==date.today().strftime("%Y-%m-%d")]
+    ventes_today=[v for v in DB.get("ventes_pharmacie",[]) if _ds(v["date"])==date.today().strftime("%Y-%m-%d")]
     body=f"""<div class="row g-3 mb-3">
   <div class="col-md-3"><div class="sc bg-g"><div class="sv">{len(DB["medicaments"])}</div><div class="sl">Medicaments</div></div></div>
   <div class="col-md-3"><div class="sc bg-o"><div class="sv">{faibles}</div><div class="sl">Stocks faibles</div></div></div>
@@ -1055,7 +1134,7 @@ def a_supprimer_medecin(mat):
     if not med:
         flash("Medecin introuvable.","danger"); return redirect(url_for("a_medecins"))
     # Vérifier si le médecin a des RDV futurs
-    rdvs_futurs=[r for r in DB["rdvs"] if r["matricule"]==mat and r["date"]>=date.today().strftime("%Y-%m-%d") and r["statut"] not in ["Annule","Termine"]]
+    rdvs_futurs=[r for r in DB["rdvs"] if r["matricule"]==mat and _ds(r["date"])>=date.today().strftime("%Y-%m-%d") and r["statut"] not in ["Annule","Termine"]]
     if rdvs_futurs:
         flash(f"Impossible de supprimer Dr. {med['prenom']} {med['nom']} : {len(rdvs_futurs)} RDV(s) futur(s) en cours. Annulez-les d'abord.","danger")
         return redirect(url_for("a_medecins"))
@@ -2043,16 +2122,40 @@ def m_creneaux():
                 nc={"id":nid("creneaux"),"matricule":mat,"jour":jour,"heure_debut":hd,"heure_fin":hf,"actif":True}
                 DB["creneaux"].append(nc)
                 flash(f"Creneau ajoute : {jour} {hd}-{hf}.","success")
+        elif action=="modifier":
+            cid=int(request.form.get("cid",0))
+            c=next((x for x in DB["creneaux"] if x["id"]==cid and x["matricule"]==mat),None)
+            if not c:
+                flash("Creneau introuvable.","danger")
+            else:
+                jour=request.form.get("jour",c["jour"])
+                hd=request.form.get("heure_debut",c["heure_debut"])
+                hf=request.form.get("heure_fin",c["heure_fin"])
+                chevauchement=next((x for x in DB["creneaux"] if x["matricule"]==mat and x["id"]!=cid and x["jour"]==jour and x["actif"] and not (hf<=x["heure_debut"] or hd>=x["heure_fin"])),None)
+                if chevauchement:
+                    flash(f"Chevauchement avec un creneau existant le {jour} ({chevauchement['heure_debut']}-{chevauchement['heure_fin']}).","danger")
+                else:
+                    c["jour"]=jour; c["heure_debut"]=hd; c["heure_fin"]=hf
+                    impactes=notifier_creneaux_impactes(mat,session["user"])
+                    if impactes:
+                        flash(f"Creneau modifie. {len(impactes)} RDV existant(s) ne correspondent plus au nouveau creneau — patients et reception notifies pour reprogrammation.","warning")
+                    else:
+                        flash("Creneau modifie.","success")
         elif action=="toggle":
             cid=int(request.form.get("cid",0))
             c=next((x for x in DB["creneaux"] if x["id"]==cid and x["matricule"]==mat),None)
             if c:
                 c["actif"]=not c["actif"]
-                flash(f"Creneau {'active' if c['actif'] else 'desactive'}.","success")
+                if not c["actif"]:
+                    impactes=notifier_creneaux_impactes(mat,session["user"])
+                    flash(f"Creneau desactive. {len(impactes)} RDV existant(s) impactes — patients et reception notifies." if impactes else "Creneau desactive.","warning" if impactes else "success")
+                else:
+                    flash("Creneau active.","success")
         elif action=="supprimer":
             cid=int(request.form.get("cid",0))
             DB["creneaux"]=[c for c in DB["creneaux"] if not (c["id"]==cid and c["matricule"]==mat)]
-            flash("Creneau supprime.","success")
+            impactes=notifier_creneaux_impactes(mat,session["user"])
+            flash(f"Creneau supprime. {len(impactes)} RDV existant(s) impactes — patients et reception notifies." if impactes else "Creneau supprime.","warning" if impactes else "success")
         return redirect(url_for("m_creneaux"))
     mes_crens=[c for c in DB["creneaux"] if c["matricule"]==mat]
     jours_order={"Lundi":0,"Mardi":1,"Mercredi":2,"Jeudi":3,"Vendredi":4,"Samedi":5,"Dimanche":6}
@@ -2062,6 +2165,7 @@ def m_creneaux():
         <td>{c["heure_debut"]} — {c["heure_fin"]}</td>
         <td><span class="bk {"ok" if c["actif"] else "grey"}">{"Actif" if c["actif"] else "Inactif"}</span></td>
         <td style="white-space:nowrap;">
+            <button type="button" class="btn btn-sm btn-outline-b" onclick="openEditCreneau({c["id"]},'{c["jour"]}','{c["heure_debut"]}','{c["heure_fin"]}')"><i class="fas fa-edit"></i></button>
             <form method="POST" style="display:inline;">
                 <input type="hidden" name="action" value="toggle">
                 <input type="hidden" name="cid" value="{c["id"]}">
@@ -2078,19 +2182,45 @@ def m_creneaux():
     jours_opts="".join(f'<option value="{j}">{j}</option>' for j in ["Lundi","Mardi","Mercredi","Jeudi","Vendredi","Samedi","Dimanche"])
     body=f"""<div class="row g-3">
   <div class="col-lg-8"><div class="card"><div class="card-hdr"><div class="title"><i class="fas fa-calendar-check"></i>Mes Creneaux ({len(mes_crens)})</div></div>
-  <div class="al al-i" style="margin:12px 18px 0;font-size:.82rem;"><i class="fas fa-info-circle"></i>Les RDV ne peuvent etre pris que sur vos creneaux actifs. Tout chevauchement est refuse.</div>
+  <div class="al al-i" style="margin:12px 18px 0;font-size:.82rem;"><i class="fas fa-info-circle"></i>Les RDV ne peuvent etre pris que sur vos creneaux actifs. Toute modification qui rend un RDV existant hors-creneau notifie automatiquement le patient et la reception pour reprogrammation.</div>
   <div style="overflow-x:auto;"><table class="table"><thead><tr><th>Jour</th><th>Horaire</th><th>Statut</th><th>Actions</th></tr></thead><tbody>
   {rows if rows else "<tr><td colspan=4 class='text-center' style='color:var(--muted);padding:20px;'>Aucun creneau defini</td></tr>"}
   </tbody></table></div></div></div>
   <div class="col-lg-4"><div class="card"><div class="card-hdr"><div class="title"><i class="fas fa-plus-circle"></i>Ajouter un creneau</div></div><div class="card-body">
     <form method="POST"><input type="hidden" name="action" value="ajouter"><div class="row g-2">
-      <div class="col-12"><label class="form-label">Jour *</label><select name="jour" class="form-select">{jours_opts}</select></div>
-      <div class="col-6"><label class="form-label">Debut *</label><input type="time" name="heure_debut" class="form-control" value="08:00" required></div>
-      <div class="col-6"><label class="form-label">Fin *</label><input type="time" name="heure_fin" class="form-control" value="12:00" required></div>
-      <div class="col-12"><button type="submit" class="btn btn-g w-100" style="justify-content:center;"><i class="fas fa-save"></i>Ajouter</button></div>
+      <div class="col-12"><label class="form-label">Jour</label><select name="jour" class="form-select">{jours_opts}</select></div>
+      <div class="col-6"><label class="form-label">Debut</label><input type="time" name="heure_debut" class="form-control" value="08:00"></div>
+      <div class="col-6"><label class="form-label">Fin</label><input type="time" name="heure_fin" class="form-control" value="12:00"></div>
+      <div class="col-12"><button type="submit" class="btn btn-g w-100" style="justify-content:center;"><i class="fas fa-plus"></i>Ajouter</button></div>
     </div></form>
   </div></div></div>
-</div>"""
+</div>
+<div id="editCreneauModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:2000;align-items:center;justify-content:center;padding:16px;overflow-y:auto;">
+  <div style="background:#fff;border-radius:14px;width:100%;max-width:380px;padding:24px;">
+    <h6 style="color:var(--g3);margin-bottom:12px;"><i class="fas fa-edit me-2"></i>Modifier le creneau</h6>
+    <div class="al al-w mb-3" style="font-size:.78rem;"><i class="fas fa-exclamation-triangle"></i>Si des RDV deja pris ne correspondent plus a ce creneau apres modification, les patients concernes et la reception seront notifies automatiquement.</div>
+    <form method="POST"><input type="hidden" name="action" value="modifier"><input type="hidden" name="cid" id="ec_cid">
+      <div class="row g-2">
+        <div class="col-12"><label class="form-label">Jour</label><select name="jour" id="ec_jour" class="form-select">{jours_opts}</select></div>
+        <div class="col-6"><label class="form-label">Debut</label><input type="time" name="heure_debut" id="ec_hd" class="form-control"></div>
+        <div class="col-6"><label class="form-label">Fin</label><input type="time" name="heure_fin" id="ec_hf" class="form-control"></div>
+        <div class="col-12 d-flex gap-2 mt-2">
+          <button type="submit" class="btn btn-g flex-fill"><i class="fas fa-save"></i>Enregistrer</button>
+          <button type="button" class="btn btn-outline-g" onclick="document.getElementById('editCreneauModal').style.display='none'">Annuler</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+<script>
+function openEditCreneau(cid,jour,hd,hf){{
+  document.getElementById('ec_cid').value=cid;
+  document.getElementById('ec_jour').value=jour;
+  document.getElementById('ec_hd').value=hd;
+  document.getElementById('ec_hf').value=hf;
+  document.getElementById('editCreneauModal').style.display='flex';
+}}
+</script>"""
     return page("Mes Creneaux","medecin",session["user"],body)
 
 @app.route("/m-rdvs",methods=["GET","POST"])
@@ -3293,17 +3423,78 @@ def r_rdvs():
   </tbody></table></div></div></div>
   <div class="col-lg-4"><div class="card"><div class="card-hdr"><div class="title">Nouveau RDV</div></div><div class="card-body">
     <div class="al al-i mb-2" style="font-size:.78rem;"><i class="fas fa-info-circle"></i>Le systeme verifie automatiquement les creneaux du medecin. Les RDV hors creneaux ou en doublon sont refuses.</div>
-    <form method="POST"><input type="hidden" name="action" value="creer"><input type="hidden" name="dem_id" value="{dem_pre}"><div class="row g-2">
+    <form method="POST" id="formRdv" onsubmit="return confirmerSiHorsCreneau()"><input type="hidden" name="action" value="creer"><input type="hidden" name="dem_id" value="{dem_pre}"><div class="row g-2">
       <div class="col-12"><label class="form-label">Patient *</label><select name="patient" class="form-select" required><option value="">--</option>{opts_p}</select></div>
-      <div class="col-12"><label class="form-label">Medecin * (jours disponibles indiques)</label><select name="medecin" class="form-select" required><option value="">--</option>{opts_m}</select></div>
-      <div class="col-6"><label class="form-label">Date *</label><input type="date" name="date" class="form-control" required></div>
-      <div class="col-6"><label class="form-label">Heure *</label><input type="time" name="heure" class="form-control" required step="1800"></div>
+      <div class="col-12"><label class="form-label">Medecin *</label><select name="medecin" id="rdv_medecin" class="form-select" required onchange="checkDispo()"><option value="">--</option>{opts_m}</select></div>
+      <div class="col-6"><label class="form-label">Date *</label><input type="date" name="date" id="rdv_date" class="form-control" required onchange="checkDispo()"></div>
+      <div class="col-6"><label class="form-label">Heure *</label><input type="time" name="heure" id="rdv_heure" class="form-control" required step="1800" onchange="checkDispo()"></div>
+      <div class="col-12"><div id="dispoPanel"><div class="al al-i" style="font-size:.78rem;"><i class="fas fa-hand-pointer"></i>Choisissez un medecin pour voir ses disponibilites.</div></div></div>
       <div class="col-12"><label class="form-label">Type</label><select name="type" class="form-select"><option>Presentiel</option><option>Teleconsultation</option></select></div>
       <div class="col-12"><label class="form-label">Motif</label><input type="text" name="motif" class="form-control"></div>
       <div class="col-12"><button type="submit" class="btn btn-g w-100" style="justify-content:center;"><i class="fas fa-save"></i>Creer le RDV</button></div>
     </div></form>
   </div></div></div>
-</div>"""
+</div>
+<script>
+let _heureDispoConnue=[];
+function elt(html){{ const d=document.createElement('div'); d.innerHTML=html.trim(); return d.firstChild; }}
+async function checkDispo(){{
+  const mat=document.getElementById('rdv_medecin').value;
+  const dt=document.getElementById('rdv_date').value;
+  const panel=document.getElementById('dispoPanel');
+  if(!mat){{ panel.innerHTML=`<div class="al al-i" style="font-size:.78rem;"><i class="fas fa-hand-pointer"></i>Choisissez un medecin pour voir ses disponibilites.</div>`; return; }}
+  panel.innerHTML=`<div class="al al-i" style="font-size:.78rem;"><i class="fas fa-circle-notch fa-spin"></i>Verification des disponibilites...</div>`;
+  try{{
+    const r=await fetch(`/api/creneaux-disponibles?medecin=${{encodeURIComponent(mat)}}&date=${{encodeURIComponent(dt)}}`);
+    const data=await r.json();
+    _heureDispoConnue=data.heures_libres||[];
+    panel.innerHTML='';
+    if(data.indisponible){{
+      panel.appendChild(elt(`<div class="al al-w" style="font-size:.78rem;"><i class="fas fa-user-clock"></i>Medecin actuellement <strong>${{data.statut_medecin}}</strong> : pas de RDV possible.</div>`));
+      return;
+    }}
+    panel.appendChild(elt(`<div style="font-size:.76rem;color:var(--muted);margin-bottom:6px;"><i class="fas fa-calendar-week"></i> Jours de consultation : <strong>${{data.jours_travail.join(', ')||'aucun creneau defini'}}</strong></div>`));
+    if(dt){{
+      if(!data.travaille_ce_jour){{
+        panel.appendChild(elt(`<div class="al al-w" style="font-size:.78rem;"><i class="fas fa-calendar-times"></i>Le medecin ne consulte pas ce jour-la (${{data.jour_demande}}). Choisissez une autre date, ou une des dates suggerees ci-dessous.</div>`));
+      }} else if(data.heures_libres.length===0){{
+        panel.appendChild(elt(`<div class="al al-w" style="font-size:.78rem;"><i class="fas fa-calendar-times"></i>Aucun creneau libre ce jour-la (tout est deja pris).</div>`));
+      }} else {{
+        panel.appendChild(elt(`<div style="font-size:.76rem;font-weight:600;color:var(--g3);margin-bottom:5px;"><i class="fas fa-clock"></i> Heures libres le ${{data.jour_demande}} :</div>`));
+        const wrap=elt(`<div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px;"></div>`);
+        for(const h of data.heures_libres){{
+          const b=elt(`<button type="button" class="btn btn-sm btn-outline-g" style="padding:3px 9px;font-size:.76rem;">${{h}}</button>`);
+          b.dataset.heure=h;
+          b.addEventListener('click',function(){{ document.getElementById('rdv_heure').value=this.dataset.heure; checkDispo(); }});
+          wrap.appendChild(b);
+        }}
+        panel.appendChild(wrap);
+      }}
+    }}
+    if(data.prochaines_dispos && data.prochaines_dispos.length){{
+      panel.appendChild(elt(`<div style="font-size:.76rem;font-weight:600;color:var(--g3);margin:6px 0 4px;"><i class="fas fa-calendar-check"></i> Prochaines dates disponibles :</div>`));
+      const wrap2=elt(`<div style="display:flex;flex-wrap:wrap;gap:5px;"></div>`);
+      for(const pd of data.prochaines_dispos){{
+        const b=elt(`<button type="button" class="btn btn-sm btn-outline-b" style="padding:3px 9px;font-size:.76rem;">${{pd.jour}} ${{pd.date}} (${{pd.nb_libres}} creneaux)</button>`);
+        b.dataset.date=pd.date;
+        b.addEventListener('click',function(){{ document.getElementById('rdv_date').value=this.dataset.date; checkDispo(); }});
+        wrap2.appendChild(b);
+      }}
+      panel.appendChild(wrap2);
+    }}
+  }}catch(e){{
+    panel.innerHTML=`<div class="al al-w" style="font-size:.78rem;">Impossible de verifier les disponibilites.</div>`;
+  }}
+}}
+function confirmerSiHorsCreneau(){{
+  const h=document.getElementById('rdv_heure').value;
+  if(h && _heureDispoConnue.length && !_heureDispoConnue.includes(h)){{
+    return confirm("L'heure choisie ("+h+") ne fait pas partie des creneaux libres affiches. Le systeme la refusera probablement. Continuer quand meme ?");
+  }}
+  return true;
+}}
+</script>
+"""
     return page("Rendez-vous","receptionniste",session["user"],body)
 
 @app.route("/r-demandes")
