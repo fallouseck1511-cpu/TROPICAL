@@ -4508,16 +4508,17 @@ def ph_medicaments():
 function openRestock(id,lbl,qte){{document.getElementById('rm_mid').value=id;document.getElementById('rm_lbl').textContent=lbl;document.getElementById('rm_qte').textContent='Stock actuel : '+qte+' unites';document.getElementById('restockModal').style.display='flex';}}
 function openAssign(id,lbl){{document.getElementById('am_mid').value=id;document.getElementById('am_lbl').textContent='Medicament : '+lbl;document.getElementById('assignModal').style.display='flex';}}
 let _scanCtx=null, _html5Qrcode=null;
+const SCAN_FORMATS=[Html5QrcodeSupportedFormats.QR_CODE,Html5QrcodeSupportedFormats.EAN_13,Html5QrcodeSupportedFormats.EAN_8,Html5QrcodeSupportedFormats.CODE_128,Html5QrcodeSupportedFormats.CODE_39,Html5QrcodeSupportedFormats.CODE_93,Html5QrcodeSupportedFormats.UPC_A,Html5QrcodeSupportedFormats.UPC_E,Html5QrcodeSupportedFormats.ITF,Html5QrcodeSupportedFormats.CODABAR];
 function openScan(ctx){{
   _scanCtx=ctx;
   document.getElementById('scanModal').style.display='flex';
   document.getElementById('scanMsg').textContent='Initialisation de la camera...';
-  _html5Qrcode=new Html5Qrcode('scanReader');
+  _html5Qrcode=new Html5Qrcode('scanReader',{{formatsToSupport:SCAN_FORMATS,experimentalFeatures:{{useBarCodeDetectorIfSupported:true}},verbose:false}});
   Html5Qrcode.getCameras().then(cams=>{{
     if(!cams || !cams.length){{ document.getElementById('scanMsg').textContent='Aucune camera detectee.'; return; }}
     const camId=cams.find(c=>/back|rear|environment/i.test(c.label))?.id || cams[cams.length-1].id;
-    _html5Qrcode.start(camId,{{fps:10,qrbox:220}},onScanSuccess,()=>{{}}).then(()=>{{
-      document.getElementById('scanMsg').textContent='Placez le code-barres devant la camera.';
+    _html5Qrcode.start(camId,{{fps:12,qrbox:{{width:280,height:140}},aspectRatio:1.4}},onScanSuccess,()=>{{}}).then(()=>{{
+      document.getElementById('scanMsg').textContent='Placez le code-barres bien a plat, remplissez le cadre, distance ~10-15cm.';
     }}).catch(()=>{{ document.getElementById('scanMsg').textContent='Impossible de demarrer la camera.'; }});
   }}).catch(()=>{{ document.getElementById('scanMsg').textContent='Acces camera refuse ou indisponible.'; }});
 }}
@@ -4624,15 +4625,16 @@ def ph_ventes():
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
 <script>
 let _html5QrcodeV=null;
+const SCAN_FORMATS_V=[Html5QrcodeSupportedFormats.QR_CODE,Html5QrcodeSupportedFormats.EAN_13,Html5QrcodeSupportedFormats.EAN_8,Html5QrcodeSupportedFormats.CODE_128,Html5QrcodeSupportedFormats.CODE_39,Html5QrcodeSupportedFormats.CODE_93,Html5QrcodeSupportedFormats.UPC_A,Html5QrcodeSupportedFormats.UPC_E,Html5QrcodeSupportedFormats.ITF,Html5QrcodeSupportedFormats.CODABAR];
 function openScanVente(){{
   document.getElementById('scanModalV').style.display='flex';
   document.getElementById('scanMsgV').textContent='Initialisation de la camera...';
-  _html5QrcodeV=new Html5Qrcode('scanReaderV');
+  _html5QrcodeV=new Html5Qrcode('scanReaderV',{{formatsToSupport:SCAN_FORMATS_V,experimentalFeatures:{{useBarCodeDetectorIfSupported:true}},verbose:false}});
   Html5Qrcode.getCameras().then(cams=>{{
     if(!cams || !cams.length){{ document.getElementById('scanMsgV').textContent='Aucune camera detectee.'; return; }}
     const camId=cams.find(c=>/back|rear|environment/i.test(c.label))?.id || cams[cams.length-1].id;
-    _html5QrcodeV.start(camId,{{fps:10,qrbox:220}},onScanSuccessV,()=>{{}}).then(()=>{{
-      document.getElementById('scanMsgV').textContent='Placez le code-barres devant la camera.';
+    _html5QrcodeV.start(camId,{{fps:12,qrbox:{{width:280,height:140}},aspectRatio:1.4}},onScanSuccessV,()=>{{}}).then(()=>{{
+      document.getElementById('scanMsgV').textContent='Placez le code-barres bien a plat, remplissez le cadre, distance ~10-15cm.';
     }}).catch(()=>{{ document.getElementById('scanMsgV').textContent='Impossible de demarrer la camera.'; }});
   }}).catch(()=>{{ document.getElementById('scanMsgV').textContent='Acces camera refuse ou indisponible.'; }});
 }}
