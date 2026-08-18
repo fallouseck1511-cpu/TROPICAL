@@ -229,17 +229,29 @@ def notifier_creneaux_impactes(mat,expediteur):
             impactes.append(r)
             add_notif(r["id_patient"],"RDV a reprogrammer",f"Votre RDV du {_ds(r['date'])} necessite une reprogrammation",
                        f"Suite a une modification des creneaux de {mname(mat)}, votre RDV du {_ds(r['date'])} a {r['heure']} ne correspond plus a une plage de consultation. La reception va vous recontacter pour le reprogrammer.",
-                       expediteur=expediteur)
+                       expediteur=expediteur,lien="/p-rdvs")
     if impactes:
         detail=", ".join(f"{pname(r['id_patient'])} le {_ds(r['date'])} a {r['heure']}" for r in impactes)
         add_notif(None,"RDV a reprogrammer",f"{len(impactes)} RDV impacte(s) par un changement de creneau — {mname(mat)}",
                    f"{mname(mat)} a modifie ses creneaux. Les RDV suivants ne correspondent plus a un creneau actif et doivent etre reprogrammes : {detail}",
-                   dest_role="receptionniste",expediteur=expediteur)
+                   dest_role="receptionniste",expediteur=expediteur,lien="/r-rdvs")
         add_hist(f"Modification creneaux {mname(mat)} — {len(impactes)} RDV impacte(s)","Creneau modifie",expediteur,matricule=mat)
     return impactes
 
-def add_notif(id_patient,typ,objet,contenu,dest_user=None,dest_role=None,expediteur=None):
-    DB["notifications"].append({"id":nid("notifs"),"type":typ,"objet":objet,"contenu":contenu,"id_patient":id_patient,"date":datetime.now().strftime("%Y-%m-%d %H:%M"),"lu":False,"dest_role":dest_role,"dest_user":dest_user,"expediteur":expediteur})
+def add_notif(id_patient,typ,objet,contenu,dest_user=None,dest_role=None,expediteur=None,lien=None):
+    DB["notifications"].append({"id":nid("notifs"),"type":typ,"objet":objet,"contenu":contenu,"id_patient":id_patient,"date":datetime.now().strftime("%Y-%m-%d %H:%M"),"lu":False,"dest_role":dest_role,"dest_user":dest_user,"expediteur":expediteur,"lien":lien})
+def notif_icone(typ):
+    t=(typ or "").lower()
+    if "ticket" in t: return "ticket-alt"
+    if "facture" in t or "paiement" in t or "relance" in t: return "file-invoice-dollar"
+    if "rdv" in t or "reprogram" in t: return "calendar-alt"
+    if "creneau" in t: return "calendar-check"
+    if "teleconsult" in t or "video" in t: return "video"
+    if "ordonnance" in t or "medicament" in t or "stock" in t: return "pills"
+    if "allerg" in t or "interaction" in t: return "exclamation-triangle"
+    if "assurance" in t or "plafond" in t: return "shield-alt"
+    if "resultat" in t or "examen" in t: return "flask"
+    return "bell"
 def get_notifs_user(username,role,id_patient=None):
     res=[]
     for n in DB["notifications"]:
@@ -371,7 +383,7 @@ def verifier_relances_factures():
         add_notif(f["id_patient"],"Relance de paiement",f"Facture {f['num_facture']} en retard",
                    f"Votre facture {f['num_facture']} d'un montant de {f['reste_a_payer']:,} FCFA "
                    f"etait due le {_ds(ech)}. Merci de regulariser votre situation aupres de l'accueil.",
-                   dest_role=None,expediteur="Systeme")
+                   dest_role=None,expediteur="Systeme",lien="/p-factures")
         n_relances += 1
     return n_relances
 
@@ -390,6 +402,13 @@ def role_required(*roles):
             return f(*a,**k)
         return d
     return dec
+
+@app.route("/api/notif-count")
+@login_required
+def api_notif_count():
+    username=session["user"]; role=session.get("role")
+    pat=get_pat(username); pid=pat["id"] if pat else None
+    return jsonify({"count":unread_count(username,role,pid)})
 
 @app.route("/api/creneaux-disponibles")
 @login_required
@@ -498,6 +517,9 @@ h1,h2,h3,h4,h5,h6,.brand-font{font-family:'Plus Jakarta Sans',system-ui,sans-ser
 .al-e{background:#fee2e2;border:1px solid #fca5a5;color:#7f1d1d;}
 .al-w{background:#fef3c7;border:1px solid #fde047;color:#78350f;}
 .al-i{background:#dbeafe;border:1px solid #93c5fd;color:#1e3a8a;}
+.carte-urgence{background:#fff;border-radius:9px;padding:11px 13px;box-shadow:0 1px 3px rgba(0,0,0,.08);}
+.urgence-pulse{animation:urgPulse 1.8s infinite;}
+@keyframes urgPulse{0%,100%{box-shadow:0 1px 3px rgba(0,0,0,.08);}50%{box-shadow:0 0 0 4px rgba(127,29,29,.25);}}
 .notif-wrap{position:relative;}
 .notif-dot{position:absolute;top:-4px;right:-4px;width:18px;height:18px;background:var(--err);border-radius:50%;font-size:.6rem;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;border:2px solid #fff;}
 .avatar{width:42px;height:42px;border-radius:50%;object-fit:cover;background:var(--gm);display:flex;align-items:center;justify-content:center;border:2px solid var(--gd);}
@@ -547,7 +569,21 @@ h1,h2,h3,h4,h5,h6,.brand-font{font-family:'Plus Jakarta Sans',system-ui,sans-ser
 ::-webkit-scrollbar{width:4px;}::-webkit-scrollbar-track{background:#f6f8f6;}::-webkit-scrollbar-thumb{background:var(--gd);border-radius:4px;}
 </style>"""
 
-JS_BASE="""<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
+JS_BASE="""<script>
+async function pollNotifCount(){
+  const badge=document.getElementById('notifBadge');
+  if(!badge) return;
+  try{
+    const r=await fetch('/api/notif-count');
+    if(!r.ok) return;
+    const data=await r.json();
+    if(data.count>0){ badge.textContent=data.count; badge.style.display='flex'; }
+    else{ badge.style.display='none'; }
+  }catch(e){}
+}
+if(document.getElementById('notifBadge')){ setInterval(pollNotifCount,20000); }
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script>
 function srch(tid,fid){const v=document.getElementById(fid).value.toLowerCase();document.querySelectorAll('#'+tid+' tbody tr').forEach(r=>{r.style.display=r.textContent.toLowerCase().includes(v)?'':'none';});}
@@ -634,7 +670,8 @@ def topbar(title,role,username):
     pat=get_pat(username); pid=pat["id"] if pat else None
     nc=unread_count(username,role,pid)
     ep={"patient":"p-notifs","medecin":"m-notifs","receptionniste":"r-notifs","pharmacien":"ph-notifs","admin":"a-notifs"}.get(role,"")
-    nb=f'<div class="notif-wrap"><a href="/{ep}" class="btn btn-sm btn-outline-g"><i class="fas fa-bell"></i><span class="notif-dot">{nc}</span></a></div>' if ep and nc>0 else (f'<a href="/{ep}" class="btn btn-sm btn-outline-g"><i class="fas fa-bell"></i></a>' if ep else "")
+    dot_style="" if nc>0 else "display:none;"
+    nb=f'<div class="notif-wrap"><a href="/{ep}" class="btn btn-sm btn-outline-g"><i class="fas fa-bell"></i><span class="notif-dot" id="notifBadge" style="{dot_style}">{nc}</span></a></div>' if ep else ""
     ph=f'<img src="{ud["photo"]}" class="avatar" alt="">' if ud.get("photo") else f'<div class="avatar"><i class="fas fa-user" style="color:var(--g2);font-size:.9rem;"></i></div>'
     return f'<div id="tb"><div class="pt"><button class="btn btn-sm btn-outline-g" onclick="toggleSB()" style="display:none;" id="sbToggleBtn"><i class="fas fa-bars"></i></button><i class="fas fa-heartbeat" style="color:var(--g1);"></i>{title}</div><div style="display:flex;align-items:center;gap:10px;">{nb}{ph}<span style="font-size:.82rem;font-weight:600;color:var(--g3);">{nom}</span></div></div>'
 
@@ -1689,10 +1726,10 @@ def a_notifs():
     all_notifs=sorted(DB["notifications"],key=lambda x:x["date"],reverse=True)
     opts_p="".join(f'<option value="{p["id"]}">{p["prenom"]} {p["nom"]}</option>' for p in DB["patients"])
     opts_u="".join(f'<option value="{u}">({DB["users"][u]["role"]}) {DB["users"][u].get("prenom","")} {DB["users"][u].get("nom","")}</option>' for u in DB["users"] if u!="admin")
-    rows="".join(f'<tr><td><small>{n["date"]}</small></td><td>{n.get("expediteur","-") or "-"}</td><td>{n.get("dest_user","-") or n.get("dest_role","-") or ("Patient:"+pname(n["id_patient"]) if n.get("id_patient") else "-")}</td><td><strong>{n["type"]}</strong></td><td>{n["objet"]}</td><td><span class="bk {"ok" if n["lu"] else "att"}">{"Lu" if n["lu"] else "Non lu"}</span></td></tr>' for n in all_notifs)
+    rows="".join(f'<tr><td style="width:26px;"><i class="fas fa-{notif_icone(n["type"])}" style="color:var(--g1);"></i></td><td><small>{n["date"]}</small></td><td>{n.get("expediteur","-") or "-"}</td><td>{n.get("dest_user","-") or n.get("dest_role","-") or ("Patient:"+pname(n["id_patient"]) if n.get("id_patient") else "-")}</td><td><strong>{n["type"]}</strong></td><td>{n["objet"]}</td><td><span class="bk {"ok" if n["lu"] else "att"}">{"Lu" if n["lu"] else "Non lu"}</span></td></tr>' for n in all_notifs)
     body=f"""<div class="row g-3">
   <div class="col-lg-8"><div class="card"><div class="card-hdr"><div class="title"><i class="fas fa-bell"></i>Toutes les notifications ({len(all_notifs)})</div></div>
-  <div style="overflow-x:auto;"><table class="table"><thead><tr><th>Date</th><th>Expediteur</th><th>Destinataire</th><th>Type</th><th>Objet</th><th>Statut</th></tr></thead><tbody>{rows}</tbody></table></div></div></div>
+  <div style="overflow-x:auto;"><table class="table"><thead><tr><th></th><th>Date</th><th>Expediteur</th><th>Destinataire</th><th>Type</th><th>Objet</th><th>Statut</th></tr></thead><tbody>{rows}</tbody></table></div></div></div>
   <div class="col-lg-4"><div class="card"><div class="card-hdr"><div class="title">Envoyer une notification</div></div><div class="card-body">
     <form method="POST"><div class="row g-2">
       <div class="col-12"><label class="form-label">Envoyer a (utilisateur)</label><select name="dest_user" class="form-select"><option value="">-- Choisir un utilisateur --</option>{opts_u}</select></div>
@@ -1712,11 +1749,31 @@ def a_notifs():
 @role_required("admin")
 def a_historiques():
     hists=sorted(DB["historiques"],key=lambda x:x["date_action"],reverse=True)
-    rows="".join(f'<tr><td><small>{h["date_action"]}</small></td><td><span class="bk inf">{h["type"]}</span></td><td>{h["description"]}</td><td>{pname(h["id_patient"]) if h.get("id_patient") else "-"}</td><td>{h.get("id_user","-")}</td></tr>' for h in hists)
-    body=f"""<div class="card"><div class="card-hdr"><div class="title"><i class="fas fa-history"></i>Historique general ({len(hists)} actions)</div></div>
-<div style="padding:10px 18px;"><input type="text" id="sh" class="form-control" placeholder="Rechercher..." oninput="srch('th','sh')" style="max-width:300px;"></div>
+    types_distincts=sorted(set(h["type"] for h in hists))
+    rows="".join(f'<tr data-f="{h["type"]}"><td><small>{h["date_action"]}</small></td><td><span class="bk inf">{h["type"]}</span></td><td>{h["description"]}</td><td>{pname(h["id_patient"]) if h.get("id_patient") else "-"}</td><td>{h.get("id_user","-")}</td></tr>' for h in hists)
+    opts_type="".join(f'<option>{t}</option>' for t in types_distincts)
+    body=f"""<div class="card"><div class="card-hdr"><div class="title"><i class="fas fa-history"></i>Historique general ({len(hists)} actions)</div>
+    <a href="/a-historiques/export" class="btn btn-sm btn-outline-g"><i class="fas fa-file-csv"></i>Exporter CSV</a>
+  </div>
+<div style="padding:10px 18px;display:flex;gap:10px;flex-wrap:wrap;">
+  <input type="text" id="sh" class="form-control" placeholder="Rechercher..." oninput="srchFilter('th','sh','fh')" style="max-width:280px;">
+  <select id="fh" class="form-select" onchange="srchFilter('th','sh','fh')" style="max-width:190px;"><option value="">Toutes categories</option>{opts_type}</select>
+</div>
 <div style="overflow-x:auto;"><table class="table" id="th"><thead><tr><th>Date/Heure</th><th>Type</th><th>Description</th><th>Patient</th><th>Utilisateur</th></tr></thead><tbody>{rows}</tbody></table></div></div>"""
     return page("Historiques","admin",session["user"],body)
+
+@app.route("/a-historiques/export")
+@login_required
+@role_required("admin")
+def a_historiques_export():
+    hists=sorted(DB["historiques"],key=lambda x:x["date_action"],reverse=True)
+    buf=io.StringIO()
+    w=csv.writer(buf)
+    w.writerow(["Date/Heure","Type","Description","Patient","Utilisateur"])
+    for h in hists:
+        w.writerow([h["date_action"],h["type"],h["description"],pname(h["id_patient"]) if h.get("id_patient") else "-",h.get("id_user","-")])
+    return Response(buf.getvalue(),mimetype="text/csv",headers={"Content-Disposition":"attachment; filename=historique.csv"})
+
 # ── ASSURANCES (admin voit tout, patient voit le sien) ───────
 @app.route("/a-assurances",methods=["GET","POST"])
 @login_required
@@ -2448,7 +2505,7 @@ def m_teleconsult():
                 nt={"id":nid("teles"),"id_patient":rdv["id_patient"],"matricule":mat,"id_rdv":rdv_id,"date_debut":f"{rdv['date']} {rdv['heure']}","statut":"Planifiee","lien":"","lien_envoye":True}
                 row=DB["teleconsultations"].append(nt)
                 tele_id=nt["id"]
-            add_notif(rdv["id_patient"],"Teleconsultation prete",f"Teleconsultation du {rdv['date']}",f"Votre teleconsultation du {rdv['date']} a {rdv['heure']} avec Dr. {med['prenom']} {med['nom']} est prete. Rejoignez-la directement depuis votre espace patient, aucune installation requise.",expediteur=session["user"])
+            add_notif(rdv["id_patient"],"Teleconsultation prete",f"Teleconsultation du {rdv['date']}",f"Votre teleconsultation du {rdv['date']} a {rdv['heure']} avec Dr. {med['prenom']} {med['nom']} est prete. Rejoignez-la directement depuis votre espace patient, aucune installation requise.",expediteur=session["user"],lien="/p-teleconsult")
             flash("Salle de teleconsultation creee et patient notifie.","success")
         elif action=="demarrer":
             tele=next((t for t in DB["teleconsultations"] if t["id_rdv"]==rdv_id),None)
@@ -2782,10 +2839,13 @@ def m_notifs():
     autres_med=[m for m in DB["medecins"] if m["username"]!=u]
     opts_dest='<option value="receptionniste">Receptionniste — Fatou Ndiaye</option>'
     opts_dest+="".join(f'<option value="{m["username"]}">Dr. {m["prenom"]} {m["nom"]} ({m["specialite"]})</option>' for m in autres_med)
-    rows="".join(f'<tr><td><small>{n["date"]}</small></td><td>{n.get("expediteur","-") or "systeme"}</td><td><strong>{n["type"]}</strong></td><td>{n["objet"]}</td><td>{n["contenu"][:60]}</td></tr>' for n in notifs)
+    def _row_notif(n):
+        voir=f'<a href="{n["lien"]}" class="btn btn-sm btn-outline-g">Voir</a>' if n.get("lien") else ""
+        return f'<tr><td style="width:26px;"><i class="fas fa-{notif_icone(n["type"])}" style="color:var(--g1);"></i></td><td><small>{n["date"]}</small></td><td>{n.get("expediteur","-") or "systeme"}</td><td><strong>{n["type"]}</strong></td><td>{n["objet"]}</td><td>{n["contenu"][:60]}</td><td>{voir}</td></tr>'
+    rows="".join(_row_notif(n) for n in notifs)
     body=f"""<div class="row g-3">
   <div class="col-lg-7"><div class="card"><div class="card-hdr"><div class="title"><i class="fas fa-inbox"></i>Messages recus ({len(notifs)})</div></div>
-  <div style="overflow-x:auto;"><table class="table"><thead><tr><th>Date</th><th>Expediteur</th><th>Type</th><th>Objet</th><th>Message</th></tr></thead><tbody>
+  <div style="overflow-x:auto;"><table class="table"><thead><tr><th></th><th>Date</th><th>Expediteur</th><th>Type</th><th>Objet</th><th>Message</th><th></th></tr></thead><tbody>
   {rows if rows else "<tr><td colspan=5 class='text-center' style='color:var(--muted);padding:20px;'>Aucun message</td></tr>"}
   </tbody></table></div></div></div>
   <div class="col-lg-5"><div class="card"><div class="card-hdr"><div class="title"><i class="fas fa-paper-plane"></i>Envoyer un message</div></div><div class="card-body">
@@ -3209,7 +3269,7 @@ def p_tickets():
         nt={"id":nid("tickets"),"id_patient":pid,"id_service":sid,"type_ticket":srv["libelle"],"num_ticket":f"TKT-{DB['_c']['tickets']:04d}","statut":"En attente","date_emission":date.today().strftime("%Y-%m-%d"),"prix":prix,"id_rdv":rdv_id if base=="rdv" else None,"id_consultation":cons_id if base=="consultation" else None,"justificatif":justif if base=="autre" else None}
         DB["tickets"].append(nt)
         add_hist(f"Demande de ticket {nt['num_ticket']} — {nt['type_ticket']} — {prix:,} FCFA","Ticket",session["user"],pid)
-        add_notif(None,"Ticket a valider",f"Ticket {nt['num_ticket']} en attente",f"{pname(pid)} a demande un ticket pour {nt['type_ticket']} ({prix:,} FCFA) — a valider avant utilisation.",dest_role="receptionniste",expediteur=session["user"])
+        add_notif(None,"Ticket a valider",f"Ticket {nt['num_ticket']} en attente",f"{pname(pid)} a demande un ticket pour {nt['type_ticket']} ({prix:,} FCFA) — a valider avant utilisation.",dest_role="receptionniste",expediteur=session["user"],lien="/r-tickets")
         flash(f"Demande de ticket {nt['num_ticket']} envoyee — en attente de validation par la reception.","success")
         return redirect(url_for("p_tickets"))
     mes_tickets=[t for t in DB.get("tickets",[]) if t["id_patient"]==pid]
@@ -3308,10 +3368,13 @@ def p_notifs():
         return redirect(url_for("p_notifs"))
     notifs=get_notifs_user(session["user"],"patient",pid)
     for n in notifs: n["lu"]=True
-    rows="".join(f'<tr><td><small>{n["date"]}</small></td><td>{n.get("expediteur","-") or "systeme"}</td><td><strong>{n["type"]}</strong></td><td>{n["objet"]}</td><td>{n["contenu"][:60]}</td></tr>' for n in notifs)
+    def _row_notif(n):
+        voir=f'<a href="{n["lien"]}" class="btn btn-sm btn-outline-g">Voir</a>' if n.get("lien") else ""
+        return f'<tr><td style="width:26px;"><i class="fas fa-{notif_icone(n["type"])}" style="color:var(--g1);"></i></td><td><small>{n["date"]}</small></td><td>{n.get("expediteur","-") or "systeme"}</td><td><strong>{n["type"]}</strong></td><td>{n["objet"]}</td><td>{n["contenu"][:60]}</td><td>{voir}</td></tr>'
+    rows="".join(_row_notif(n) for n in notifs)
     body=f"""<div class="row g-3">
   <div class="col-lg-8"><div class="card"><div class="card-hdr"><div class="title"><i class="fas fa-bell"></i>Mes Notifications ({len(notifs)})</div></div>
-  <div style="overflow-x:auto;"><table class="table"><thead><tr><th>Date</th><th>De</th><th>Type</th><th>Objet</th><th>Message</th></tr></thead><tbody>
+  <div style="overflow-x:auto;"><table class="table"><thead><tr><th></th><th>Date</th><th>De</th><th>Type</th><th>Objet</th><th>Message</th><th></th></tr></thead><tbody>
   {rows if rows else "<tr><td colspan=5 class='text-center' style='color:var(--muted);padding:20px;'>Aucune notification</td></tr>"}
   </tbody></table></div></div></div>
   <div class="col-lg-4"><div class="card"><div class="card-hdr"><div class="title"><i class="fas fa-paper-plane"></i>Contacter la reception</div></div><div class="card-body">
@@ -3736,7 +3799,7 @@ def r_ticket_valider(tid):
     if t and t["statut"]=="En attente":
         t["statut"]="Valide"; t["valide_par"]=session["user"]; t["date_validation"]=date.today().strftime("%Y-%m-%d")
         add_hist(f"Ticket {t['num_ticket']} valide","Ticket",session["user"],t["id_patient"])
-        add_notif(t["id_patient"],"Ticket valide",f"Ticket {t['num_ticket']}",f"Votre ticket {t['num_ticket']} a ete valide par la reception. Vous pouvez l'utiliser.",expediteur=session["user"])
+        add_notif(t["id_patient"],"Ticket valide",f"Ticket {t['num_ticket']}",f"Votre ticket {t['num_ticket']} a ete valide par la reception. Vous pouvez l'utiliser.",expediteur=session["user"],lien="/p-tickets")
         flash(f"Ticket {t['num_ticket']} valide.","success")
     return redirect(url_for("r_tickets"))
 
@@ -3748,7 +3811,7 @@ def r_ticket_refuser(tid):
     if t and t["statut"]=="En attente":
         t["statut"]="Refuse"; t["valide_par"]=session["user"]; t["date_validation"]=date.today().strftime("%Y-%m-%d")
         add_hist(f"Ticket {t['num_ticket']} refuse","Ticket",session["user"],t["id_patient"])
-        add_notif(t["id_patient"],"Ticket refuse",f"Ticket {t['num_ticket']}",f"Votre demande de ticket {t['num_ticket']} a ete refusee par la reception. Contactez l'accueil pour plus d'informations.",expediteur=session["user"])
+        add_notif(t["id_patient"],"Ticket refuse",f"Ticket {t['num_ticket']}",f"Votre demande de ticket {t['num_ticket']} a ete refusee par la reception. Contactez l'accueil pour plus d'informations.",expediteur=session["user"],lien="/p-tickets")
         flash(f"Ticket {t['num_ticket']} refuse.","warning")
     return redirect(url_for("r_tickets"))
 
@@ -3868,21 +3931,55 @@ def r_triage():
             arr=datetime.strptime(date_arrivee,"%Y-%m-%d %H:%M"); diff=datetime.now()-arr; mins=int(diff.total_seconds()//60)
             return f"{mins} min" if mins<60 else f"{mins//60}h{mins%60:02d}"
         except: return "-"
-    def row_t(t):
+    def mins_ecoulees(date_arrivee):
+        try:
+            arr=datetime.strptime(date_arrivee,"%Y-%m-%d %H:%M"); return int((datetime.now()-arr).total_seconds()//60)
+        except: return 0
+    def carte_t(t):
         nc=nc_map.get(t["niveau_urgence"],"att")
+        est_critique=t["niveau_urgence"].startswith("1") or t["niveau_urgence"].startswith("2")
         nom_aff=t.get("nom_anonyme","") or pname(t["id_patient"])
-        anon_badge='<span class="bk grey" style="font-size:.7rem;">Anonyme</span> ' if t.get("nom_anonyme") else ""
+        anon_badge='<span class="bk grey" style="font-size:.68rem;">Anonyme</span> ' if t.get("nom_anonyme") else ""
+        mins=mins_ecoulees(t["date_arrivee"])
         duree=attente_str(t["date_arrivee"]) if t["statut"] in ["En attente","En cours"] else "-"
-        duree_col="color:var(--err);font-weight:700;" if t["statut"]=="En attente" and "h" in duree else "color:var(--warn);" if "min" in duree and duree.replace(" min","").isdigit() and int(duree.replace(" min",""))>30 else ""
-        transfer_btn=f'''<button class="btn btn-sm btn-outline-b ms-1" onclick="document.getElementById(\'tr_{t["id"]}\').style.display=\'block\'"><i class="fas fa-exchange-alt"></i></button>
-        <div id="tr_{t["id"]}" style="display:none;margin-top:6px;padding:8px;background:#dbeafe;border-radius:6px;">
+        duree_col="var(--err)" if mins>60 else "var(--warn)" if mins>30 else "var(--muted)"
+        transfer_html=f'''<button type="button" class="btn btn-sm btn-outline-b" onclick="document.getElementById('tr_{t["id"]}').style.display='block'" style="flex:1;"><i class="fas fa-exchange-alt"></i> Transferer</button>
+        <div id="tr_{t["id"]}" style="display:none;margin-top:6px;padding:8px;background:#eef4ff;border-radius:8px;width:100%;">
           <form method="POST"><input type="hidden" name="action" value="transferer"><input type="hidden" name="tid" value="{t["id"]}">
             <select name="service_dest" class="form-select form-select-sm mb-1">{opts_transfer_svc}</select>
-            <button type="submit" class="btn btn-sm btn-b"><i class="fas fa-check"></i>Transferer</button>
+            <button type="submit" class="btn btn-sm btn-b w-100"><i class="fas fa-check"></i>Confirmer</button>
           </form></div>''' if t["statut"] in ["En attente","En cours"] else ""
-        return f'<tr><td><small>{t["date_arrivee"]}</small><br><span style="{duree_col}font-size:.78rem;"><i class="fas fa-clock"></i> {duree}</span></td><td><strong>{anon_badge}{nom_aff}</strong></td><td>{t["motif"]}</td><td><span class="bk {nc}">{t["niveau_urgence"]}</span></td><td style="font-size:.76rem;">{t["tension"]} | {t["temperature"]}C | SpO2:{t["saturation"]}% | FC:{t["frequence_cardiaque"]}</td><td><form method="POST" style="display:inline;"><input type="hidden" name="action" value="update"><input type="hidden" name="tid" value="{t["id"]}"><select name="statut" class="form-select form-select-sm" style="width:120px;display:inline;" onchange="this.form.submit()"><option>En attente</option><option>En cours</option><option>Termine</option><option>Transfere</option></select></form>{transfer_btn}</td></tr>'
-    rows_a="".join(row_t(t) for t in sorted(actifs,key=lambda x:x["niveau_urgence"]))
-    rows_arch="".join(row_t(t) for t in sorted(archives,key=lambda x:x["date_arrivee"],reverse=True)[:20])
+        statut_actions=""
+        if t["statut"]=="En attente":
+            statut_actions=f'''<form method="POST" style="flex:1;"><input type="hidden" name="action" value="update"><input type="hidden" name="tid" value="{t["id"]}"><input type="hidden" name="statut" value="En cours"><button type="submit" class="btn btn-sm btn-g w-100"><i class="fas fa-play"></i> Prendre en charge</button></form>'''
+        elif t["statut"]=="En cours":
+            statut_actions=f'''<form method="POST" style="flex:1;"><input type="hidden" name="action" value="update"><input type="hidden" name="tid" value="{t["id"]}"><input type="hidden" name="statut" value="Termine"><button type="submit" class="btn btn-sm btn-outline-g w-100"><i class="fas fa-check-circle"></i> Terminer</button></form>'''
+        pulse=' urgence-pulse' if est_critique and t["statut"]=="En attente" else ""
+        return f'''<div class="carte-urgence{pulse}" style="border-left:5px solid {"#7f1d1d" if t["niveau_urgence"].startswith("1") else "var(--err)" if t["niveau_urgence"].startswith("2") else "var(--warn)" if t["niveau_urgence"].startswith("3") else "var(--g1)"};">
+          <div style="display:flex;justify-content:space-between;align-items:start;gap:6px;">
+            <div>
+              <div style="font-weight:700;font-size:.92rem;color:var(--g3);">{anon_badge}{nom_aff}</div>
+              <div style="font-size:.78rem;color:var(--muted);margin-top:2px;">{t["motif"]}</div>
+            </div>
+            <span class="bk {nc}" style="white-space:nowrap;">{t["niveau_urgence"]}</span>
+          </div>
+          <div style="display:flex;gap:10px;margin-top:8px;font-size:.74rem;color:var(--muted);flex-wrap:wrap;">
+            <span><i class="fas fa-heartbeat"></i> {t["tension"] or "-"}</span>
+            <span><i class="fas fa-thermometer-half"></i> {t["temperature"]}C</span>
+            <span><i class="fas fa-lungs"></i> SpO2 {t["saturation"]}%</span>
+            <span><i class="fas fa-wave-square"></i> {t["frequence_cardiaque"]} bpm</span>
+          </div>
+          <div style="margin-top:8px;font-weight:700;font-size:.82rem;color:{duree_col};"><i class="fas fa-clock"></i> {duree} {"d'attente" if t["statut"]=="En attente" else "en charge" if t["statut"]=="En cours" else ""}</div>
+          {f'<div style="font-size:.72rem;color:var(--muted);margin-top:2px;">Medecin : {mname(t["pris_en_charge_par"])}</div>' if t.get("pris_en_charge_par") else ""}
+          <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;">{statut_actions}{transfer_html}</div>
+        </div>'''
+    critiques_attente=[t for t in actifs if (t["niveau_urgence"].startswith("1") or t["niveau_urgence"].startswith("2")) and t["statut"]=="En attente"]
+    col_attente=[t for t in actifs if t["statut"]=="En attente"]
+    col_encours=[t for t in actifs if t["statut"]=="En cours"]
+    traites=sorted([t for t in DB["triage"] if t["statut"] in ("Termine","Transfere")],key=lambda x:x["date_arrivee"],reverse=True)[:15]
+    cartes_attente="".join(carte_t(t) for t in sorted(col_attente,key=lambda x:x["niveau_urgence"]))
+    cartes_encours="".join(carte_t(t) for t in sorted(col_encours,key=lambda x:x["niveau_urgence"]))
+    cartes_traites="".join(carte_t(t) for t in traites)
     opts_p="".join(f'<option value="{p["id"]}">{p["prenom"]} {p["nom"]}</option>' for p in DB["patients"])
     opts_m="".join(f'<option value="{m["matricule"]}">Dr. {m["prenom"]} {m["nom"]}</option>' for m in DB["medecins"])
     body=f"""<div class="row g-3 mb-3">
@@ -3892,13 +3989,31 @@ def r_triage():
   <div class="col-md-2"><div class="sc bg-g"><div class="sv">{len([t for t in actifs if not any(t["niveau_urgence"].startswith(x) for x in ["1","2","3"])])}</div><div class="sl">Peu/Non urgent</div></div></div>
   <div class="col-md-4"><div class="sc bg-b"><div class="sv">{len(actifs)}</div><div class="sl">Total actifs</div></div></div>
 </div>
+{'<div class="al al-e mb-3" style="border:2px solid #7f1d1d;animation:urgPulse 1.5s infinite;"><i class="fas fa-triangle-exclamation" style="color:#7f1d1d;"></i><strong style="color:#7f1d1d;">'+str(len(critiques_attente))+' patient(s) critique(s) en attente de prise en charge !</strong></div>' if critiques_attente else ''}
 <div class="row g-3">
-  <div class="col-lg-8">
-    <div class="nav-tabs"><button class="nav-tab active" onclick="showTab('tt1',this)">Actifs ({len(actifs)})</button><button class="nav-tab" onclick="showTab('tt2',this)">Archives</button></div>
-    <div id="tt1" class="tab-pane"><div class="card"><div style="overflow-x:auto;"><table class="table"><thead><tr><th>Arrivee / Attente</th><th>Patient</th><th>Motif</th><th>Niveau</th><th>Parametres</th><th>Statut</th></tr></thead><tbody>{rows_a if rows_a else "<tr><td colspan=6 class='text-center' style='color:var(--muted);padding:20px;'>Aucun patient aux urgences</td></tr>"}</tbody></table></div></div></div>
-    <div id="tt2" class="tab-pane" style="display:none;"><div class="card"><div style="overflow-x:auto;"><table class="table"><thead><tr><th>Arrivee / Attente</th><th>Patient</th><th>Motif</th><th>Niveau</th><th>Parametres</th><th>Statut</th></tr></thead><tbody>{rows_arch if rows_arch else "<tr><td colspan=6 class='text-center' style='color:var(--muted);padding:20px;'>Aucun archive</td></tr>"}</tbody></table></div></div></div>
+  <div class="col-lg-9">
+    <div class="row g-2">
+      <div class="col-md-4">
+        <div style="background:#fef2f2;border-radius:10px 10px 0 0;padding:10px 14px;border:1px solid #fecaca;border-bottom:none;"><strong style="color:#7f1d1d;font-size:.85rem;"><i class="fas fa-hourglass-half"></i> En attente ({len(col_attente)})</strong></div>
+        <div style="background:#fef2f2;border:1px solid #fecaca;border-top:none;border-radius:0 0 10px 10px;padding:10px;min-height:200px;max-height:640px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;">
+          {cartes_attente if cartes_attente else "<div style='text-align:center;color:var(--muted);font-size:.8rem;padding:20px;'>Aucun patient en attente</div>"}
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div style="background:#fffbeb;border-radius:10px 10px 0 0;padding:10px 14px;border:1px solid #fde68a;border-bottom:none;"><strong style="color:#78350f;font-size:.85rem;"><i class="fas fa-user-md"></i> En cours ({len(col_encours)})</strong></div>
+        <div style="background:#fffbeb;border:1px solid #fde68a;border-top:none;border-radius:0 0 10px 10px;padding:10px;min-height:200px;max-height:640px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;">
+          {cartes_encours if cartes_encours else "<div style='text-align:center;color:var(--muted);font-size:.8rem;padding:20px;'>Aucun patient en charge</div>"}
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div style="background:#f0fdf4;border-radius:10px 10px 0 0;padding:10px 14px;border:1px solid #bbf7d0;border-bottom:none;"><strong style="color:var(--g3);font-size:.85rem;"><i class="fas fa-check-circle"></i> Traites (recent)</strong></div>
+        <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-top:none;border-radius:0 0 10px 10px;padding:10px;min-height:200px;max-height:640px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;">
+          {cartes_traites if cartes_traites else "<div style='text-align:center;color:var(--muted);font-size:.8rem;padding:20px;'>Aucun</div>"}
+        </div>
+      </div>
+    </div>
   </div>
-  <div class="col-lg-4"><div class="card"><div class="card-hdr"><div class="title"><i class="fas fa-plus-circle" style="color:var(--err);"></i>Nouveau patient urgences</div></div><div class="card-body">
+  <div class="col-lg-3"><div class="card"><div class="card-hdr"><div class="title"><i class="fas fa-plus-circle" style="color:var(--err);"></i>Nouveau patient urgences</div></div><div class="card-body">
     <form method="POST"><input type="hidden" name="action" value="add"><div class="row g-2">
       <div class="col-12"><div class="al al-w" style="font-size:.78rem;padding:6px 10px;"><label style="cursor:pointer;"><input type="checkbox" name="patient_anon" id="chk_anon" onchange="document.getElementById('sel_pat').style.display=this.checked?'none':'block';document.getElementById('inp_anon').style.display=this.checked?'block':'none';"> Patient inconnu / anonyme</label></div></div>
       <div class="col-12" id="sel_pat"><label class="form-label">Patient *</label><select name="patient" class="form-select"><option value="">--</option>{opts_p}</select></div>
@@ -4051,7 +4166,7 @@ def r_facturation():
         DB["documents_patient"].append({"id":nid("docs"),"id_patient":pid,"type_document":"Facture","nom_fichier":f"facture_{nf['num_facture']}.pdf","type_fichier":"PDF","date_creation":date.today().strftime("%Y-%m-%d"),"ref_id":nf["id"],"ref_type":"facture"})
         add_hist(f"Facture {nf['num_facture']} creee — {pname(pid)}","Facturation",session["user"],pid)
         detail_lignes="; ".join(f"{l['libelle']} x{l['quantite']} = {l['montant']:,} FCFA" for l in lignes)
-        add_notif(pid,"Facture generee",f"Facture {nf['num_facture']}",f"{detail_lignes}. Total : {mnt:,} FCFA. Part assurance : {part_ass:,} FCFA. A payer : {part_pat:,} FCFA avant le {date_ech}.",expediteur=session["user"])
+        add_notif(pid,"Facture generee",f"Facture {nf['num_facture']}",f"{detail_lignes}. Total : {mnt:,} FCFA. Part assurance : {part_ass:,} FCFA. A payer : {part_pat:,} FCFA avant le {date_ech}.",expediteur=session["user"],lien="/p-factures")
         flash(f"Facture {nf['num_facture']} creee pour {pname(pid)} — A payer : {part_pat:,} FCFA (echeance {date_ech}).","success")
         return redirect(url_for("r_facturation"))
     verifier_relances_factures()
@@ -4219,11 +4334,14 @@ def r_notifs():
     for n in notifs: n["lu"]=True
     opts_med="".join(f'<option value="{m["username"]}">Dr. {m["prenom"]} {m["nom"]} ({m["specialite"]})</option>' for m in DB["medecins"])
     opts_p="".join(f'<option value="{p["id"]}">{p["prenom"]} {p["nom"]}</option>' for p in DB["patients"])
-    rows="".join(f'<tr><td><small>{n["date"]}</small></td><td>{n.get("expediteur","-") or "systeme"}</td><td><strong>{n["type"]}</strong></td><td>{n["objet"]}</td><td>{n["contenu"][:60]}</td></tr>' for n in notifs)
+    def _row_notif(n):
+        voir=f'<a href="{n["lien"]}" class="btn btn-sm btn-outline-g">Voir</a>' if n.get("lien") else ""
+        return f'<tr><td style="width:26px;"><i class="fas fa-{notif_icone(n["type"])}" style="color:var(--g1);"></i></td><td><small>{n["date"]}</small></td><td>{n.get("expediteur","-") or "systeme"}</td><td><strong>{n["type"]}</strong></td><td>{n["objet"]}</td><td>{n["contenu"][:60]}</td><td>{voir}</td></tr>'
+    rows="".join(_row_notif(n) for n in notifs)
     body=f"""<div class="row g-3">
   <div class="col-lg-8">
   <div class="card mb-3"><div class="card-hdr"><div class="title"><i class="fas fa-inbox"></i>Messages recus ({len(notifs)})</div></div>
-  <div style="overflow-x:auto;"><table class="table"><thead><tr><th>Date</th><th>Expediteur</th><th>Type</th><th>Objet</th><th>Message</th></tr></thead><tbody>
+  <div style="overflow-x:auto;"><table class="table"><thead><tr><th></th><th>Date</th><th>Expediteur</th><th>Type</th><th>Objet</th><th>Message</th><th></th></tr></thead><tbody>
   {rows if rows else "<tr><td colspan=5 class='text-center' style='color:var(--muted);padding:20px;'>Aucun message</td></tr>"}
   </tbody></table></div></div>
   <div class="card"><div class="card-hdr"><div class="title"><i class="fas fa-sms"></i>Historique SMS envoyes</div></div>
@@ -4538,10 +4656,13 @@ def ph_notifs():
         return redirect(url_for("ph_notifs"))
     notifs=get_notifs_user(session["user"],"pharmacien")
     for n in notifs: n["lu"]=True
-    rows="".join(f'<tr><td><small>{n["date"]}</small></td><td>{n.get("expediteur","-") or "systeme"}</td><td><strong>{n["type"]}</strong></td><td>{n["objet"]}</td><td>{n["contenu"][:60]}</td></tr>' for n in notifs)
+    def _row_notif(n):
+        voir=f'<a href="{n["lien"]}" class="btn btn-sm btn-outline-g">Voir</a>' if n.get("lien") else ""
+        return f'<tr><td style="width:26px;"><i class="fas fa-{notif_icone(n["type"])}" style="color:var(--g1);"></i></td><td><small>{n["date"]}</small></td><td>{n.get("expediteur","-") or "systeme"}</td><td><strong>{n["type"]}</strong></td><td>{n["objet"]}</td><td>{n["contenu"][:60]}</td><td>{voir}</td></tr>'
+    rows="".join(_row_notif(n) for n in notifs)
     body=f"""<div class="row g-3">
   <div class="col-lg-8"><div class="card"><div class="card-hdr"><div class="title"><i class="fas fa-bell"></i>Notifications ({len(notifs)})</div></div>
-  <div style="overflow-x:auto;"><table class="table"><thead><tr><th>Date</th><th>Expediteur</th><th>Type</th><th>Objet</th><th>Message</th></tr></thead><tbody>
+  <div style="overflow-x:auto;"><table class="table"><thead><tr><th></th><th>Date</th><th>Expediteur</th><th>Type</th><th>Objet</th><th>Message</th><th></th></tr></thead><tbody>
   {rows if rows else "<tr><td colspan=5 class='text-center' style='color:var(--muted);padding:20px;'>Aucune notification</td></tr>"}
   </tbody></table></div></div></div>
   <div class="col-lg-4"><div class="card"><div class="card-hdr"><div class="title"><i class="fas fa-paper-plane"></i>Contacter la reception</div></div><div class="card-body">
@@ -4600,6 +4721,8 @@ def profil():
     nom=f"{ud.get('prenom','')} {ud.get('nom','')}".strip()
     rl={"patient":"Patient","medecin":"Medecin","receptionniste":"Receptionniste","pharmacien":"Pharmacien","admin":"Administrateur"}.get(role,role)
     ph=f'<img src="{ud["photo"]}" style="width:90px;height:90px;border-radius:50%;object-fit:cover;border:3px solid var(--gd);" alt="">' if ud.get("photo") else f'<div style="width:90px;height:90px;background:linear-gradient(135deg,var(--g1),var(--g2));border-radius:50%;display:inline-flex;align-items:center;justify-content:center;"><i class="fas fa-user" style="color:#fff;font-size:2.2rem;"></i></div>'
+    mes_actions=sorted([h for h in DB["historiques"] if h.get("id_user")==u],key=lambda x:x["date_action"],reverse=True)[:15]
+    rows_act="".join(f'<tr><td><small>{h["date_action"]}</small></td><td><span class="bk inf">{h["type"]}</span></td><td>{h["description"]}</td></tr>' for h in mes_actions)
     body=f"""<div class="row g-3">
   <div class="col-md-3"><div class="card"><div class="card-body text-center p-4">
     {ph}<h5 style="color:var(--g3);margin-top:12px;">{nom}</h5><span class="bk inf">{rl}</span>
@@ -4615,6 +4738,7 @@ def profil():
       <button class="nav-tab active" onclick="showTab('tp1',this)"><i class="fas fa-user me-1"></i>Informations</button>
       <button class="nav-tab" onclick="showTab('tp2',this)"><i class="fas fa-key me-1"></i>Mot de passe</button>
       <button class="nav-tab" onclick="showTab('tp3',this)"><i class="fas fa-camera me-1"></i>Photo</button>
+      <button class="nav-tab" onclick="showTab('tp4',this)"><i class="fas fa-clock-rotate-left me-1"></i>Activite recente</button>
     </div>
     <div id="tp1" class="tab-pane"><div class="card"><div class="card-body">
       <form method="POST"><input type="hidden" name="action" value="info"><div class="row g-3">
@@ -4642,6 +4766,9 @@ def profil():
         <button type="submit" class="btn btn-g"><i class="fas fa-camera"></i>Mettre a jour</button>
       </form>
     </div></div></div>
+    <div id="tp4" class="tab-pane" style="display:none;"><div class="card"><div style="overflow-x:auto;"><table class="table"><thead><tr><th>Date</th><th>Type</th><th>Description</th></tr></thead><tbody>
+      {rows_act if rows_act else "<tr><td colspan=3 class='text-center' style='color:var(--muted);padding:20px;'>Aucune activite enregistree</td></tr>"}
+    </tbody></table></div></div></div>
   </div>
 </div>
 <script>function previewPhoto(input){{if(input.files&&input.files[0]){{const r=new FileReader();r.onload=function(e){{document.getElementById('preview_img').src=e.target.result;document.getElementById('photo_preview').style.display='block';document.getElementById('photo_b64').value=e.target.result;}};r.readAsDataURL(input.files[0]);}}}}</script>"""

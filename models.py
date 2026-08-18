@@ -553,6 +553,7 @@ class Notification(db.Model):
     dest_user      = db.Column(db.String(60))
     expediteur     = db.Column(db.String(60))
     id_patient     = db.Column(db.Integer, db.ForeignKey("patients.id"))
+    lien           = db.Column(db.String(120))   # route interne cliquable depuis la notification (ex: /p-tickets)
 
     patient = db.relationship("Patient", back_populates="notifications")
 
