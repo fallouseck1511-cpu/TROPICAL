@@ -403,6 +403,38 @@ def role_required(*roles):
         return d
     return dec
 
+@app.route("/api/medicament-scan")
+@login_required
+@role_required("pharmacien")
+def api_medicament_scan():
+    """Recherche un medicament par code-barres/QR scanne. Utilise par le
+    scanner camera de la pharmacie (restock et vente)."""
+    code=request.args.get("code","").strip()
+    if not code:
+        return jsonify({"found":False,"error":"code vide"}),400
+    m=next((x for x in DB["medicaments"] if x.get("code_barre")==code),None)
+    if not m:
+        return jsonify({"found":False,"code":code})
+    s=next((x for x in DB["stocks"] if x["id_medicament"]==m["id"]),None)
+    return jsonify({"found":True,"id":m["id"],"libelle":m["libelle"],"dosage":m["dosage"],"prix":m["prix"],"stock":s["quantite"] if s else 0})
+
+@app.route("/ph-assigner-code",methods=["POST"])
+@login_required
+@role_required("pharmacien")
+def ph_assigner_code():
+    mid=int(request.form.get("mid",0))
+    code=request.form.get("code","").strip()
+    m=next((x for x in DB["medicaments"] if x["id"]==mid),None)
+    if not m or not code:
+        flash("Medicament ou code invalide.","danger"); return redirect(url_for("ph_medicaments"))
+    existant=next((x for x in DB["medicaments"] if x.get("code_barre")==code and x["id"]!=mid),None)
+    if existant:
+        flash(f"Ce code est deja associe a « {existant['libelle']} ».","danger"); return redirect(url_for("ph_medicaments"))
+    m["code_barre"]=code
+    add_hist(f"Code-barres associe a {m['libelle']}","Pharmacie",session["user"])
+    flash(f"Code-barres associe a « {m['libelle']} ».","success")
+    return redirect(url_for("ph_medicaments"))
+
 @app.route("/api/notif-count")
 @login_required
 def api_notif_count():
@@ -4388,7 +4420,11 @@ def r_historique():
 def ph_medicaments():
     if request.method=="POST":
         d=request.form; qte=int(d.get("qte",0)); seuil=int(d.get("seuil",20))
-        nm={"id":nid("meds"),"libelle":d["libelle"],"type":d.get("type","Autre"),"dosage":d.get("dosage",""),"prix":int(d.get("prix",0)),"contre_indication":d.get("ci",""),"notice":d.get("notice","")}
+        code=d.get("code_barre","").strip() or None
+        if code and any(m.get("code_barre")==code for m in DB["medicaments"]):
+            flash("Ce code-barres est deja associe a un autre medicament.","danger")
+            return redirect(url_for("ph_medicaments"))
+        nm={"id":nid("meds"),"libelle":d["libelle"],"type":d.get("type","Autre"),"dosage":d.get("dosage",""),"prix":int(d.get("prix",0)),"contre_indication":d.get("ci",""),"notice":d.get("notice",""),"code_barre":code}
         DB["medicaments"].append(nm)
         ns={"id":nid("stocks"),"id_medicament":nm["id"],"quantite":qte,"date_stock":date.today().strftime("%Y-%m-%d"),"statut":"Normal" if qte>seuil else ("Faible" if qte>0 else "Epuise"),"seuil_alerte":seuil}
         DB["stocks"].append(ns)
@@ -4399,16 +4435,20 @@ def ph_medicaments():
         s=next((x for x in DB["stocks"] if x["id"]==m["id_stock"]),None)
         qte=s["quantite"] if s else 0; stat=s["statut"] if s else "?"
         sc="ok" if stat=="Normal" else "err" if "pui" in stat.lower() else "att"
-        rows+=f'<tr data-f="{stat}"><td><strong>{m["libelle"]}</strong></td><td>{m["type"]}</td><td>{m["dosage"]}</td><td>{m["prix"]:,}</td><td><strong>{qte}</strong></td><td><span class="bk {sc}">{stat}</span></td><td>{m.get("notice","-")}</td><td><button class="btn btn-sm btn-outline-g" onclick="openRestock({m["id"]},\'{m["libelle"]}\',{qte})"><i class="fas fa-plus"></i>Stock</button></td></tr>'
+        code_html=f'<span style="font-family:monospace;font-size:.75rem;color:var(--muted);"><i class="fas fa-barcode"></i> {m["code_barre"]}</span>' if m.get("code_barre") else f'<button class="btn btn-sm btn-outline-b" style="padding:2px 8px;font-size:.72rem;" onclick="openAssign({m["id"]},\'{m["libelle"]}\')"><i class="fas fa-link"></i>Associer</button>'
+        rows+=f'<tr data-f="{stat}"><td><strong>{m["libelle"]}</strong></td><td>{m["type"]}</td><td>{m["dosage"]}</td><td>{m["prix"]:,}</td><td><strong>{qte}</strong></td><td><span class="bk {sc}">{stat}</span></td><td>{code_html}</td><td><button class="btn btn-sm btn-outline-g" onclick="openRestock({m["id"]},\'{m["libelle"]}\',{qte})"><i class="fas fa-plus"></i>Stock</button></td></tr>'
     body=f"""<div class="row g-3">
   <div class="col-lg-8"><div class="card"><div class="card-hdr"><div class="title"><i class="fas fa-pills"></i>Medicaments & Stock ({len(DB["medicaments"])})</div>
-    <button class="btn btn-sm btn-g" onclick="document.getElementById('fm').classList.toggle('d-none')"><i class="fas fa-plus"></i>Ajouter</button>
+    <div style="display:flex;gap:6px;">
+      <button class="btn btn-sm btn-o" style="color:#fff;" onclick="openScan('restock')"><i class="fas fa-camera"></i>Scanner</button>
+      <button class="btn btn-sm btn-g" onclick="document.getElementById('fm').classList.toggle('d-none')"><i class="fas fa-plus"></i>Ajouter</button>
+    </div>
   </div>
   <div style="padding:12px 18px;display:flex;gap:10px;flex-wrap:wrap;">
     <input type="text" id="sm" class="form-control" placeholder="Rechercher un medicament..." oninput="srchFilter('tm','sm','fm2')" style="max-width:280px;">
     <select id="fm2" class="form-select" onchange="srchFilter('tm','sm','fm2')" style="max-width:170px;"><option value="">Tous statuts</option><option>Normal</option><option>Faible</option><option>Epuise</option></select>
   </div>
-  <div style="overflow-x:auto;"><table class="table" id="tm"><thead><tr><th>Medicament</th><th>Type</th><th>Dosage</th><th>Prix FCFA</th><th>Stock</th><th>Statut</th><th>Notice</th><th>Action</th></tr></thead><tbody>{rows}</tbody></table></div></div></div>
+  <div style="overflow-x:auto;"><table class="table" id="tm"><thead><tr><th>Medicament</th><th>Type</th><th>Dosage</th><th>Prix FCFA</th><th>Stock</th><th>Statut</th><th>Code-barres</th><th>Action</th></tr></thead><tbody>{rows}</tbody></table></div></div></div>
   <div class="col-lg-4"><div id="fm" class="card d-none"><div class="card-hdr"><div class="title">Nouveau medicament</div></div><div class="card-body">
     <form method="POST"><div class="row g-2">
       <div class="col-12"><label class="form-label">Libelle *</label><input type="text" name="libelle" class="form-control" required></div>
@@ -4417,6 +4457,7 @@ def ph_medicaments():
       <div class="col-6"><label class="form-label">Prix (FCFA)</label><input type="number" name="prix" class="form-control" value="0"></div>
       <div class="col-6"><label class="form-label">Quantite initiale</label><input type="number" name="qte" class="form-control" value="0" min="0"></div>
       <div class="col-12"><label class="form-label">Seuil alerte</label><input type="number" name="seuil" class="form-control" value="20"></div>
+      <div class="col-12"><label class="form-label">Code-barres (optionnel)</label><div style="display:flex;gap:6px;"><input type="text" name="code_barre" id="new_code_barre" class="form-control" placeholder="Scanner ou saisir..."><button type="button" class="btn btn-outline-g" onclick="openScan('new')"><i class="fas fa-camera"></i></button></div></div>
       <div class="col-12"><label class="form-label">Notice</label><input type="text" name="notice" class="form-control" placeholder="Instructions..."></div>
       <div class="col-12"><label class="form-label">Contre-indications</label><textarea name="ci" class="form-control" rows="2"></textarea></div>
       <div class="col-12"><button type="submit" class="btn btn-g w-100" style="justify-content:center;"><i class="fas fa-save"></i>Ajouter</button></div>
@@ -4438,7 +4479,66 @@ def ph_medicaments():
     </form>
   </div>
 </div>
-<script>function openRestock(id,lbl,qte){{document.getElementById('rm_mid').value=id;document.getElementById('rm_lbl').textContent=lbl;document.getElementById('rm_qte').textContent='Stock actuel : '+qte+' unites';document.getElementById('restockModal').style.display='flex';}}</script>"""
+<div id="assignModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:2000;align-items:center;justify-content:center;padding:16px;overflow-y:auto;">
+  <div style="background:#fff;border-radius:14px;width:100%;max-width:380px;padding:24px;">
+    <h6 style="color:var(--g3);margin-bottom:12px;"><i class="fas fa-link me-2"></i>Associer un code-barres</h6>
+    <p id="am_lbl" style="font-size:.85rem;color:var(--muted);margin-bottom:16px;"></p>
+    <form action="/ph-assigner-code" method="POST">
+      <input type="hidden" name="mid" id="am_mid">
+      <div class="mb-3"><label class="form-label">Code-barres</label><div style="display:flex;gap:6px;"><input type="text" name="code" id="am_code" class="form-control" required><button type="button" class="btn btn-outline-g" onclick="openScan('assign')"><i class="fas fa-camera"></i></button></div></div>
+      <div style="display:flex;gap:8px;">
+        <button type="submit" class="btn btn-g"><i class="fas fa-check"></i>Associer</button>
+        <button type="button" onclick="document.getElementById('assignModal').style.display='none'" class="btn btn-outline-g">Annuler</button>
+      </div>
+    </form>
+  </div>
+</div>
+<div id="scanModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:2100;align-items:center;justify-content:center;padding:16px;overflow-y:auto;">
+  <div style="background:#fff;border-radius:14px;width:100%;max-width:420px;padding:20px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+      <h6 style="color:var(--g3);margin:0;"><i class="fas fa-camera me-2"></i>Scanner un code-barres</h6>
+      <button type="button" onclick="closeScan()" class="btn btn-sm btn-outline-g"><i class="fas fa-times"></i></button>
+    </div>
+    <div id="scanReader" style="width:100%;"></div>
+    <div id="scanMsg" class="al al-i mt-2" style="font-size:.8rem;">Placez le code-barres devant la camera.</div>
+  </div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+<script>
+function openRestock(id,lbl,qte){{document.getElementById('rm_mid').value=id;document.getElementById('rm_lbl').textContent=lbl;document.getElementById('rm_qte').textContent='Stock actuel : '+qte+' unites';document.getElementById('restockModal').style.display='flex';}}
+function openAssign(id,lbl){{document.getElementById('am_mid').value=id;document.getElementById('am_lbl').textContent='Medicament : '+lbl;document.getElementById('assignModal').style.display='flex';}}
+let _scanCtx=null, _html5Qrcode=null;
+function openScan(ctx){{
+  _scanCtx=ctx;
+  document.getElementById('scanModal').style.display='flex';
+  document.getElementById('scanMsg').textContent='Initialisation de la camera...';
+  _html5Qrcode=new Html5Qrcode('scanReader');
+  Html5Qrcode.getCameras().then(cams=>{{
+    if(!cams || !cams.length){{ document.getElementById('scanMsg').textContent='Aucune camera detectee.'; return; }}
+    const camId=cams.find(c=>/back|rear|environment/i.test(c.label))?.id || cams[cams.length-1].id;
+    _html5Qrcode.start(camId,{{fps:10,qrbox:220}},onScanSuccess,()=>{{}}).then(()=>{{
+      document.getElementById('scanMsg').textContent='Placez le code-barres devant la camera.';
+    }}).catch(()=>{{ document.getElementById('scanMsg').textContent='Impossible de demarrer la camera.'; }});
+  }}).catch(()=>{{ document.getElementById('scanMsg').textContent='Acces camera refuse ou indisponible.'; }});
+}}
+function closeScan(){{
+  if(_html5Qrcode){{ _html5Qrcode.stop().catch(()=>{{}}); }}
+  document.getElementById('scanModal').style.display='none';
+}}
+async function onScanSuccess(code){{
+  if(_html5Qrcode){{ _html5Qrcode.stop().catch(()=>{{}}); }}
+  document.getElementById('scanMsg').textContent='Code detecte : '+code+' — verification...';
+  if(_scanCtx==='new'){{ document.getElementById('new_code_barre').value=code; closeScan(); return; }}
+  if(_scanCtx==='assign'){{ document.getElementById('am_code').value=code; closeScan(); return; }}
+  try{{
+    const r=await fetch('/api/medicament-scan?code='+encodeURIComponent(code));
+    const data=await r.json();
+    closeScan();
+    if(data.found){{ openRestock(data.id,data.libelle,data.stock); }}
+    else{{ alert('Aucun medicament associe a ce code ("+code+"). Utilisez le bouton Associer sur la fiche du medicament concerne.'); }}
+  }}catch(e){{ closeScan(); }}
+}}
+</script>"""
     return page("Medicaments & Stock","pharmacien",session["user"],body)
 
 @app.route("/ph-restock",methods=["POST"])
@@ -4477,7 +4577,7 @@ def ph_ventes():
         if s["quantite"]<=s["seuil_alerte"]:
             DB["alertes_stock"].append({"id":nid("stocks"),"id_medicament":mid,"type_alerte":"Stock faible" if s["quantite"]>0 else "Rupture de stock","date":date.today().strftime("%Y-%m-%d"),"message":f"{m['libelle']} : {s['quantite']} unites restantes","quantite_actuel":s["quantite"],"statut":"Non traite"})
         montant=qte*m["prix"]
-        nv={"id":nid("ventes"),"id_medicament":mid,"libelle":m["libelle"],"quantite":qte,"prix_unitaire":m["prix"],"montant_total":montant,"date":datetime.now().strftime("%Y-%m-%d %H:%M"),"vendeur":session["user"],"id_patient":int(d["id_patient"]) if d.get("id_patient") else None,"nom_acheteur":d.get("nom_acheteur","Vente libre")}
+        nv={"id":nid("ventes"),"id_medicament":mid,"libelle":m["libelle"],"quantite":qte,"prix_unitaire":m["prix"],"montant_total":montant,"date":date.today().strftime("%Y-%m-%d"),"vendeur":session["user"],"id_patient":int(d["id_patient"]) if d.get("id_patient") else None,"nom_acheteur":d.get("nom_acheteur","Vente libre")}
         DB["ventes_pharmacie"].append(nv)
         add_hist(f"Vente : {qte}x {m['libelle']} = {montant:,} FCFA","Pharmacie",session["user"])
         flash(f"Vente enregistree : {qte}x {m['libelle']} = {montant:,} FCFA. Stock restant : {s['quantite']}.","success")
@@ -4486,7 +4586,7 @@ def ph_ventes():
     opts_p="".join(f'<option value="{p["id"]}">{p["prenom"]} {p["nom"]}</option>' for p in DB["patients"])
     # Dernières ventes du jour
     today=date.today().strftime("%Y-%m-%d")
-    ventes_today=[v for v in DB.get("ventes_pharmacie",[]) if v["date"].startswith(today)]
+    ventes_today=[v for v in DB.get("ventes_pharmacie",[]) if _ds(v["date"])==today]
     rows="".join(f'<tr><td><strong>{v["libelle"]}</strong></td><td>{v["quantite"]}</td><td>{v["prix_unitaire"]:,}</td><td><strong>{v["montant_total"]:,}</strong></td><td>{v.get("nom_acheteur","Vente libre") or pname(v["id_patient"]) if v.get("id_patient") else v.get("nom_acheteur","Vente libre")}</td><td><small>{v["date"]}</small></td></tr>' for v in sorted(ventes_today,key=lambda x:x["date"],reverse=True))
     total_j=sum(v["montant_total"] for v in ventes_today)
     body=f"""<div class="row g-3">
@@ -4494,9 +4594,11 @@ def ph_ventes():
   <div class="col-md-3 mb-3"><div class="sc bg-b"><div class="sv">{total_j:,} F</div><div class="sl">CA aujourd'hui</div></div></div>
 </div>
 <div class="row g-3">
-  <div class="col-lg-5"><div class="card"><div class="card-hdr"><div class="title"><i class="fas fa-shopping-cart"></i>Nouvelle vente</div></div><div class="card-body">
+  <div class="col-lg-5"><div class="card"><div class="card-hdr"><div class="title"><i class="fas fa-shopping-cart"></i>Nouvelle vente</div>
+    <button type="button" class="btn btn-sm btn-o" style="color:#fff;" onclick="openScanVente()"><i class="fas fa-camera"></i>Scanner</button>
+  </div><div class="card-body">
     <form method="POST"><div class="row g-2">
-      <div class="col-12"><label class="form-label">Medicament *</label><select name="medicament" class="form-select" required><option value="">-- Choisir --</option>{opts_m}</select></div>
+      <div class="col-12"><label class="form-label">Medicament *</label><select name="medicament" id="vente_med_sel" class="form-select" required><option value="">-- Choisir --</option>{opts_m}</select></div>
       <div class="col-12"><label class="form-label">Quantite *</label><input type="number" name="quantite" class="form-control" value="1" min="1" required></div>
       <div class="col-12" style="border-top:1px solid var(--gl);padding-top:10px;"><p style="font-size:.82rem;color:var(--muted);">Acheteur (optionnel)</p></div>
       <div class="col-12"><label class="form-label">Patient enregistre</label><select name="id_patient" class="form-select"><option value="">-- Vente libre --</option>{opts_p}</select></div>
@@ -4508,7 +4610,47 @@ def ph_ventes():
   <div style="overflow-x:auto;"><table class="table"><thead><tr><th>Medicament</th><th>Qte</th><th>Prix unit.</th><th>Total FCFA</th><th>Acheteur</th><th>Heure</th></tr></thead><tbody>
   {rows if rows else "<tr><td colspan=6 class='text-center' style='color:var(--muted);padding:20px;'>Aucune vente aujourd'hui</td></tr>"}
   </tbody></table></div></div></div>
-</div>"""
+</div>
+<div id="scanModalV" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:2100;align-items:center;justify-content:center;padding:16px;overflow-y:auto;">
+  <div style="background:#fff;border-radius:14px;width:100%;max-width:420px;padding:20px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+      <h6 style="color:var(--g3);margin:0;"><i class="fas fa-camera me-2"></i>Scanner un medicament</h6>
+      <button type="button" onclick="closeScanV()" class="btn btn-sm btn-outline-g"><i class="fas fa-times"></i></button>
+    </div>
+    <div id="scanReaderV" style="width:100%;"></div>
+    <div id="scanMsgV" class="al al-i mt-2" style="font-size:.8rem;">Placez le code-barres devant la camera.</div>
+  </div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+<script>
+let _html5QrcodeV=null;
+function openScanVente(){{
+  document.getElementById('scanModalV').style.display='flex';
+  document.getElementById('scanMsgV').textContent='Initialisation de la camera...';
+  _html5QrcodeV=new Html5Qrcode('scanReaderV');
+  Html5Qrcode.getCameras().then(cams=>{{
+    if(!cams || !cams.length){{ document.getElementById('scanMsgV').textContent='Aucune camera detectee.'; return; }}
+    const camId=cams.find(c=>/back|rear|environment/i.test(c.label))?.id || cams[cams.length-1].id;
+    _html5QrcodeV.start(camId,{{fps:10,qrbox:220}},onScanSuccessV,()=>{{}}).then(()=>{{
+      document.getElementById('scanMsgV').textContent='Placez le code-barres devant la camera.';
+    }}).catch(()=>{{ document.getElementById('scanMsgV').textContent='Impossible de demarrer la camera.'; }});
+  }}).catch(()=>{{ document.getElementById('scanMsgV').textContent='Acces camera refuse ou indisponible.'; }});
+}}
+function closeScanV(){{
+  if(_html5QrcodeV){{ _html5QrcodeV.stop().catch(()=>{{}}); }}
+  document.getElementById('scanModalV').style.display='none';
+}}
+async function onScanSuccessV(code){{
+  if(_html5QrcodeV){{ _html5QrcodeV.stop().catch(()=>{{}}); }}
+  try{{
+    const r=await fetch('/api/medicament-scan?code='+encodeURIComponent(code));
+    const data=await r.json();
+    closeScanV();
+    if(data.found){{ document.getElementById('vente_med_sel').value=data.id; }}
+    else{{ alert('Aucun medicament associe a ce code ("+code+").'); }}
+  }}catch(e){{ closeScanV(); }}
+}}
+</script>"""
     return page("Vente de medicaments","pharmacien",session["user"],body)
 
 # ✅ v5: Historique des ventes

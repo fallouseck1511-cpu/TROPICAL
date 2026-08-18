@@ -229,6 +229,7 @@ class Medicament(db.Model):
     prix               = db.Column(db.Integer, default=0)
     contre_indication  = db.Column(db.Text)
     notice             = db.Column(db.Text)
+    code_barre         = db.Column(db.String(60), unique=True)  # code-barres/QR pour le scan pharmacie
 
     stock              = db.relationship("Stock",          back_populates="medicament", uselist=False)
     lignes_ordonnance  = db.relationship("LigneOrdonnance", back_populates="medicament")
