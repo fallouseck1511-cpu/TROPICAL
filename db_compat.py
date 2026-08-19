@@ -20,6 +20,7 @@ from models import (
     ResultatExamen, DocumentPatient, ListeAttente, Triage,
     InteractionMedicamenteuse, AllergiePatient, Notification, Historique,
     SmsEnvoye, Creneau, AlerteStock, Ticket, Antecedent, ConstanteVitale, Vaccination, SignalMessage,
+    Lit, Hospitalisation, NoteSuivi,
 )
 
 MODEL_MAP = {
@@ -53,6 +54,9 @@ MODEL_MAP = {
     "constantes_vitales": ConstanteVitale,
     "vaccinations": Vaccination,
     "signal_messages": SignalMessage,
+    "lits": Lit,
+    "hospitalisations": Hospitalisation,
+    "notes_suivi": NoteSuivi,
     # "ordonnances" et "factures" sont gérées à part (lignes imbriquées) —
     # voir OrdonnanceRow / FactureRow
 }

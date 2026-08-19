@@ -647,6 +647,7 @@ def sidebar(role,username):
             ("","Mon Dossier","folder-open","p_dossier"),("","Mes Documents","file-pdf","p_documents"),
             ("","Mes RDV","calendar-check","p_rdvs"),("","Mes Consultations","stethoscope","p_consultations"),
             ("","Mes Teleconsultations","video","p_teleconsult"),("","Mes Resultats","microscope","p_resultats"),
+            ("","Mes Hospitalisations","procedures","p_hospitalisations"),
             ("","Mes Factures","file-invoice-dollar","p_factures"),("","Mes Paiements","credit-card","p_paiements"),
             ("","Acheter un ticket","ticket-alt","p_tickets"),("","Notifications","bell","p_notifs"),("","Mon Profil","user-cog","profil"),
         ],
@@ -654,6 +655,7 @@ def sidebar(role,username):
             ("","Tableau de bord","tachometer-alt","dashboard"),("","Mon espace","---",""),
             ("","Mes Patients","users","m_patients"),("","Mes RDV","calendar-check","m_rdvs"),
             ("","Mes Consultations","stethoscope","m_consultations"),("","Mes Teleconsultations","video","m_teleconsult"),("","Urgences","ambulance","m_urgences"),("","Mes Creneaux","clock","m_creneaux"),
+            ("","Hospitalisations","procedures","m_hospitalisations"),
             ("","Mon Service","building","m_service"),("","Messagerie","paper-plane","m_notifs"),("","Mon Profil","user-cog","profil"),
         ],
         "receptionniste":[
@@ -661,6 +663,7 @@ def sidebar(role,username):
             ("","Patients","users","r_patients"),("","Rendez-vous","calendar-check","r_rdvs"),
             ("","Demandes RDV","inbox","r_demandes"),("","Tickets","ticket-alt","r_tickets"),
             ("","Liste d'attente","clock","r_attente"),("","Urgences / Triage","ambulance","r_triage"),
+            ("","Hospitalisations","procedures","r_hospitalisations"),
             ("","Teleconsultations","video","r_teleconsult"),("","Facturation","file-invoice","r_facturation"),
             ("","Paiements","cash-register","r_paiements"),("","Messagerie","paper-plane","r_notifs"),
             ("","Historique","history","r_historique"),("","Mon Profil","user-cog","profil"),
@@ -676,6 +679,7 @@ def sidebar(role,username):
             ("","Tableau de bord","tachometer-alt","dashboard"),("","Administration","---",""),
             ("","Medecins","user-md","a_medecins"),("","Services","building","a_services"),
             ("","Centres","hospital","a_centres"),("","Staff","users-cog","a_staff"),
+            ("","Lits & Chambres","bed","a_lits"),
             ("","Patients","users","a_patients"),("","Toutes factures","file-invoice","a_factures"),
             ("","Rapports financiers","chart-line","a_rapports_financiers"),
             ("","Statistiques","chart-bar","a_statistiques"),
@@ -1447,6 +1451,70 @@ def a_services():
 </div>"""
     return page("Services","admin",session["user"],body)
 
+@app.route("/a-lits",methods=["GET","POST"])
+@login_required
+@role_required("admin")
+def a_lits():
+    if request.method=="POST":
+        action=request.form.get("action","ajouter")
+        if action=="ajouter":
+            d=request.form
+            nl={"id":nid("lits"),"numero":d["numero"],"id_service":int(d["service"]),"statut":"Libre"}
+            DB["lits"].append(nl)
+            add_hist(f"Lit ajoute : {nl['numero']} ({sname(nl['id_service'])})","Lits",session["user"])
+            flash(f"Lit '{nl['numero']}' ajoute.","success")
+        elif action=="maintenance":
+            lid=int(request.form.get("lid",0))
+            l=next((x for x in DB["lits"] if x["id"]==lid),None)
+            if l and l["statut"]!="Occupe":
+                l["statut"]="Maintenance" if l["statut"]!="Maintenance" else "Libre"
+                flash(f"Lit {l['numero']} : statut mis a jour.","success")
+            elif l:
+                flash("Impossible : ce lit est occupe.","danger")
+        elif action=="supprimer":
+            lid=int(request.form.get("lid",0))
+            l=next((x for x in DB["lits"] if x["id"]==lid),None)
+            if l and l["statut"]=="Occupe":
+                flash("Impossible de supprimer un lit occupe.","danger")
+            else:
+                DB["lits"]=[x for x in DB["lits"] if x["id"]!=lid]
+                flash("Lit supprime.","success")
+        return redirect(url_for("a_lits"))
+    lits=DB["lits"]
+    n_libre=len([l for l in lits if l["statut"]=="Libre"])
+    n_occupe=len([l for l in lits if l["statut"]=="Occupe"])
+    n_maint=len([l for l in lits if l["statut"]=="Maintenance"])
+    def row_l(l):
+        sc={"Libre":"ok","Occupe":"att","Maintenance":"err"}.get(l["statut"],"inf")
+        hosp=next((h for h in DB["hospitalisations"] if h["id_lit"]==l["id"] and h["statut"]=="En cours"),None)
+        occ_info=f' — {pname(hosp["id_patient"])}' if hosp else ""
+        actions=f'''<form method="POST" style="display:inline;"><input type="hidden" name="action" value="maintenance"><input type="hidden" name="lid" value="{l["id"]}">
+          <button type="submit" class="btn btn-sm btn-outline-b" {"disabled" if l["statut"]=="Occupe" else ""}><i class="fas fa-{"wrench" if l["statut"]!="Maintenance" else "check"}"></i>{"Remettre en service" if l["statut"]=="Maintenance" else "Maintenance"}</button></form>
+        <form method="POST" style="display:inline;margin-left:4px;" onsubmit="return confirm('Supprimer ce lit ?')"><input type="hidden" name="action" value="supprimer"><input type="hidden" name="lid" value="{l["id"]}">
+          <button type="submit" class="btn btn-sm btn-danger" {"disabled" if l["statut"]=="Occupe" else ""}><i class="fas fa-trash"></i></button></form>'''
+        return f'<tr><td><strong>{l["numero"]}</strong>{occ_info}</td><td>{sname(l["id_service"])}</td><td><span class="bk {sc}">{l["statut"]}</span></td><td style="white-space:nowrap;">{actions}</td></tr>'
+    rows="".join(row_l(l) for l in sorted(lits,key=lambda x:x["numero"]))
+    opts_s="".join(f'<option value="{s["id"]}">{s["libelle"]}</option>' for s in DB["services"])
+    body=f"""<div class="row g-3 mb-3">
+  <div class="col-md-4"><div class="sc bg-g"><div class="sv">{n_libre}</div><div class="sl">Lits libres</div></div></div>
+  <div class="col-md-4"><div class="sc bg-o"><div class="sv">{n_occupe}</div><div class="sl">Lits occupes</div></div></div>
+  <div class="col-md-4"><div class="sc bg-r"><div class="sv">{n_maint}</div><div class="sl">En maintenance</div></div></div>
+</div>
+<div class="row g-3">
+  <div class="col-lg-8"><div class="card"><div class="card-hdr"><div class="title"><i class="fas fa-bed"></i>Lits & Chambres ({len(lits)})</div></div>
+  <div style="overflow-x:auto;"><table class="table"><thead><tr><th>Lit / Chambre</th><th>Service</th><th>Statut</th><th>Actions</th></tr></thead><tbody>
+  {rows if rows else "<tr><td colspan=4 class='text-center' style='color:var(--muted);padding:20px;'>Aucun lit enregistre</td></tr>"}
+  </tbody></table></div></div></div>
+  <div class="col-lg-4"><div class="card"><div class="card-hdr"><div class="title">Ajouter un lit</div></div><div class="card-body">
+    <form method="POST"><input type="hidden" name="action" value="ajouter"><div class="row g-2">
+      <div class="col-12"><label class="form-label">Numero / Nom *</label><input type="text" name="numero" class="form-control" placeholder="Chambre 12 - Lit A" required></div>
+      <div class="col-12"><label class="form-label">Service *</label><select name="service" class="form-select" required>{opts_s}</select></div>
+      <div class="col-12"><button type="submit" class="btn btn-g w-100" style="justify-content:center;"><i class="fas fa-save"></i>Ajouter</button></div>
+    </div></form>
+  </div></div></div>
+</div>"""
+    return page("Lits & Chambres","admin",session["user"],body)
+
 @app.route("/a-patients")
 @login_required
 @role_required("admin")
@@ -1982,16 +2050,18 @@ def m_constante_add(pid):
         v=d.get(key,"").strip()
         try: return int(v) if v else None
         except ValueError: return None
+    hid=request.args.get("hid")
     nc={"id":nid("constantes"),"date":date.today().strftime("%Y-%m-%d"),"poids":fnum("poids"),"taille":fnum("taille"),
         "tension_systolique":inum("ts"),"tension_diastolique":inum("td"),"temperature":fnum("temperature"),
-        "frequence_cardiaque":inum("fc"),"saturation":inum("spo2"),"releve_par":session["user"],"id_patient":pid}
+        "frequence_cardiaque":inum("fc"),"saturation":inum("spo2"),"releve_par":session["user"],"id_patient":pid,
+        "id_hospitalisation":int(hid) if hid else None}
     if all(nc[k] is None for k in ("poids","taille","tension_systolique","tension_diastolique","temperature","frequence_cardiaque","saturation")):
         flash("Renseignez au moins une constante.","danger")
-        return redirect(url_for("m_dossier",pid=pid))
+        return redirect(url_for("m_hospitalisation_detail",hid=hid) if hid else url_for("m_dossier",pid=pid))
     DB["constantes_vitales"].append(nc)
     add_hist(f"Constantes vitales relevees — {pname(pid)}","Dossier medical",session["user"],pid)
     flash("Constantes vitales enregistrees.","success")
-    return redirect(url_for("m_dossier",pid=pid))
+    return redirect(url_for("m_hospitalisation_detail",hid=hid) if hid else url_for("m_dossier",pid=pid))
 
 @app.route("/m-vaccination-add/<int:pid>",methods=["POST"])
 @login_required
@@ -2348,6 +2418,154 @@ def m_rdvs():
 {rows if rows else "<tr><td colspan=7 class='text-center' style='color:var(--muted);padding:20px;'>Aucun RDV</td></tr>"}
 </tbody></table></div></div>"""
     return page("Mes Rendez-vous","medecin",session["user"],body)
+
+@app.route("/m-hospitalisations",methods=["GET","POST"])
+@login_required
+@role_required("medecin")
+def m_hospitalisations():
+    med=get_med(session["user"]); mat=med["matricule"]
+    if request.method=="POST":
+        d=request.form
+        pid=int(d.get("patient",0))
+        lid=int(d.get("lit",0))
+        motif=d.get("motif","").strip()
+        pat=next((p for p in DB["patients"] if p["id"]==pid),None)
+        lit=next((l for l in DB["lits"] if l["id"]==lid),None)
+        if not pat or not lit or not motif:
+            flash("Patient, lit et motif d'admission sont requis.","danger")
+            return redirect(url_for("m_hospitalisations"))
+        if lit["statut"]!="Libre":
+            flash("Ce lit n'est plus disponible.","danger")
+            return redirect(url_for("m_hospitalisations"))
+        if any(h["id_patient"]==pid and h["statut"]=="En cours" for h in DB["hospitalisations"]):
+            flash(f"{pname(pid)} est deja hospitalise(e).","warning")
+            return redirect(url_for("m_hospitalisations"))
+        nh={"id":nid("hosp"),"id_patient":pid,"matricule_medecin":mat,"id_lit":lid,"id_service":lit["id_service"],
+            "date_entree":date.today().strftime("%Y-%m-%d"),"motif_admission":motif,"statut":"En cours","admis_par":session["user"]}
+        DB["hospitalisations"].append(nh)
+        lit["statut"]="Occupe"
+        add_hist(f"Admission hospitalisation — {pname(pid)} ({motif})","Hospitalisation",session["user"],pid)
+        add_notif(pid,"Hospitalisation",f"Admission — {lit['numero']}",f"Vous avez ete admis(e) en hospitalisation le {nh['date_entree']}, service {sname(lit['id_service'])}, {lit['numero']}. Medecin responsable : Dr. {med['prenom']} {med['nom']}.",expediteur=session["user"],lien="/p-hospitalisations")
+        flash(f"{pname(pid)} admis(e) — {lit['numero']}.","success")
+        return redirect(url_for("m_hospitalisation_detail",hid=nh["id"]))
+    mes_hosp=[h for h in DB["hospitalisations"] if h["matricule_medecin"]==mat]
+    actives=[h for h in mes_hosp if h["statut"]=="En cours"]
+    sorties=sorted([h for h in mes_hosp if h["statut"]=="Sortie"],key=lambda x:_ds(x["date_sortie"]),reverse=True)[:20]
+    lits_libres=[l for l in DB["lits"] if l["statut"]=="Libre"]
+    def row_h(h):
+        sc="att" if h["statut"]=="En cours" else "ok"
+        lit=next((l for l in DB["lits"] if l["id"]==h["id_lit"]),None)
+        return f'<tr><td><strong>{pname(h["id_patient"])}</strong></td><td>{lit["numero"] if lit else "-"}</td><td>{h["motif_admission"][:40]}</td><td>{h["date_entree"]}</td><td>{_ds(h.get("date_sortie")) or "-"}</td><td><span class="bk {sc}">{h["statut"]}</span></td><td><a href="/m-hospitalisation/{h["id"]}" class="btn btn-sm btn-outline-g"><i class="fas fa-eye"></i>Voir</a></td></tr>'
+    rows_a="".join(row_h(h) for h in actives)
+    rows_s="".join(row_h(h) for h in sorties)
+    opts_p="".join(f'<option value="{p["id"]}">{p["prenom"]} {p["nom"]}</option>' for p in DB["patients"])
+    opts_l="".join(f'<option value="{l["id"]}">{l["numero"]} — {sname(l["id_service"])}</option>' for l in lits_libres)
+    form_html=f"""<form method="POST"><div class="row g-2">
+      <div class="col-12"><label class="form-label">Patient *</label><select name="patient" class="form-select" required><option value="">--</option>{opts_p}</select></div>
+      <div class="col-12"><label class="form-label">Lit disponible *</label><select name="lit" class="form-select" required><option value="">--</option>{opts_l}</select></div>
+      <div class="col-12"><label class="form-label">Motif d'admission *</label><textarea name="motif" class="form-control" rows="2" required></textarea></div>
+      <div class="col-12"><button type="submit" class="btn btn-g w-100" style="justify-content:center;"><i class="fas fa-procedures"></i>Admettre</button></div>
+    </div></form>""" if lits_libres else '<div class="al al-w" style="font-size:.82rem;"><i class="fas fa-exclamation-triangle"></i>Aucun lit libre actuellement.</div>'
+    body=f"""<div class="row g-3">
+  <div class="col-lg-8">
+    <div class="nav-tabs"><button class="nav-tab active" onclick="showTab('th1',this)">En cours ({len(actives)})</button><button class="nav-tab" onclick="showTab('th2',this)">Sorties recentes</button></div>
+    <div id="th1" class="tab-pane"><div class="card"><div style="overflow-x:auto;"><table class="table"><thead><tr><th>Patient</th><th>Lit</th><th>Motif</th><th>Entree</th><th>Sortie</th><th>Statut</th><th></th></tr></thead><tbody>{rows_a if rows_a else "<tr><td colspan=7 class='text-center' style='color:var(--muted);padding:20px;'>Aucune hospitalisation en cours</td></tr>"}</tbody></table></div></div></div>
+    <div id="th2" class="tab-pane" style="display:none;"><div class="card"><div style="overflow-x:auto;"><table class="table"><thead><tr><th>Patient</th><th>Lit</th><th>Motif</th><th>Entree</th><th>Sortie</th><th>Statut</th><th></th></tr></thead><tbody>{rows_s if rows_s else "<tr><td colspan=7 class='text-center' style='color:var(--muted);padding:20px;'>Aucune</td></tr>"}</tbody></table></div></div></div>
+  </div>
+  <div class="col-lg-4"><div class="card"><div class="card-hdr"><div class="title"><i class="fas fa-procedures"></i>Admettre un patient</div></div><div class="card-body">{form_html}</div></div></div>
+</div>"""
+    return page("Hospitalisations","medecin",session["user"],body)
+
+@app.route("/m-hospitalisation/<int:hid>")
+@login_required
+@role_required("medecin")
+def m_hospitalisation_detail(hid):
+    h=next((x for x in DB["hospitalisations"] if x["id"]==hid),None)
+    if not h: flash("Hospitalisation introuvable.","danger"); return redirect(url_for("m_hospitalisations"))
+    pat=next((p for p in DB["patients"] if p["id"]==h["id_patient"]),None)
+    lit=next((l for l in DB["lits"] if l["id"]==h["id_lit"]),None)
+    notes=sorted([n for n in DB["notes_suivi"] if n["id_hospitalisation"]==hid],key=lambda x:_ds(x["date_note"]),reverse=True)
+    constantes=sorted([c for c in DB["constantes_vitales"] if c.get("id_hospitalisation")==hid],key=lambda x:_ds(x["date"]))
+    rows_notes="".join(f'<div style="padding:10px 0;border-bottom:1px solid var(--gl);"><div style="font-size:.78rem;color:var(--muted);">{n["date_note"]} — {n.get("redige_par","-")}</div><div style="margin-top:3px;">{n["note"]}</div></div>' for n in notes)
+    rows_const="".join(f'<tr><td>{c["date"]}</td><td>{c["tension_systolique"]}/{c["tension_diastolique"] if c["tension_systolique"] else "-"}</td><td>{c["temperature"] or "-"}</td><td>{c["frequence_cardiaque"] or "-"}</td><td>{c["saturation"] or "-"}</td></tr>' for c in reversed(constantes))
+    form_sortie=""
+    if h["statut"]=="En cours":
+        form_sortie=f"""<div class="card"><div class="card-hdr"><div class="title"><i class="fas fa-door-open"></i>Sortie du patient</div></div><div class="card-body">
+        <form method="POST" action="/m-hospitalisation/{hid}/sortie" onsubmit="return confirm('Confirmer la sortie du patient ?')">
+          <div class="mb-2"><label class="form-label">Diagnostic de sortie *</label><input type="text" name="diagnostic_sortie" class="form-control" required></div>
+          <div class="mb-2"><label class="form-label">Compte-rendu de sortie *</label><textarea name="compte_rendu_sortie" class="form-control" rows="4" required></textarea></div>
+          <button type="submit" class="btn btn-g w-100" style="justify-content:center;"><i class="fas fa-check"></i>Valider la sortie</button>
+        </form></div></div>
+        <div class="card mt-3"><div class="card-hdr"><div class="title"><i class="fas fa-notes-medical"></i>Ajouter une note de suivi</div></div><div class="card-body">
+        <form method="POST" action="/m-hospitalisation/{hid}/note">
+          <textarea name="note" class="form-control mb-2" rows="3" placeholder="Evolution, observations..." required></textarea>
+          <button type="submit" class="btn btn-g w-100" style="justify-content:center;"><i class="fas fa-plus"></i>Ajouter</button>
+        </form></div></div>
+        <div class="card mt-3"><div class="card-hdr"><div class="title"><i class="fas fa-heartbeat"></i>Constantes du jour</div></div><div class="card-body">
+        <form method="POST" action="/m-constante-add/{h['id_patient']}?hid={hid}" class="row g-2">
+          <div class="col-6"><input type="number" name="ts" class="form-control form-control-sm" placeholder="Tension sys."></div>
+          <div class="col-6"><input type="number" name="td" class="form-control form-control-sm" placeholder="Tension dia."></div>
+          <div class="col-6"><input type="number" step="0.1" name="temperature" class="form-control form-control-sm" placeholder="Temp. (C)"></div>
+          <div class="col-6"><input type="number" name="fc" class="form-control form-control-sm" placeholder="FC (bpm)"></div>
+          <div class="col-12"><input type="number" name="spo2" class="form-control form-control-sm" placeholder="SpO2 (%)"></div>
+          <div class="col-12"><button class="btn btn-sm btn-g w-100" style="justify-content:center;"><i class="fas fa-save"></i>Enregistrer</button></div>
+        </form></div></div>"""
+    else:
+        form_sortie=f"""<div class="card"><div class="card-hdr"><div class="title">Compte-rendu de sortie</div></div><div class="card-body">
+        <p><strong>Diagnostic :</strong> {h.get("diagnostic_sortie","-")}</p>
+        <p style="margin-top:8px;"><strong>Compte-rendu :</strong> {h.get("compte_rendu_sortie","-")}</p>
+        </div></div>"""
+    body=f"""<div class="row g-3">
+  <div class="col-lg-8">
+    <div class="card mb-3"><div class="card-body">
+      <div style="display:flex;justify-content:space-between;align-items:start;">
+        <div><h5 style="color:var(--g3);">{pat["prenom"]} {pat["nom"]}</h5>
+        <span class="bk {"att" if h["statut"]=="En cours" else "ok"}">{h["statut"]}</span> <span class="bk inf">{lit["numero"] if lit else "-"}</span></div>
+        <div style="text-align:right;font-size:.82rem;color:var(--muted);">Entree : {h["date_entree"]}{" — Sortie : "+_ds(h["date_sortie"]) if h.get("date_sortie") else ""}</div>
+      </div>
+      <p style="margin-top:10px;"><strong>Motif d'admission :</strong> {h["motif_admission"]}</p>
+    </div></div>
+    <div class="card mb-3"><div class="card-hdr"><div class="title"><i class="fas fa-chart-line"></i>Constantes durant le sejour</div></div>
+      <div style="overflow-x:auto;"><table class="table"><thead><tr><th>Date</th><th>Tension</th><th>Temp.</th><th>FC</th><th>SpO2</th></tr></thead><tbody>{rows_const if rows_const else "<tr><td colspan=5 class='text-center' style='color:var(--muted);padding:16px;'>Aucune constante relevee</td></tr>"}</tbody></table></div></div>
+    <div class="card"><div class="card-hdr"><div class="title"><i class="fas fa-clipboard-list"></i>Journal de suivi</div></div><div class="card-body">
+      {rows_notes if rows_notes else "<p style='color:var(--muted);font-size:.85rem;'>Aucune note enregistree.</p>"}
+    </div></div>
+  </div>
+  <div class="col-lg-4">{form_sortie}</div>
+</div>"""
+    return page(f"Hospitalisation — {pat['prenom']} {pat['nom']}","medecin",session["user"],body)
+
+@app.route("/m-hospitalisation/<int:hid>/note",methods=["POST"])
+@login_required
+@role_required("medecin")
+def m_hospitalisation_note(hid):
+    h=next((x for x in DB["hospitalisations"] if x["id"]==hid),None)
+    note=request.form.get("note","").strip()
+    if h and note:
+        DB["notes_suivi"].append({"id":nid("notes"),"id_hospitalisation":hid,"date_note":datetime.now().strftime("%Y-%m-%d %H:%M"),"note":note,"redige_par":session["user"]})
+        add_hist(f"Note de suivi ajoutee — {pname(h['id_patient'])}","Hospitalisation",session["user"],h["id_patient"])
+        flash("Note ajoutee.","success")
+    return redirect(url_for("m_hospitalisation_detail",hid=hid))
+
+@app.route("/m-hospitalisation/<int:hid>/sortie",methods=["POST"])
+@login_required
+@role_required("medecin")
+def m_hospitalisation_sortie(hid):
+    h=next((x for x in DB["hospitalisations"] if x["id"]==hid),None)
+    if not h or h["statut"]!="En cours":
+        flash("Hospitalisation invalide.","danger"); return redirect(url_for("m_hospitalisations"))
+    diag=request.form.get("diagnostic_sortie","").strip()
+    cr=request.form.get("compte_rendu_sortie","").strip()
+    if not diag or not cr:
+        flash("Diagnostic et compte-rendu de sortie requis.","danger"); return redirect(url_for("m_hospitalisation_detail",hid=hid))
+    h["statut"]="Sortie"; h["date_sortie"]=date.today().strftime("%Y-%m-%d")
+    h["diagnostic_sortie"]=diag; h["compte_rendu_sortie"]=cr
+    lit=next((l for l in DB["lits"] if l["id"]==h["id_lit"]),None)
+    if lit: lit["statut"]="Libre"
+    add_hist(f"Sortie d'hospitalisation — {pname(h['id_patient'])} — {diag}","Hospitalisation",session["user"],h["id_patient"])
+    add_notif(h["id_patient"],"Hospitalisation","Sortie autorisee",f"Votre sortie a ete validee le {h['date_sortie']}. Diagnostic : {diag}.",expediteur=session["user"],lien="/p-hospitalisations")
+    flash(f"Sortie de {pname(h['id_patient'])} validee — lit liberee.","success")
+    return redirect(url_for("m_hospitalisations"))
 
 @app.route("/m-urgences")
 @login_required
@@ -3155,6 +3373,30 @@ def p_teleconsult_room(tid):
     body=f'<h5 style="color:var(--g3);margin-bottom:12px;"><i class="fas fa-video"></i> Teleconsultation avec {mname(t["matricule"])}</h5>'+_room_body(tid,"patient")
     return page("Salle de teleconsultation","patient",session["user"],body)
 
+@app.route("/p-hospitalisations")
+@login_required
+@role_required("patient")
+def p_hospitalisations():
+    pat=get_pat(session["user"]); pid=pat["id"]
+    mes_hosp=sorted([h for h in DB["hospitalisations"] if h["id_patient"]==pid],key=lambda x:x["date_entree"],reverse=True)
+    def carte_h(h):
+        lit=next((l for l in DB["lits"] if l["id"]==h["id_lit"]),None)
+        sc="att" if h["statut"]=="En cours" else "ok"
+        cr=f'<div class="al al-i mt-2" style="font-size:.8rem;"><strong>Diagnostic :</strong> {h.get("diagnostic_sortie","-")}<br><strong>Compte-rendu :</strong> {h.get("compte_rendu_sortie","-")}</div>' if h["statut"]=="Sortie" else ""
+        return f'''<div class="card mb-3"><div class="card-body">
+          <div style="display:flex;justify-content:space-between;align-items:start;">
+            <div><strong style="color:var(--g3);">{sname(h["id_service"])}</strong> — {lit["numero"] if lit else "-"}<br>
+            <small style="color:var(--muted);">Dr. {mname(h["matricule_medecin"])}</small></div>
+            <span class="bk {sc}">{h["statut"]}</span>
+          </div>
+          <p style="margin-top:8px;font-size:.85rem;"><strong>Motif :</strong> {h["motif_admission"]}</p>
+          <p style="font-size:.8rem;color:var(--muted);">Entree : {h["date_entree"]}{" — Sortie : "+_ds(h["date_sortie"]) if h.get("date_sortie") else ""}</p>
+          {cr}
+        </div></div>'''
+    body=f"""<div class="card mb-3"><div class="card-body"><i class="fas fa-procedures" style="color:var(--g1);"></i> <strong>{len(mes_hosp)}</strong> hospitalisation(s) enregistree(s)</div></div>
+{''.join(carte_h(h) for h in mes_hosp) if mes_hosp else '<div class="al al-i">Aucune hospitalisation enregistree.</div>'}"""
+    return page("Mes Hospitalisations","patient",session["user"],body)
+
 @app.route("/p-resultats")
 @login_required
 @role_required("patient")
@@ -3846,6 +4088,27 @@ def r_ticket_refuser(tid):
         add_notif(t["id_patient"],"Ticket refuse",f"Ticket {t['num_ticket']}",f"Votre demande de ticket {t['num_ticket']} a ete refusee par la reception. Contactez l'accueil pour plus d'informations.",expediteur=session["user"],lien="/p-tickets")
         flash(f"Ticket {t['num_ticket']} refuse.","warning")
     return redirect(url_for("r_tickets"))
+
+@app.route("/r-hospitalisations")
+@login_required
+@role_required("receptionniste")
+def r_hospitalisations():
+    actives=[h for h in DB["hospitalisations"] if h["statut"]=="En cours"]
+    def row_h(h):
+        lit=next((l for l in DB["lits"] if l["id"]==h["id_lit"]),None)
+        return f'<tr><td><strong>{pname(h["id_patient"])}</strong></td><td>{lit["numero"] if lit else "-"}</td><td>{sname(h["id_service"])}</td><td>{mname(h["matricule_medecin"])}</td><td>{h["date_entree"]}</td><td>{h["motif_admission"][:50]}</td></tr>'
+    rows="".join(row_h(h) for h in sorted(actives,key=lambda x:x["date_entree"],reverse=True))
+    n_libre=len([l for l in DB["lits"] if l["statut"]=="Libre"])
+    body=f"""<div class="row g-3 mb-3">
+  <div class="col-md-4"><div class="sc bg-o"><div class="sv">{len(actives)}</div><div class="sl">Patients hospitalises</div></div></div>
+  <div class="col-md-4"><div class="sc bg-g"><div class="sv">{n_libre}</div><div class="sl">Lits libres</div></div></div>
+  <div class="col-md-4"><div class="sc bg-b"><div class="sv">{len(DB["lits"])}</div><div class="sl">Total lits</div></div></div>
+</div>
+<div class="card"><div class="card-hdr"><div class="title"><i class="fas fa-procedures"></i>Patients actuellement hospitalises</div></div>
+<div style="overflow-x:auto;"><table class="table"><thead><tr><th>Patient</th><th>Lit</th><th>Service</th><th>Medecin</th><th>Entree</th><th>Motif</th></tr></thead><tbody>
+{rows if rows else "<tr><td colspan=6 class='text-center' style='color:var(--muted);padding:20px;'>Aucun patient hospitalise</td></tr>"}
+</tbody></table></div></div>"""
+    return page("Hospitalisations","receptionniste",session["user"],body)
 
 @app.route("/r-attente",methods=["GET","POST"])
 @login_required

@@ -453,11 +453,60 @@ class ConstanteVitale(db.Model):
     releve_par             = db.Column(db.String(60))
     id_patient             = db.Column(db.Integer, db.ForeignKey("patients.id"), nullable=False)
     id_consultation        = db.Column(db.Integer, db.ForeignKey("consultations.id"))
+    id_hospitalisation     = db.Column(db.Integer, db.ForeignKey("hospitalisations.id"))
 
     patient = db.relationship("Patient", back_populates="constantes")
 
 # ─────────────────────────────────────────────────────────────
-# 20quater. VACCINATION
+# 20quinquies. LIT (chambre/lit d'hospitalisation)
+# ─────────────────────────────────────────────────────────────
+class Lit(db.Model):
+    __tablename__   = "lits"
+    id              = db.Column(db.Integer, primary_key=True)
+    numero          = db.Column(db.String(20), nullable=False)   # ex: "Chambre 12 - Lit A"
+    statut          = db.Column(db.String(20), default="Libre")  # Libre|Occupe|Maintenance
+    id_service      = db.Column(db.Integer, db.ForeignKey("services.id"), nullable=False)
+
+    service = db.relationship("Service", backref="lits")
+
+# ─────────────────────────────────────────────────────────────
+# 20sexies. HOSPITALISATION (sejour)
+# ─────────────────────────────────────────────────────────────
+class Hospitalisation(db.Model):
+    __tablename__       = "hospitalisations"
+    id                  = db.Column(db.Integer, primary_key=True)
+    date_entree         = db.Column(db.Date, default=date.today)
+    date_sortie         = db.Column(db.Date)
+    motif_admission     = db.Column(db.Text)
+    diagnostic_sortie   = db.Column(db.Text)
+    compte_rendu_sortie = db.Column(db.Text)
+    statut              = db.Column(db.String(20), default="En cours")  # En cours|Sortie
+    admis_par           = db.Column(db.String(60))
+    id_patient          = db.Column(db.Integer, db.ForeignKey("patients.id"), nullable=False)
+    matricule_medecin   = db.Column(db.String(10), db.ForeignKey("medecins.matricule"), nullable=False)
+    id_lit              = db.Column(db.Integer, db.ForeignKey("lits.id"), nullable=False)
+    id_service          = db.Column(db.Integer, db.ForeignKey("services.id"), nullable=False)
+
+    patient  = db.relationship("Patient", backref="hospitalisations")
+    medecin  = db.relationship("Medecin", backref="hospitalisations")
+    lit      = db.relationship("Lit", backref="hospitalisations")
+    notes    = db.relationship("NoteSuivi", back_populates="hospitalisation", cascade="all, delete-orphan")
+
+# ─────────────────────────────────────────────────────────────
+# 20septies. NOTE DE SUIVI (journal quotidien d'hospitalisation)
+# ─────────────────────────────────────────────────────────────
+class NoteSuivi(db.Model):
+    __tablename__       = "notes_suivi"
+    id                  = db.Column(db.Integer, primary_key=True)
+    date_note           = db.Column(db.DateTime, default=datetime.utcnow)
+    note                = db.Column(db.Text, nullable=False)
+    redige_par          = db.Column(db.String(60))
+    id_hospitalisation  = db.Column(db.Integer, db.ForeignKey("hospitalisations.id"), nullable=False)
+
+    hospitalisation = db.relationship("Hospitalisation", back_populates="notes")
+
+# ─────────────────────────────────────────────────────────────
+# 20octies. VACCINATION
 # ─────────────────────────────────────────────────────────────
 class Vaccination(db.Model):
     __tablename__        = "vaccinations"
