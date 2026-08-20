@@ -185,6 +185,25 @@ def run_seed():
     return True
 
 
+def ensure_default_accounts():
+    """S'assure que certains comptes de reference existent, meme sur une
+    base deja peuplee (ou run_seed() ne s'execute plus). Necessaire car
+    ajouter un nouveau compte a la liste de seeding ne suffit pas a le
+    creer sur une base de production existante — run_seed() s'arrete des
+    qu'un seul utilisateur existe deja. Cree uniquement ce qui manque,
+    sans jamais toucher aux comptes/donnees existants."""
+    added = []
+    if User.query.filter_by(username="infirmier").first() is None:
+        u = User(username="infirmier", password="infirm123", role="infirmier",
+                 nom="Diatta", prenom="Awa", email="infirmier@tropical.sn", telephone="77 222 33 44")
+        db.session.add(u)
+        added.append("infirmier")
+    if added:
+        db.session.commit()
+        print(f"🔧 Comptes de reference ajoutes automatiquement : {', '.join(added)}")
+    return added
+
+
 if __name__ == "__main__":
     # Exécution manuelle : python seed.py (nécessite le Shell Render, plan payant)
     from app import app
@@ -192,3 +211,4 @@ if __name__ == "__main__":
         db.create_all()
         if not run_seed():
             print("ℹ️  La base contient déjà des données — rien fait (idempotent).")
+        ensure_default_accounts()

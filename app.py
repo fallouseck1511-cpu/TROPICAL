@@ -88,11 +88,15 @@ DB.init_counters(app)
 # Peuplement automatique au premier démarrage (base vide) : utile sur le
 # plan gratuit Render, où le Shell n'est pas disponible pour lancer
 # "python seed.py" à la main. Sans effet si la base contient déjà des données.
+# ensure_default_accounts() s'execute elle a chaque demarrage (meme sur une
+# base deja peuplee) pour rattraper tout nouveau compte de reference ajoute
+# apres coup — sinon, run_seed() ne s'execute plus des qu'un utilisateur existe.
 with app.app_context():
     try:
-        from seed import run_seed
+        from seed import run_seed, ensure_default_accounts
         if run_seed():
             DB.init_counters(app)  # recalcule les compteurs après le seeding
+        ensure_default_accounts()
     except Exception as _seed_err:
         print(f"⚠️  Seeding automatique ignoré : {_seed_err}")
 # Le dictionnaire de données de démonstration ci-dessus a été déplacé dans
