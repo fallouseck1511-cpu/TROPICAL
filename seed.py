@@ -42,6 +42,7 @@ def run_seed():
         User(username="admin",          password="admin123",   role="admin",          nom="Systeme",    prenom="Admin",    email="admin@tropical.sn",     telephone="33 951 00 00"),
         User(username="receptionniste", password="recep123",   role="receptionniste", nom="Ndiaye",     prenom="Fatou",    email="recep@tropical.sn",      telephone="77 444 55 66"),
         User(username="pharmacien",     password="pharma123",  role="pharmacien",     nom="Fall",       prenom="Mamadou",  email="pharma@tropical.sn",     telephone="76 555 66 77"),
+        User(username="infirmier",      password="infirm123",  role="infirmier",      nom="Diatta",     prenom="Awa",      email="infirmier@tropical.sn",  telephone="77 222 33 44"),
         User(username="dr.ndiaye",      password="med123",     role="medecin",        nom="Ndiaye",     prenom="Rokhaya",  email="dr.ndiaye@tropical.sn",  telephone="76 222 33 44", id_ref="MED001", status_med="Disponible",  teleconsult_actif=False),
         User(username="dr.diallo",      password="med123",     role="medecin",        nom="Diallo",     prenom="Cheikh",   email="dr.diallo@tropical.sn",  telephone="77 111 22 33", id_ref="MED002", status_med="Disponible",  teleconsult_actif=True),
         User(username="dr.toure",       password="med123",     role="medecin",        nom="Toure",      prenom="Fatou",    email="dr.toure@tropical.sn",   telephone="76 888 99 00", id_ref="MED003", status_med="Disponible",  teleconsult_actif=True),

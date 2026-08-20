@@ -675,6 +675,11 @@ def sidebar(role,username):
             ("","Alertes Stock","exclamation-triangle","ph_alertes"),("","Ordonnances","prescription","ph_ordonnances"),
             ("","Notifications","bell","ph_notifs"),("","Mon Profil","user-cog","profil"),
         ],
+        "infirmier":[
+            ("","Tableau de bord","tachometer-alt","dashboard"),("","Soins","---",""),
+            ("","Patients hospitalises","procedures","i_hospitalisations"),
+            ("","Notifications","bell","i_notifs"),("","Mon Profil","user-cog","profil"),
+        ],
         "admin":[
             ("","Tableau de bord","tachometer-alt","dashboard"),("","Administration","---",""),
             ("","Medecins","user-md","a_medecins"),("","Services","building","a_services"),
@@ -693,7 +698,7 @@ def sidebar(role,username):
     links=""
     for _,label,icon,ep in menus.get(role,[]):
         if icon=="---": links+=f'<div class="sec">{label}</div>'; continue
-        notif_eps=("p_notifs","m_notifs","r_notifs","ph_notifs","a_notifs")
+        notif_eps=("p_notifs","m_notifs","r_notifs","ph_notifs","a_notifs","i_notifs")
         nb=f'<span style="background:var(--err);color:#fff;border-radius:10px;font-size:.6rem;padding:1px 6px;margin-left:auto;">{nc}</span>' if ep in notif_eps and nc>0 else ""
         href=f"/{ep.replace('_','-')}"
         links+=f'<a href="{href}" class="nl"><i class="fas fa-{icon}"></i>{label}{nb}</a>\n'
@@ -705,7 +710,7 @@ def topbar(title,role,username):
     nom=f"{ud.get('prenom','')} {ud.get('nom','')}".strip() or username
     pat=get_pat(username); pid=pat["id"] if pat else None
     nc=unread_count(username,role,pid)
-    ep={"patient":"p-notifs","medecin":"m-notifs","receptionniste":"r-notifs","pharmacien":"ph-notifs","admin":"a-notifs"}.get(role,"")
+    ep={"patient":"p-notifs","medecin":"m-notifs","receptionniste":"r-notifs","pharmacien":"ph-notifs","admin":"a-notifs","infirmier":"i-notifs"}.get(role,"")
     dot_style="" if nc>0 else "display:none;"
     nb=f'<div class="notif-wrap"><a href="/{ep}" class="btn btn-sm btn-outline-g"><i class="fas fa-bell"></i><span class="notif-dot" id="notifBadge" style="{dot_style}">{nc}</span></a></div>' if ep else ""
     ph=f'<img src="{ud["photo"]}" class="avatar" alt="">' if ud.get("photo") else f'<div class="avatar"><i class="fas fa-user" style="color:var(--g2);font-size:.9rem;"></i></div>'
@@ -1063,6 +1068,20 @@ if(ctxS){{const sn=[{','.join([repr(next((m["libelle"] for m in DB["medicaments"
 </div>"""
         return page("Tableau de bord","medecin",u,body)
 
+    if role=="infirmier":
+        actives=[h for h in DB["hospitalisations"] if h["statut"]=="En cours"]
+        notes_today=[n for n in DB["notes_suivi"] if n.get("redige_par")==u and _ds(n["date_note"])==date.today().strftime("%Y-%m-%d")]
+        const_today=[c for c in DB["constantes_vitales"] if c.get("releve_par")==u and _ds(c["date"])==date.today().strftime("%Y-%m-%d")]
+        body=f"""<div class="row g-3 mb-3">
+  <div class="col-md-4"><div class="sc bg-o"><div class="sv">{len(actives)}</div><div class="sl">Patients hospitalises</div></div></div>
+  <div class="col-md-4"><div class="sc bg-g"><div class="sv">{len(notes_today)}</div><div class="sl">Notes ajoutees aujourd'hui</div></div></div>
+  <div class="col-md-4"><div class="sc bg-b"><div class="sv">{len(const_today)}</div><div class="sl">Constantes relevees aujourd'hui</div></div></div>
+</div>
+<div class="row g-3">
+  <div class="col-md-4"><a href="/i-hospitalisations" class="card" style="text-decoration:none;display:block;"><div class="card-body text-center py-4"><i class="fas fa-procedures fa-2x" style="color:var(--g1);"></i><div style="font-weight:600;color:var(--g3);margin-top:8px;">Patients hospitalises</div></div></a></div>
+</div>"""
+        return page("Tableau de bord","infirmier",u,body)
+
     if role=="receptionniste":
         nb_att=len([a for a in DB["liste_attente"] if a["statut"]=="En attente"])
         nb_urg=len([t for t in DB["triage"] if t["statut"] in ["En attente","En cours"]])
@@ -1312,7 +1331,7 @@ def a_staff():
         elif action=="supprimer":
             uname=request.form.get("uname_del","")
             u=DB["users"].get(uname)
-            if not u or u.get("role") not in ["receptionniste","pharmacien"]:
+            if not u or u.get("role") not in ["receptionniste","pharmacien","infirmier"]:
                 flash("Utilisateur introuvable ou role non autorise.","danger")
             else:
                 nom_complet=f"{u.get('prenom','')} {u.get('nom','')}".strip() or uname
@@ -1321,11 +1340,11 @@ def a_staff():
                 flash(f"{u['role'].capitalize()} '{nom_complet}' supprime(e).","success")
         return redirect(url_for("a_staff"))
     # Liste réceptionnistes et pharmaciens
-    staff=[{"uname":u,"role":d["role"],"nom":d.get("nom",""),"prenom":d.get("prenom",""),"email":d.get("email",""),"tel":d.get("telephone",""),"centre":cname(d.get("id_ref",1))} for u,d in DB["users"].items() if d.get("role") in ["receptionniste","pharmacien"]]
+    staff=[{"uname":u,"role":d["role"],"nom":d.get("nom",""),"prenom":d.get("prenom",""),"email":d.get("email",""),"tel":d.get("telephone",""),"centre":cname(d.get("id_ref",1))} for u,d in DB["users"].items() if d.get("role") in ["receptionniste","pharmacien","infirmier"]]
     rows="".join(f"""<tr data-f="{s['role']}">
         <td><strong>{s['uname']}</strong></td>
         <td>{s['prenom']} {s['nom']}</td>
-        <td><span class="bk {'inf' if s['role']=='receptionniste' else 'vio'}">{s['role'].capitalize()}</span></td>
+        <td><span class="bk {'inf' if s['role']=='receptionniste' else 'vio' if s['role']=='pharmacien' else 'ok'}">{s['role'].capitalize()}</span></td>
         <td>{s['email']}</td><td>{s['tel']}</td><td>{s['centre']}</td>
         <td style="white-space:nowrap;">
             <form method="POST" action="/a-reset-password/{s['uname']}" style="display:inline;" onsubmit="return confirm('Reinitialiser le mot de passe ?')"><button type="submit" class="btn btn-sm btn-outline-b" title="Reset mot de passe"><i class="fas fa-key"></i></button></form>
@@ -1336,19 +1355,19 @@ def a_staff():
         </form></td></tr>""" for s in staff)
     opts_c="".join(f'<option value="{c["id"]}">{c["nom"]}</option>' for c in DB.get("centres",[]))
     body=f"""<div class="row g-3">
-  <div class="col-lg-8"><div class="card"><div class="card-hdr"><div class="title"><i class="fas fa-users-cog"></i>Receptionnistes & Pharmaciens ({len(staff)})</div>
+  <div class="col-lg-8"><div class="card"><div class="card-hdr"><div class="title"><i class="fas fa-users-cog"></i>Personnel non-medecin ({len(staff)})</div>
     <button class="btn btn-sm btn-g" onclick="document.getElementById('fst').classList.toggle('d-none')"><i class="fas fa-plus"></i>Ajouter</button>
   </div>
   <div style="padding:12px 18px;display:flex;gap:10px;flex-wrap:wrap;">
     <input type="text" id="sst" class="form-control" placeholder="Rechercher (nom, identifiant...)" oninput="srchFilter('tst','sst','fst2')" style="max-width:280px;">
-    <select id="fst2" class="form-select" onchange="srchFilter('tst','sst','fst2')" style="max-width:170px;"><option value="">Tous roles</option><option value="receptionniste">Receptionniste</option><option value="pharmacien">Pharmacien</option></select>
+    <select id="fst2" class="form-select" onchange="srchFilter('tst','sst','fst2')" style="max-width:170px;"><option value="">Tous roles</option><option value="receptionniste">Receptionniste</option><option value="pharmacien">Pharmacien</option><option value="infirmier">Infirmier</option></select>
   </div>
   <div style="overflow-x:auto;"><table class="table" id="tst"><thead><tr><th>Identifiant</th><th>Nom</th><th>Role</th><th>Email</th><th>Tel</th><th>Centre</th><th>Action</th></tr></thead><tbody>
   {rows if rows else "<tr><td colspan=7 class='text-center' style='color:var(--muted);padding:20px;'>Aucun staff enregistre</td></tr>"}
   </tbody></table></div></div></div>
   <div class="col-lg-4"><div id="fst" class="card d-none"><div class="card-hdr"><div class="title">Ajouter un membre du staff</div></div><div class="card-body">
     <form method="POST"><input type="hidden" name="action" value="ajouter"><div class="row g-2">
-      <div class="col-12"><label class="form-label">Role *</label><select name="role_staff" class="form-select"><option value="receptionniste">Receptionniste</option><option value="pharmacien">Pharmacien</option></select></div>
+      <div class="col-12"><label class="form-label">Role *</label><select name="role_staff" class="form-select"><option value="receptionniste">Receptionniste</option><option value="pharmacien">Pharmacien</option><option value="infirmier">Infirmier</option></select></div>
       <div class="col-6"><label class="form-label">Nom *</label><input type="text" name="nom" class="form-control" required></div>
       <div class="col-6"><label class="form-label">Prenom *</label><input type="text" name="prenom" class="form-control" required></div>
       <div class="col-12"><label class="form-label">Email</label><input type="email" name="email" class="form-control"></div>
@@ -2037,8 +2056,12 @@ def m_antecedent_add(pid):
 
 @app.route("/m-constante-add/<int:pid>",methods=["POST"])
 @login_required
-@role_required("medecin")
+@role_required("medecin","infirmier")
 def m_constante_add(pid):
+    def _redir_constante(hid,pid):
+        if hid: return url_for("m_hospitalisation_detail",hid=hid)
+        if session.get("role")=="infirmier": return url_for("i_hospitalisations")
+        return url_for("m_dossier",pid=pid)
     pat=next((p for p in DB["patients"] if p["id"]==pid),None)
     if not pat: flash("Patient introuvable","danger"); return redirect(url_for("m_patients"))
     d=request.form
@@ -2057,11 +2080,11 @@ def m_constante_add(pid):
         "id_hospitalisation":int(hid) if hid else None}
     if all(nc[k] is None for k in ("poids","taille","tension_systolique","tension_diastolique","temperature","frequence_cardiaque","saturation")):
         flash("Renseignez au moins une constante.","danger")
-        return redirect(url_for("m_hospitalisation_detail",hid=hid) if hid else url_for("m_dossier",pid=pid))
+        return redirect(_redir_constante(hid,pid))
     DB["constantes_vitales"].append(nc)
     add_hist(f"Constantes vitales relevees — {pname(pid)}","Dossier medical",session["user"],pid)
     flash("Constantes vitales enregistrees.","success")
-    return redirect(url_for("m_hospitalisation_detail",hid=hid) if hid else url_for("m_dossier",pid=pid))
+    return redirect(_redir_constante(hid,pid))
 
 @app.route("/m-vaccination-add/<int:pid>",methods=["POST"])
 @login_required
@@ -2478,10 +2501,11 @@ def m_hospitalisations():
 
 @app.route("/m-hospitalisation/<int:hid>")
 @login_required
-@role_required("medecin")
+@role_required("medecin","infirmier")
 def m_hospitalisation_detail(hid):
+    role=session.get("role")
     h=next((x for x in DB["hospitalisations"] if x["id"]==hid),None)
-    if not h: flash("Hospitalisation introuvable.","danger"); return redirect(url_for("m_hospitalisations"))
+    if not h: flash("Hospitalisation introuvable.","danger"); return redirect(url_for("m_hospitalisations") if role=="medecin" else url_for("i_hospitalisations"))
     pat=next((p for p in DB["patients"] if p["id"]==h["id_patient"]),None)
     lit=next((l for l in DB["lits"] if l["id"]==h["id_lit"]),None)
     notes=sorted([n for n in DB["notes_suivi"] if n["id_hospitalisation"]==hid],key=lambda x:_ds(x["date_note"]),reverse=True)
@@ -2490,12 +2514,13 @@ def m_hospitalisation_detail(hid):
     rows_const="".join(f'<tr><td>{c["date"]}</td><td>{c["tension_systolique"]}/{c["tension_diastolique"] if c["tension_systolique"] else "-"}</td><td>{c["temperature"] or "-"}</td><td>{c["frequence_cardiaque"] or "-"}</td><td>{c["saturation"] or "-"}</td></tr>' for c in reversed(constantes))
     form_sortie=""
     if h["statut"]=="En cours":
-        form_sortie=f"""<div class="card"><div class="card-hdr"><div class="title"><i class="fas fa-door-open"></i>Sortie du patient</div></div><div class="card-body">
+        sortie_html=f"""<div class="card"><div class="card-hdr"><div class="title"><i class="fas fa-door-open"></i>Sortie du patient</div></div><div class="card-body">
         <form method="POST" action="/m-hospitalisation/{hid}/sortie" onsubmit="return confirm('Confirmer la sortie du patient ?')">
           <div class="mb-2"><label class="form-label">Diagnostic de sortie *</label><input type="text" name="diagnostic_sortie" class="form-control" required></div>
           <div class="mb-2"><label class="form-label">Compte-rendu de sortie *</label><textarea name="compte_rendu_sortie" class="form-control" rows="4" required></textarea></div>
           <button type="submit" class="btn btn-g w-100" style="justify-content:center;"><i class="fas fa-check"></i>Valider la sortie</button>
-        </form></div></div>
+        </form></div></div>""" if role=="medecin" else ""
+        form_sortie=f"""{sortie_html}
         <div class="card mt-3"><div class="card-hdr"><div class="title"><i class="fas fa-notes-medical"></i>Ajouter une note de suivi</div></div><div class="card-body">
         <form method="POST" action="/m-hospitalisation/{hid}/note">
           <textarea name="note" class="form-control mb-2" rows="3" placeholder="Evolution, observations..." required></textarea>
@@ -2533,11 +2558,11 @@ def m_hospitalisation_detail(hid):
   </div>
   <div class="col-lg-4">{form_sortie}</div>
 </div>"""
-    return page(f"Hospitalisation — {pat['prenom']} {pat['nom']}","medecin",session["user"],body)
+    return page(f"Hospitalisation — {pat['prenom']} {pat['nom']}",role,session["user"],body)
 
 @app.route("/m-hospitalisation/<int:hid>/note",methods=["POST"])
 @login_required
-@role_required("medecin")
+@role_required("medecin","infirmier")
 def m_hospitalisation_note(hid):
     h=next((x for x in DB["hospitalisations"] if x["id"]==hid),None)
     note=request.form.get("note","").strip()
@@ -3649,7 +3674,7 @@ def p_notifs():
     body=f"""<div class="row g-3">
   <div class="col-lg-8"><div class="card"><div class="card-hdr"><div class="title"><i class="fas fa-bell"></i>Mes Notifications ({len(notifs)})</div></div>
   <div style="overflow-x:auto;"><table class="table"><thead><tr><th></th><th>Date</th><th>De</th><th>Type</th><th>Objet</th><th>Message</th><th></th></tr></thead><tbody>
-  {rows if rows else "<tr><td colspan=5 class='text-center' style='color:var(--muted);padding:20px;'>Aucune notification</td></tr>"}
+  {rows if rows else "<tr><td colspan=7 class='text-center' style='color:var(--muted);padding:20px;'>Aucune notification</td></tr>"}
   </tbody></table></div></div></div>
   <div class="col-lg-4"><div class="card"><div class="card-hdr"><div class="title"><i class="fas fa-paper-plane"></i>Contacter la reception</div></div><div class="card-body">
     <form method="POST"><div class="row g-2">
@@ -4088,6 +4113,31 @@ def r_ticket_refuser(tid):
         add_notif(t["id_patient"],"Ticket refuse",f"Ticket {t['num_ticket']}",f"Votre demande de ticket {t['num_ticket']} a ete refusee par la reception. Contactez l'accueil pour plus d'informations.",expediteur=session["user"],lien="/p-tickets")
         flash(f"Ticket {t['num_ticket']} refuse.","warning")
     return redirect(url_for("r_tickets"))
+
+@app.route("/i-hospitalisations")
+@login_required
+@role_required("infirmier")
+def i_hospitalisations():
+    actives=sorted([h for h in DB["hospitalisations"] if h["statut"]=="En cours"],key=lambda x:x["date_entree"],reverse=True)
+    def carte_h(h):
+        lit=next((l for l in DB["lits"] if l["id"]==h["id_lit"]),None)
+        nb_notes=len([n for n in DB["notes_suivi"] if n["id_hospitalisation"]==h["id"]])
+        derniere_note=max([n["date_note"] for n in DB["notes_suivi"] if n["id_hospitalisation"]==h["id"]],default=None)
+        return f'''<div class="col-md-6"><div class="card"><div class="card-body">
+          <div style="display:flex;justify-content:space-between;align-items:start;">
+            <div><strong style="color:var(--g3);">{pname(h["id_patient"])}</strong><br>
+            <small style="color:var(--muted);">{lit["numero"] if lit else "-"} — {sname(h["id_service"])}</small></div>
+            <span class="bk att">Depuis {h["date_entree"]}</span>
+          </div>
+          <p style="margin-top:8px;font-size:.82rem;">{h["motif_admission"][:80]}</p>
+          <p style="font-size:.76rem;color:var(--muted);"><i class="fas fa-clipboard-list"></i> {nb_notes} note(s){" — derniere le "+derniere_note if derniere_note else ""}</p>
+          <a href="/m-hospitalisation/{h["id"]}" class="btn btn-sm btn-g w-100" style="justify-content:center;margin-top:6px;"><i class="fas fa-notes-medical"></i>Suivi du patient</a>
+        </div></div></div>'''
+    body=f"""<div class="al al-i mb-3" style="font-size:.82rem;"><i class="fas fa-info-circle"></i>{len(actives)} patient(s) actuellement hospitalise(s). Cliquez sur un patient pour ajouter une note de suivi ou relever ses constantes.</div>
+<div class="row g-3">
+{''.join(carte_h(h) for h in actives) if actives else '<div class="col-12"><div class="al al-i">Aucun patient hospitalise actuellement.</div></div>'}
+</div>"""
+    return page("Patients hospitalises","infirmier",session["user"],body)
 
 @app.route("/r-hospitalisations")
 @login_required
@@ -5052,6 +5102,37 @@ function openDeliv(id){{
 </script>"""
     return page("Ordonnances","pharmacien",session["user"],body)
 
+@app.route("/i-notifs",methods=["GET","POST"])
+@login_required
+@role_required("infirmier")
+def i_notifs():
+    if request.method=="POST":
+        d=request.form
+        add_notif(None,d["type"],d["objet"],d["contenu"],dest_role="receptionniste",expediteur=session["user"])
+        flash("Message envoye a la receptionniste.","success")
+        return redirect(url_for("i_notifs"))
+    notifs=get_notifs_user(session["user"],"infirmier")
+    for n in notifs: n["lu"]=True
+    def _row_notif(n):
+        voir=f'<a href="{n["lien"]}" class="btn btn-sm btn-outline-g">Voir</a>' if n.get("lien") else ""
+        return f'<tr><td style="width:26px;"><i class="fas fa-{notif_icone(n["type"])}" style="color:var(--g1);"></i></td><td><small>{n["date"]}</small></td><td>{n.get("expediteur","-") or "systeme"}</td><td><strong>{n["type"]}</strong></td><td>{n["objet"]}</td><td>{n["contenu"][:60]}</td><td>{voir}</td></tr>'
+    rows="".join(_row_notif(n) for n in notifs)
+    body=f"""<div class="row g-3">
+  <div class="col-lg-8"><div class="card"><div class="card-hdr"><div class="title"><i class="fas fa-bell"></i>Notifications ({len(notifs)})</div></div>
+  <div style="overflow-x:auto;"><table class="table"><thead><tr><th></th><th>Date</th><th>Expediteur</th><th>Type</th><th>Objet</th><th>Message</th><th></th></tr></thead><tbody>
+  {rows if rows else "<tr><td colspan=7 class='text-center' style='color:var(--muted);padding:20px;'>Aucune notification</td></tr>"}
+  </tbody></table></div></div></div>
+  <div class="col-lg-4"><div class="card"><div class="card-hdr"><div class="title"><i class="fas fa-paper-plane"></i>Contacter la reception</div></div><div class="card-body">
+    <form method="POST"><div class="row g-2">
+      <div class="col-12"><label class="form-label">Type</label><select name="type" class="form-select"><option>Information</option><option>Demande</option><option>Urgence</option></select></div>
+      <div class="col-12"><label class="form-label">Objet *</label><input type="text" name="objet" class="form-control" required></div>
+      <div class="col-12"><label class="form-label">Message *</label><textarea name="contenu" class="form-control" rows="3" required></textarea></div>
+      <div class="col-12"><button type="submit" class="btn btn-g w-100" style="justify-content:center;"><i class="fas fa-paper-plane"></i>Envoyer</button></div>
+    </div></form>
+  </div></div></div>
+</div>"""
+    return page("Notifications","infirmier",session["user"],body)
+
 @app.route("/ph-notifs",methods=["GET","POST"])
 @login_required
 @role_required("pharmacien")
@@ -5070,7 +5151,7 @@ def ph_notifs():
     body=f"""<div class="row g-3">
   <div class="col-lg-8"><div class="card"><div class="card-hdr"><div class="title"><i class="fas fa-bell"></i>Notifications ({len(notifs)})</div></div>
   <div style="overflow-x:auto;"><table class="table"><thead><tr><th></th><th>Date</th><th>Expediteur</th><th>Type</th><th>Objet</th><th>Message</th><th></th></tr></thead><tbody>
-  {rows if rows else "<tr><td colspan=5 class='text-center' style='color:var(--muted);padding:20px;'>Aucune notification</td></tr>"}
+  {rows if rows else "<tr><td colspan=7 class='text-center' style='color:var(--muted);padding:20px;'>Aucune notification</td></tr>"}
   </tbody></table></div></div></div>
   <div class="col-lg-4"><div class="card"><div class="card-hdr"><div class="title"><i class="fas fa-paper-plane"></i>Contacter la reception</div></div><div class="card-body">
     <form method="POST"><div class="row g-2">
