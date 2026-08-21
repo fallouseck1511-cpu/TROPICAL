@@ -4134,7 +4134,7 @@ def i_hospitalisations():
             <span class="bk att">Depuis {h["date_entree"]}</span>
           </div>
           <p style="margin-top:8px;font-size:.82rem;">{h["motif_admission"][:80]}</p>
-          <p style="font-size:.76rem;color:var(--muted);"><i class="fas fa-clipboard-list"></i> {nb_notes} note(s){" — derniere le "+derniere_note if derniere_note else ""}</p>
+          <p style="font-size:.76rem;color:var(--muted);"><i class="fas fa-clipboard-list"></i> {nb_notes} note(s){" — derniere le "+_ds(derniere_note) if derniere_note else ""}</p>
           <a href="/m-hospitalisation/{h["id"]}" class="btn btn-sm btn-g w-100" style="justify-content:center;margin-top:6px;"><i class="fas fa-notes-medical"></i>Suivi du patient</a>
         </div></div></div>'''
     body=f"""<div class="al al-i mb-3" style="font-size:.82rem;"><i class="fas fa-info-circle"></i>{len(actives)} patient(s) actuellement hospitalise(s). Cliquez sur un patient pour ajouter une note de suivi ou relever ses constantes.</div>
