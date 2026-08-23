@@ -682,6 +682,7 @@ def sidebar(role,username):
         "infirmier":[
             ("","Tableau de bord","tachometer-alt","dashboard"),("","Soins","---",""),
             ("","Patients hospitalises","procedures","i_hospitalisations"),
+            ("","Examens a prelever","vial","i_examens"),
             ("","Notifications","bell","i_notifs"),("","Mon Profil","user-cog","profil"),
         ],
         "admin":[
@@ -1076,13 +1077,16 @@ if(ctxS){{const sn=[{','.join([repr(next((m["libelle"] for m in DB["medicaments"
         actives=[h for h in DB["hospitalisations"] if h["statut"]=="En cours"]
         notes_today=[n for n in DB["notes_suivi"] if n.get("redige_par")==u and _ds(n["date_note"])==date.today().strftime("%Y-%m-%d")]
         const_today=[c for c in DB["constantes_vitales"] if c.get("releve_par")==u and _ds(c["date"])==date.today().strftime("%Y-%m-%d")]
+        examens_attente=[r for r in DB["resultats_examens"] if r["statut"]=="Prescrit"]
         body=f"""<div class="row g-3 mb-3">
-  <div class="col-md-4"><div class="sc bg-o"><div class="sv">{len(actives)}</div><div class="sl">Patients hospitalises</div></div></div>
-  <div class="col-md-4"><div class="sc bg-g"><div class="sv">{len(notes_today)}</div><div class="sl">Notes ajoutees aujourd'hui</div></div></div>
-  <div class="col-md-4"><div class="sc bg-b"><div class="sv">{len(const_today)}</div><div class="sl">Constantes relevees aujourd'hui</div></div></div>
+  <div class="col-md-3"><div class="sc bg-o"><div class="sv">{len(actives)}</div><div class="sl">Patients hospitalises</div></div></div>
+  <div class="col-md-3"><div class="sc bg-r"><div class="sv">{len(examens_attente)}</div><div class="sl">Examens a prelever</div></div></div>
+  <div class="col-md-3"><div class="sc bg-g"><div class="sv">{len(notes_today)}</div><div class="sl">Notes ajoutees aujourd'hui</div></div></div>
+  <div class="col-md-3"><div class="sc bg-b"><div class="sv">{len(const_today)}</div><div class="sl">Constantes relevees aujourd'hui</div></div></div>
 </div>
 <div class="row g-3">
   <div class="col-md-4"><a href="/i-hospitalisations" class="card" style="text-decoration:none;display:block;"><div class="card-body text-center py-4"><i class="fas fa-procedures fa-2x" style="color:var(--g1);"></i><div style="font-weight:600;color:var(--g3);margin-top:8px;">Patients hospitalises</div></div></a></div>
+  <div class="col-md-4"><a href="/i-examens" class="card" style="text-decoration:none;display:block;"><div class="card-body text-center py-4"><i class="fas fa-vial fa-2x" style="color:var(--g1);"></i><div style="font-weight:600;color:var(--g3);margin-top:8px;">Examens a prelever</div></div></a></div>
 </div>"""
         return page("Tableau de bord","infirmier",u,body)
 
@@ -2039,6 +2043,45 @@ def m_patients():
 <div style="overflow-x:auto;"><table class="table" id="tmp"><thead><tr><th>Nom Prenom</th><th>Telephone</th><th>Groupe sg.</th><th>Assurance</th><th>Dossier</th></tr></thead><tbody>{rows if rows else "<tr><td colspan=5 class='text-center' style='color:var(--muted);padding:20px;'>Aucun patient assigne</td></tr>"}</tbody></table></div></div>"""
     return page("Mes Patients","medecin",session["user"],body)
 
+@app.route("/m-examen-preleve/<int:eid>",methods=["POST"])
+@login_required
+@role_required("medecin","infirmier")
+def m_examen_preleve(eid):
+    r=next((x for x in DB["resultats_examens"] if x["id"]==eid),None)
+    if not r or r["statut"]!="Prescrit":
+        flash("Examen invalide ou deja preleve.","danger")
+    else:
+        r["statut"]="Preleve"; r["date_prelevement"]=date.today().strftime("%Y-%m-%d"); r["preleve_par"]=session["user"]
+        add_hist(f"Prelevement effectue — {r['type']} — {pname(r['id_patient'])}","Examen",session["user"],r["id_patient"])
+        add_notif(r["id_patient"],"Examen","Prelevement effectue",f"Le prelevement pour {r['type']} a ete effectue. Le resultat sera disponible prochainement.",expediteur=session["user"],lien="/p-resultats")
+        flash(f"Prelevement enregistre pour {r['type']}.","success")
+    ref=request.referrer or url_for("m_dossier",pid=r["id_patient"] if r else 1)
+    return redirect(ref)
+
+@app.route("/m-examen-resultat/<int:eid>",methods=["POST"])
+@login_required
+@role_required("medecin")
+def m_examen_resultat(eid):
+    r=next((x for x in DB["resultats_examens"] if x["id"]==eid),None)
+    if not r or r["statut"]!="Preleve":
+        flash("Examen invalide ou resultat deja saisi.","danger")
+        return redirect(request.referrer or url_for("dashboard"))
+    valeur=request.form.get("valeur","").strip()
+    if not valeur:
+        flash("La valeur du resultat est requise.","danger")
+        return redirect(request.referrer or url_for("m_dossier",pid=r["id_patient"]))
+    r["valeur"]=valeur
+    r["valeurs_reference"]=request.form.get("valeurs_reference","").strip()
+    r["commentaire"]=request.form.get("commentaire","").strip() or r.get("commentaire","")
+    r["anormal"]=bool(request.form.get("anormal"))
+    r["statut"]="Disponible"; r["date_resultat"]=date.today().strftime("%Y-%m-%d")
+    DB["documents_patient"].append({"id":nid("docs"),"id_patient":r["id_patient"],"type_document":"Resultat examen","nom_fichier":f"resultat_{r['id']:04d}.pdf","type_fichier":"PDF","date_creation":date.today().strftime("%Y-%m-%d"),"ref_id":r["id"],"ref_type":"resultat"})
+    add_hist(f"Resultat disponible — {r['type']} — {pname(r['id_patient'])}{' (ANORMAL)' if r['anormal'] else ''}","Examen",session["user"],r["id_patient"])
+    urgence_txt=" ⚠️ Ce resultat est signale comme anormal — contactez votre medecin." if r["anormal"] else ""
+    add_notif(r["id_patient"],"Resultat disponible",f"Resultat de {r['type']} disponible",f"Votre resultat de {r['type']} est disponible dans votre espace.{urgence_txt}",expediteur=session["user"],lien="/p-resultats")
+    flash(f"Resultat enregistre pour {r['type']}.","success")
+    return redirect(request.referrer or url_for("m_dossier",pid=r["id_patient"]))
+
 @app.route("/m-antecedent-add/<int:pid>",methods=["POST"])
 @login_required
 @role_required("medecin")
@@ -2173,7 +2216,26 @@ def m_dossier(pid):
     docs_joints=[d for d in DB["documents_patient"] if d["id_patient"]==pid and d.get("ref_type")=="upload"]
     gs=pat.get("groupe_sanguin","Non connu"); gc="att" if gs=="Non connu" else "ok"
     rows_c="".join(f'<tr><td>{c["date"]}</td><td>{c["diagnostic"]}</td><td>{c["observation"][:60]}</td><td><a href="/m-ordo/{c["id"]}" class="btn btn-sm btn-outline-b"><i class="fas fa-prescription"></i></a></td></tr>' for c in conss)
-    rows_r="".join(f'<tr><td>{r["date"]}</td><td>{r["type"]}</td><td>{r["commentaire"][:60]}</td><td><span class="bk ok">{r["statut"]}</span></td></tr>' for r in ress)
+    st_cls_r={"Prescrit":"att","Preleve":"inf","Disponible":"ok"}
+    def row_r(r):
+        actions=""
+        if r["statut"]=="Prescrit":
+            actions=f'''<form method="POST" action="/m-examen-preleve/{r["id"]}" style="display:inline;"><button type="submit" class="btn btn-sm btn-outline-b"><i class="fas fa-vial"></i>Marquer preleve</button></form>'''
+        elif r["statut"]=="Preleve":
+            actions=f'''<button type="button" class="btn btn-sm btn-g" onclick="document.getElementById('resf_{r["id"]}').style.display='block'"><i class="fas fa-file-medical"></i>Saisir resultat</button>
+            <div id="resf_{r["id"]}" style="display:none;margin-top:6px;padding:10px;background:#f6f8f6;border-radius:8px;">
+              <form method="POST" action="/m-examen-resultat/{r["id"]}">
+                <input type="text" name="valeur" class="form-control form-control-sm mb-1" placeholder="Valeur mesuree" required>
+                <input type="text" name="valeurs_reference" class="form-control form-control-sm mb-1" placeholder="Valeurs de reference (optionnel)">
+                <textarea name="commentaire" class="form-control form-control-sm mb-1" rows="2" placeholder="Interpretation"></textarea>
+                <label style="font-size:.78rem;"><input type="checkbox" name="anormal" value="1"> Resultat anormal</label>
+                <button type="submit" class="btn btn-sm btn-g w-100 mt-1"><i class="fas fa-save"></i>Enregistrer</button>
+              </form>
+            </div>'''
+        else:
+            actions=f'<small style="color:var(--muted);">{r.get("valeur","")[:30]}</small>'
+        return f'<tr><td>{r["date"]}</td><td>{r["type"]}</td><td><span class="bk inf">{r.get("categorie","-")}</span></td><td>{r["commentaire"][:40]}</td><td><span class="bk {st_cls_r.get(r["statut"],"att")}">{r["statut"]}</span></td><td>{actions}</td></tr>'
+    rows_r="".join(row_r(r) for r in sorted(ress,key=lambda x:x["id"],reverse=True))
     rows_o="".join(f'<tr><td>ORD-{o["id"]:04d}</td><td>{o["date"]}</td><td>{", ".join(l["libelle"] for l in o["lignes"])}</td><td>{o["duree"]} j</td></tr>' for o in ords)
     infos="".join(f'<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--gl);font-size:.82rem;"><span style="color:var(--muted);">{k}</span><span style="font-weight:600;">{v}</span></div>' for k,v in [("Sexe",pat["sexe"]),("Naissance",pat["date_naissance"]),("Groupe sg.",f'<span class="bk {gc}">{gs}</span>'),("Assurance",pat["assurance"]),("Telephone",pat["telephone"]),("Email",pat.get("email","-")),("Adresse",pat.get("adresse","-")),("Dossier",dos["num_dossier"] if dos else "-"),("Diagnostic gen.",dos["diagnostic_general"] if dos else "-")])
     if allergies:
@@ -2280,7 +2342,7 @@ def m_dossier(pid):
     </div>
     <div id="dc1" class="tab-pane"><div class="card"><div style="overflow-x:auto;"><table class="table"><thead><tr><th>Date</th><th>Diagnostic</th><th>Observation</th><th>Ordo</th></tr></thead><tbody>{rows_c if rows_c else "<tr><td colspan=4 class='text-center' style='color:var(--muted);padding:20px;'>Aucune</td></tr>"}</tbody></table></div></div></div>
     <div id="dc2" class="tab-pane" style="display:none;"><div class="card"><div style="overflow-x:auto;"><table class="table"><thead><tr><th>N</th><th>Date</th><th>Medicaments</th><th>Duree</th></tr></thead><tbody>{rows_o if rows_o else "<tr><td colspan=4 class='text-center' style='color:var(--muted);padding:20px;'>Aucune</td></tr>"}</tbody></table></div></div></div>
-    <div id="dc3" class="tab-pane" style="display:none;"><div class="card"><div style="overflow-x:auto;"><table class="table"><thead><tr><th>Date</th><th>Type</th><th>Resultat</th><th>Statut</th></tr></thead><tbody>{rows_r if rows_r else "<tr><td colspan=4 class='text-center' style='color:var(--muted);padding:20px;'>Aucun</td></tr>"}</tbody></table></div></div></div>
+    <div id="dc3" class="tab-pane" style="display:none;"><div class="card"><div style="overflow-x:auto;"><table class="table"><thead><tr><th>Date</th><th>Type</th><th>Categorie</th><th>Motif</th><th>Statut</th><th>Action</th></tr></thead><tbody>{rows_r if rows_r else "<tr><td colspan=6 class='text-center' style='color:var(--muted);padding:20px;'>Aucun</td></tr>"}</tbody></table></div></div></div>
     <div id="dc4" class="tab-pane" style="display:none;"><div class="card"><div class="card-body">{form_antec}<div style="overflow-x:auto;"><table class="table"><thead><tr><th>Type</th><th>Libelle</th><th>Periode</th><th>Notes</th><th>Statut</th></tr></thead><tbody>{rows_antec if rows_antec else "<tr><td colspan=5 class='text-center' style='color:var(--muted);padding:20px;'>Aucun antecedent renseigne</td></tr>"}</tbody></table></div></div></div></div>
     <div id="dc5" class="tab-pane" style="display:none;"><div class="card"><div class="card-body">{form_const}{chart_const}<div style="overflow-x:auto;"><table class="table"><thead><tr><th>Date</th><th>Poids</th><th>Taille</th><th>Tension</th><th>Temp.</th><th>FC</th><th>SpO2</th></tr></thead><tbody>{rows_const if rows_const else "<tr><td colspan=7 class='text-center' style='color:var(--muted);padding:20px;'>Aucune constante relevee</td></tr>"}</tbody></table></div></div></div></div>
     <div id="dc6" class="tab-pane" style="display:none;"><div class="card"><div class="card-body">{form_vac}<div style="overflow-x:auto;"><table class="table"><thead><tr><th>Vaccin</th><th>Date</th><th>Rappel prevu</th></tr></thead><tbody>{rows_vac if rows_vac else "<tr><td colspan=3 class='text-center' style='color:var(--muted);padding:20px;'>Aucune vaccination enregistree</td></tr>"}</tbody></table></div></div></div></div>
@@ -2666,10 +2728,10 @@ def m_nouvelle_consultation():
         nc={"id":nid("cons"),"id_patient":pid,"matricule":mat,"date":date.today().strftime("%Y-%m-%d"),"observation":d.get("obs",""),"diagnostic":d.get("diag",""),"type":d.get("type","Presentiel"),"id_ordonnance":None,"id_facture":None,"id_resultat":None}
         nc_row=DB["consultations"].append(nc)
         if d.get("type_exam") and d.get("commentaire_exam"):
-            nr={"id":nid("docs"),"id_patient":pid,"id_consultation":nc["id"],"matricule":mat,"type":d["type_exam"],"date":date.today().strftime("%Y-%m-%d"),"commentaire":d["commentaire_exam"],"statut":"Disponible","fichier":""}
-            DB["resultats_examens"].append(nr); nc_row["id_resultat"]=nr["id"]
-            DB["documents_patient"].append({"id":nid("docs"),"id_patient":pid,"type_document":"Resultat examen","nom_fichier":f"resultat_{nr['id']:04d}.pdf","type_fichier":"PDF","date_creation":date.today().strftime("%Y-%m-%d"),"ref_id":nr["id"],"ref_type":"resultat"})
-            add_notif(pid,"Resultat disponible","Vos resultats sont disponibles",f"Resultat de {d['type_exam']} disponible dans votre espace.",expediteur=session["user"])
+            nr={"id":nid("examens"),"id_patient":pid,"id_consultation":nc["id"],"matricule":mat,"type":d["type_exam"],"categorie":d.get("categorie_exam","Laboratoire"),"date":date.today().strftime("%Y-%m-%d"),"commentaire":d["commentaire_exam"],"statut":"Prescrit","fichier":""}
+            DB["resultats_examens"].append(nr)
+            add_hist(f"Examen prescrit : {d['type_exam']} — {pname(pid)}","Examen",session["user"],pid)
+            add_notif(pid,"Examen prescrit",f"{d['type_exam']} prescrit",f"Dr. {med['prenom']} {med['nom']} vous a prescrit : {d['type_exam']}. Presentez-vous pour le prelevement/l'examen.",expediteur=session["user"],lien="/p-resultats")
         add_hist(f"Consultation - {d.get('diag','')} - {pname(pid)}","Consultation",session["user"],pid,mat)
         # ── Notifier le réceptionniste pour créer la facture ──
         add_notif(None,"Consultation terminee",f"Facturer : {pname(pid)}",f"Consultation du {nc['date']} par Dr. {med['prenom']} {med['nom']} — Diagnostic : {d.get('diag','')}. Merci de creer la facture pour {pname(pid)}.",dest_role="receptionniste",expediteur=session["user"])
@@ -2686,9 +2748,11 @@ def m_nouvelle_consultation():
   <div class="col-12"><label class="form-label">Observations cliniques</label><textarea name="obs" class="form-control" rows="3" placeholder="Symptomes, examen clinique..."></textarea></div>
   <div class="col-12"><label class="form-label">Diagnostic *</label><input type="text" name="diag" class="form-control" required placeholder="Diagnostic principal..."></div>
   <div class="col-12"><div class="al al-i"><i class="fas fa-info-circle"></i>La facture sera etablie par le receptionniste apres la consultation.</div></div>
-  <div class="col-12" style="border-top:1px solid var(--gl);padding-top:12px;"><p style="font-weight:600;color:var(--g3);font-size:.85rem;"><i class="fas fa-microscope me-1"></i>Resultat d'examen (optionnel)</p></div>
-  <div class="col-md-6"><label class="form-label">Type d'examen</label><input type="text" name="type_exam" class="form-control" placeholder="Ex: Bilan sanguin..."></div>
-  <div class="col-md-6"><label class="form-label">Commentaire</label><input type="text" name="commentaire_exam" class="form-control" placeholder="Resultats..."></div>
+  <div class="col-12" style="border-top:1px solid var(--gl);padding-top:12px;"><p style="font-weight:600;color:var(--g3);font-size:.85rem;"><i class="fas fa-microscope me-1"></i>Prescrire un examen (optionnel)</p></div>
+  <div class="col-md-4"><label class="form-label">Type d'examen</label><input type="text" name="type_exam" class="form-control" placeholder="Ex: Bilan sanguin..."></div>
+  <div class="col-md-3"><label class="form-label">Categorie</label><select name="categorie_exam" class="form-select"><option>Laboratoire</option><option>Imagerie</option></select></div>
+  <div class="col-md-5"><label class="form-label">Motif de prescription</label><input type="text" name="commentaire_exam" class="form-control" placeholder="Suspicion, controle..."></div>
+  <div class="col-12"><div class="al al-i" style="font-size:.78rem;"><i class="fas fa-info-circle"></i>L'examen sera prescrit (statut "En attente de prelevement"). Le resultat sera saisi plus tard, une fois disponible.</div></div>
   <div class="col-12" style="display:flex;gap:8px;"><button type="submit" class="btn btn-g"><i class="fas fa-save"></i>Enregistrer</button><a href="/m-consultations" class="btn btn-outline-g">Annuler</a></div>
 </div></form></div></div></div></div>"""
     return page("Nouvelle Consultation","medecin",session["user"],body)
@@ -3432,29 +3496,45 @@ def p_hospitalisations():
 def p_resultats():
     pat=get_pat(session["user"]); pid=pat["id"]
     ress=[r for r in DB["resultats_examens"] if r["id_patient"]==pid]
+    st_cls={"Prescrit":"att","Preleve":"inf","Disponible":"ok"}
     voir_id=request.args.get("voir")
     voir_html=""
     if voir_id:
         r=next((x for x in ress if str(x["id"])==str(voir_id)),None)
         if r:
-            voir_html=f"""<div class="card mb-3" style="border:2px solid var(--g1);"><div class="card-hdr" style="background:var(--g3);"><div class="title" style="color:#fff;"><i class="fas fa-microscope"></i>Resultat — {r["type"]}</div><a href="/p-resultats" class="btn btn-sm" style="background:rgba(255,255,255,.2);color:#fff;"><i class="fas fa-times"></i>Fermer</a></div><div class="card-body">
+            etapes=f"""<div style="display:flex;gap:0;margin-bottom:18px;">
+              <div style="flex:1;text-align:center;padding:8px;background:{"#e6f2ea" if r["statut"] in ("Prescrit","Preleve","Disponible") else "#f6f8f6"};border-radius:8px 0 0 8px;"><i class="fas fa-file-prescription"></i><div style="font-size:.72rem;font-weight:600;">Prescrit</div><div style="font-size:.7rem;color:var(--muted);">{r["date"]}</div></div>
+              <div style="flex:1;text-align:center;padding:8px;background:{"#e6f2ea" if r["statut"] in ("Preleve","Disponible") else "#f6f8f6"};"><i class="fas fa-vial"></i><div style="font-size:.72rem;font-weight:600;">Preleve</div><div style="font-size:.7rem;color:var(--muted);">{_ds(r.get("date_prelevement")) or "-"}</div></div>
+              <div style="flex:1;text-align:center;padding:8px;background:{"#e6f2ea" if r["statut"]=="Disponible" else "#f6f8f6"};border-radius:0 8px 8px 0;"><i class="fas fa-file-medical"></i><div style="font-size:.72rem;font-weight:600;">Resultat</div><div style="font-size:.7rem;color:var(--muted);">{_ds(r.get("date_resultat")) or "-"}</div></div>
+            </div>"""
+            contenu_resultat=""
+            if r["statut"]=="Disponible":
+                anormal_html=f'<span class="bk err" style="margin-left:6px;"><i class="fas fa-exclamation-triangle"></i> Anormal</span>' if r.get("anormal") else '<span class="bk ok" style="margin-left:6px;">Normal</span>'
+                contenu_resultat=f"""<div style="background:#f6f8f6;border-radius:10px;padding:18px;border-left:4px solid var(--g1);">
+                  <div style="font-weight:600;color:var(--g3);margin-bottom:8px;"><i class="fas fa-flask me-2"></i>Resultat {anormal_html}</div>
+                  <div style="font-size:.95rem;font-weight:700;margin-bottom:4px;">{r.get("valeur") or "-"}</div>
+                  {"<div style='font-size:.8rem;color:var(--muted);'>Valeurs de reference : "+r["valeurs_reference"]+"</div>" if r.get("valeurs_reference") else ""}
+                  <div style="font-size:.88rem;line-height:1.6;margin-top:10px;">{r.get("commentaire") or ""}</div>
+                </div>"""
+            else:
+                contenu_resultat=f'<div class="al al-i"><i class="fas fa-hourglass-half"></i> {"En attente de prelevement." if r["statut"]=="Prescrit" else "Preleve — analyse en cours."}</div>'
+            voir_html=f"""<div class="card mb-3" style="border:2px solid var(--g1);"><div class="card-hdr" style="background:var(--g3);"><div class="title" style="color:#fff;"><i class="fas fa-microscope"></i>{r["type"]}</div><a href="/p-resultats" class="btn btn-sm" style="background:rgba(255,255,255,.2);color:#fff;"><i class="fas fa-times"></i>Fermer</a></div><div class="card-body">
   <div class="row g-3 mb-3">
-    <div class="col-md-4"><small style="color:var(--muted);">Type d examen</small><div style="font-weight:700;color:var(--g3);">{r["type"]}</div></div>
-    <div class="col-md-4"><small style="color:var(--muted);">Date</small><div>{r["date"]}</div></div>
+    <div class="col-md-4"><small style="color:var(--muted);">Categorie</small><div style="font-weight:700;color:var(--g3);">{r.get("categorie","-")}</div></div>
+    <div class="col-md-4"><small style="color:var(--muted);">Prescrit le</small><div>{r["date"]}</div></div>
     <div class="col-md-4"><small style="color:var(--muted);">Medecin</small><div>{mname(r["matricule"])}</div></div>
   </div>
-  <div style="background:#f6f8f6;border-radius:10px;padding:18px;border-left:4px solid var(--g1);">
-    <div style="font-weight:600;color:var(--g3);margin-bottom:8px;"><i class="fas fa-flask me-2"></i>Résultats et commentaires</div>
-    <div style="font-size:.93rem;line-height:1.7;">{r["commentaire"]}</div>
-  </div>
-  <div class="mt-3"><span class="bk ok">{r["statut"]}</span></div>
+  {etapes}
+  {contenu_resultat}
 </div></div>"""
-    rows="".join(f'<tr><td>{r["date"]}</td><td>{r["type"]}</td><td>{mname(r["matricule"])}</td><td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{r["commentaire"][:70]}...</td><td><span class="bk ok">{r["statut"]}</span></td><td><a href="/p-resultats?voir={r["id"]}" class="btn btn-sm btn-outline-g"><i class="fas fa-eye"></i>Voir</a></td></tr>' for r in ress)
+    def row_r(r):
+        return f'<tr><td>{r["date"]}</td><td>{r["type"]}</td><td><span class="bk inf">{r.get("categorie","-")}</span></td><td>{mname(r["matricule"])}</td><td><span class="bk {st_cls.get(r["statut"],"att")}">{r["statut"]}</span></td><td><a href="/p-resultats?voir={r["id"]}" class="btn btn-sm btn-outline-g"><i class="fas fa-eye"></i>Voir</a></td></tr>'
+    rows="".join(row_r(r) for r in sorted(ress,key=lambda x:x["id"],reverse=True))
     body=f"""
 {voir_html}
-<div class="card"><div class="card-hdr"><div class="title"><i class="fas fa-microscope"></i>Mes Resultats d examens ({len(ress)})</div></div>
-<div style="overflow-x:auto;"><table class="table"><thead><tr><th>Date</th><th>Type</th><th>Medecin</th><th>Apercu</th><th>Statut</th><th>Action</th></tr></thead><tbody>
-{rows if rows else "<tr><td colspan=6 class='text-center' style='color:var(--muted);padding:20px;'>Aucun resultat</td></tr>"}
+<div class="card"><div class="card-hdr"><div class="title"><i class="fas fa-microscope"></i>Mes Examens ({len(ress)})</div></div>
+<div style="overflow-x:auto;"><table class="table"><thead><tr><th>Date</th><th>Type</th><th>Categorie</th><th>Medecin</th><th>Statut</th><th>Action</th></tr></thead><tbody>
+{rows if rows else "<tr><td colspan=6 class='text-center' style='color:var(--muted);padding:20px;'>Aucun examen</td></tr>"}
 </tbody></table></div></div>"""
     return page("Mes Resultats","patient",session["user"],body)
 
@@ -4117,6 +4197,28 @@ def r_ticket_refuser(tid):
         add_notif(t["id_patient"],"Ticket refuse",f"Ticket {t['num_ticket']}",f"Votre demande de ticket {t['num_ticket']} a ete refusee par la reception. Contactez l'accueil pour plus d'informations.",expediteur=session["user"],lien="/p-tickets")
         flash(f"Ticket {t['num_ticket']} refuse.","warning")
     return redirect(url_for("r_tickets"))
+
+@app.route("/i-examens")
+@login_required
+@role_required("infirmier")
+def i_examens():
+    en_attente=sorted([r for r in DB["resultats_examens"] if r["statut"]=="Prescrit"],key=lambda x:x["date"])
+    recents=sorted([r for r in DB["resultats_examens"] if r["statut"]=="Preleve" and r.get("preleve_par")==session["user"]],key=lambda x:_ds(x.get("date_prelevement")),reverse=True)[:15]
+    def carte_e(r):
+        return f'''<div class="col-md-6"><div class="card"><div class="card-body">
+          <div style="display:flex;justify-content:space-between;align-items:start;">
+            <div><strong style="color:var(--g3);">{r["type"]}</strong> <span class="bk inf">{r.get("categorie","-")}</span><br>
+            <small style="color:var(--muted);">{pname(r["id_patient"])} — Dr. {mname(r["matricule"])}</small></div>
+            <span class="bk att">{r["date"]}</span>
+          </div>
+          <p style="margin-top:6px;font-size:.82rem;">{r["commentaire"][:80] or "-"}</p>
+          <form method="POST" action="/m-examen-preleve/{r["id"]}"><button type="submit" class="btn btn-sm btn-g w-100" style="justify-content:center;margin-top:6px;"><i class="fas fa-vial"></i>Marquer preleve</button></form>
+        </div></div></div>'''
+    body=f"""<div class="al al-i mb-3" style="font-size:.82rem;"><i class="fas fa-info-circle"></i>{len(en_attente)} examen(s) prescrit(s) en attente de prelevement.</div>
+<div class="row g-3">
+{''.join(carte_e(r) for r in en_attente) if en_attente else '<div class="col-12"><div class="al al-i">Aucun examen en attente de prelevement.</div></div>'}
+</div>"""
+    return page("Examens a prelever","infirmier",session["user"],body)
 
 @app.route("/i-hospitalisations")
 @login_required

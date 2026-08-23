@@ -387,16 +387,23 @@ class SignalMessage(db.Model):
 # 19. RÉSULTAT EXAMEN
 # ─────────────────────────────────────────────────────────────
 class ResultatExamen(db.Model):
-    __tablename__   = "resultats_examens"
-    id              = db.Column(db.Integer, primary_key=True)
-    type            = db.Column(db.String(80))
-    date            = db.Column(db.Date, default=date.today)
-    commentaire     = db.Column(db.Text)
-    statut          = db.Column(db.String(20), default="Disponible")
-    fichier         = db.Column(db.Text)
-    id_patient      = db.Column(db.Integer, db.ForeignKey("patients.id"), nullable=False)
-    id_consultation = db.Column(db.Integer, db.ForeignKey("consultations.id"))
-    matricule       = db.Column(db.String(10), db.ForeignKey("medecins.matricule"))
+    __tablename__     = "resultats_examens"
+    id                = db.Column(db.Integer, primary_key=True)
+    type              = db.Column(db.String(80))          # ex: "Bilan sanguin", "Radio thorax"
+    categorie         = db.Column(db.String(20), default="Laboratoire")  # Laboratoire|Imagerie
+    date              = db.Column(db.Date, default=date.today)  # date de prescription
+    date_prelevement  = db.Column(db.Date)
+    preleve_par       = db.Column(db.String(60))
+    date_resultat     = db.Column(db.Date)
+    valeur            = db.Column(db.Text)          # resultat mesure/observe
+    valeurs_reference = db.Column(db.String(100))   # plage normale attendue
+    anormal           = db.Column(db.Boolean)
+    commentaire       = db.Column(db.Text)           # motif de prescription / interpretation
+    statut            = db.Column(db.String(20), default="Prescrit")  # Prescrit|Preleve|Disponible
+    fichier           = db.Column(db.Text)
+    id_patient        = db.Column(db.Integer, db.ForeignKey("patients.id"), nullable=False)
+    id_consultation   = db.Column(db.Integer, db.ForeignKey("consultations.id"))
+    matricule         = db.Column(db.String(10), db.ForeignKey("medecins.matricule"))
 
     patient         = db.relationship("Patient",      back_populates="resultats")
     consultation    = db.relationship("Consultation", back_populates="resultat")
