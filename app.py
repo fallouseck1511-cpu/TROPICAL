@@ -1068,7 +1068,7 @@ def dashboard():
         today=date.today()
         rdv_today=len([r for r in DB["rdvs"] if r["date"]==today])
         revenu_mois=sum(p["montant"] for p in DB["paiements"] if p["date"] and p["date"].month==today.month and p["date"].year==today.year)
-        personnel_total=nb_m+len([uu for uu in DB["users"].values() if uu.get("role") in ["receptionniste","pharmacien","infirmier"]])
+        personnel_total=nb_m+len([ud2 for un2,ud2 in DB["users"].items() if ud2.get("role") in ["receptionniste","pharmacien","infirmier"]])
         rdv_attente=rdv_stats.get("En attente",0)
         lits_dispo=len([l for l in DB["lits"] if l["statut"]=="Libre"])
 
