@@ -134,7 +134,6 @@ def med_in_centre(mat,cid):
     return cid in get_med_centres(mat)
 
 JOURS_FR=["Lundi","Mardi","Mercredi","Jeudi","Vendredi","Samedi","Dimanche"]
-MOIS_FR=["janvier","fevrier","mars","avril","mai","juin","juillet","aout","septembre","octobre","novembre","decembre"]
 def get_jour(date_str):
     try:
         from datetime import datetime as dt
@@ -489,98 +488,83 @@ def api_creneaux_disponibles():
 # =======================================================
 
 CSS="""<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"><style>
-:root{--g1:#0d7a52;--g2:#0a5f40;--g3:#0a3b28;--g4:#12a06a;--gl:#e6f2ea;--gm:#c7e0d1;--gd:#8fc4a8;--acc:#1f8fa6;--warn:#c98f1c;--err:#c0392b;--bg:#f2f6f4;--card:#ffffff;--txt:#1c2622;--muted:#61756c;--sw:264px;--r-sm:9px;--r-md:14px;--r-lg:20px;--shadow-sm:0 1px 2px rgba(10,40,30,.05),0 1px 3px rgba(10,40,30,.06);--shadow-md:0 2px 8px rgba(10,40,30,.06),0 8px 24px -8px rgba(10,40,30,.10);}
+:root{--g1:#0d7a52;--g2:#0a5f40;--g3:#0a3b28;--gl:#e6f2ea;--gm:#c7e0d1;--gd:#8fc4a8;--acc:#2b7a9e;--warn:#c07f0e;--err:#c0392b;--bg:#f5f7f6;--card:#ffffff;--txt:#1c2622;--muted:#61756c;--sw:264px;--r-sm:8px;--r-md:12px;--r-lg:16px;--shadow-sm:0 1px 2px rgba(10,40,30,.05),0 1px 3px rgba(10,40,30,.06);--shadow-md:0 2px 8px rgba(10,40,30,.06),0 8px 24px -8px rgba(10,40,30,.10);}
 *{box-sizing:border-box;margin:0;padding:0;}
 body{background:var(--bg);font-family:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif;color:var(--txt);font-size:.9rem;line-height:1.5;-webkit-font-smoothing:antialiased;}
 h1,h2,h3,h4,h5,h6,.brand-font{font-family:'Plus Jakarta Sans',system-ui,sans-serif;letter-spacing:-.01em;}
-#sb{position:fixed;top:0;left:0;width:var(--sw);height:100vh;background:linear-gradient(180deg,#07211a 0%,var(--g3) 55%,var(--g3) 100%);overflow-y:auto;z-index:1040;display:flex;flex-direction:column;box-shadow:2px 0 12px rgba(0,0,0,.08);}
+#sb{position:fixed;top:0;left:0;width:var(--sw);height:100vh;background:linear-gradient(180deg,var(--g3) 0%,#082e21 100%);overflow-y:auto;z-index:1040;display:flex;flex-direction:column;box-shadow:2px 0 12px rgba(0,0,0,.08);}
 #sb .logo{padding:22px 18px 16px;border-bottom:1px solid rgba(255,255,255,.1);}
 #sb .logo .brand{display:flex;align-items:center;gap:11px;}
-#sb .logo .ico{width:42px;height:42px;background:rgba(255,255,255,.14);border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+#sb .logo .ico{width:40px;height:40px;background:linear-gradient(135deg,var(--g1),#0f9166);border-radius:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 2px 8px rgba(13,122,82,.35);}
 #sb .logo h6{color:#fff;font-size:.98rem;font-weight:700;margin:0;font-family:'Plus Jakarta Sans',sans-serif;letter-spacing:-.01em;}
 #sb .logo small{color:#8fc4a8;font-size:.68rem;letter-spacing:.02em;}
-#sb .sec{padding:16px 16px 6px;font-size:.62rem;font-weight:700;letter-spacing:1.6px;color:#7fa596;text-transform:uppercase;}
-#sb a.nl{display:flex;align-items:center;gap:10px;padding:9px 14px;color:#cfe6db;border-radius:10px;margin:1.5px 10px;font-size:.83rem;font-weight:500;text-decoration:none;transition:background .15s,color .15s;}
-#sb a.nl:hover{background:rgba(255,255,255,.08);color:#fff;}
-#sb a.nl.active{background:var(--g4);color:#fff;font-weight:700;box-shadow:0 4px 14px -4px rgba(18,160,106,.6);}
+#sb .sec{padding:16px 16px 6px;font-size:.62rem;font-weight:700;letter-spacing:1.6px;color:#6fa88a;text-transform:uppercase;}
+#sb a.nl{display:flex;align-items:center;gap:10px;padding:9px 14px;color:#cfe3d7;border-radius:9px;margin:1.5px 10px;font-size:.83rem;font-weight:500;text-decoration:none;transition:background .15s,color .15s;}
+#sb a.nl:hover{background:rgba(255,255,255,.06);color:#fff;}
+#sb a.nl.active{background:var(--g1);color:#fff;box-shadow:0 2px 6px rgba(13,122,82,.4);}
 #sb a.nl i{width:16px;text-align:center;font-size:.82rem;opacity:.9;}
 #sb .sb-foot{padding:14px;border-top:1px solid rgba(255,255,255,.1);margin-top:auto;}
-#tb{position:fixed;top:0;left:var(--sw);right:0;height:62px;background:#fff;border-bottom:1px solid var(--gl);display:flex;align-items:center;padding:0 26px;z-index:1030;justify-content:space-between;}
-#tb .pt{font-weight:700;color:var(--g3);font-size:1.05rem;display:flex;align-items:center;gap:9px;font-family:'Plus Jakarta Sans',sans-serif;letter-spacing:-.01em;}
-#mc{margin-left:var(--sw);margin-top:62px;padding:26px 28px;min-height:calc(100vh - 62px);}
-.card{background:var(--card);border:1px solid var(--gl);border-radius:var(--r-lg);box-shadow:var(--shadow-sm);}
-.card-hdr{padding:16px 22px;border-bottom:1px solid var(--gl);display:flex;align-items:center;justify-content:space-between;background:#fff;border-radius:var(--r-lg) var(--r-lg) 0 0;}
-.card-hdr .title{font-weight:700;color:var(--g3);font-size:.9rem;display:flex;align-items:center;gap:10px;font-family:'Plus Jakarta Sans',sans-serif;letter-spacing:-.005em;}
-.card-hdr .title i{width:30px;height:30px;background:var(--gl);color:var(--g1);border-radius:9px;display:inline-flex;align-items:center;justify-content:center;font-size:.82rem;flex-shrink:0;}
-.card-body{padding:20px 22px;}
-.sc{border-radius:var(--r-lg);padding:20px 21px;color:#fff;border:none;box-shadow:var(--shadow-md);position:relative;overflow:hidden;isolation:isolate;}
-.sc::before{content:"";position:absolute;top:-32px;right:-28px;width:104px;height:104px;border-radius:50%;background:rgba(255,255,255,.14);z-index:-1;}
-.sc::after{content:"";position:absolute;bottom:-38px;right:18px;width:66px;height:66px;border-radius:50%;background:rgba(255,255,255,.09);z-index:-1;}
-.sc .sv{font-size:1.9rem;font-weight:800;line-height:1;font-family:'Plus Jakarta Sans',sans-serif;letter-spacing:-.02em;}
-.sc .sl{font-size:.73rem;opacity:.92;margin-top:6px;font-weight:600;text-transform:uppercase;letter-spacing:.03em;}
-.bg-g{background:linear-gradient(135deg,var(--g1),var(--g3));}
-.bg-b{background:linear-gradient(135deg,var(--acc),#146678);}
-.bg-o{background:linear-gradient(135deg,#d9a02c,#a8760f);}
-.bg-r{background:linear-gradient(135deg,#e0654a,#a8402a);}
-.bg-v{background:linear-gradient(135deg,#7a5cc0,#5a3f96);}
-.bg-t{background:linear-gradient(135deg,#0f9a78,#0a6a52);}
-.bg-pk{background:linear-gradient(135deg,#c4682f,#96501f);}
+#tb{position:fixed;top:0;left:var(--sw);right:0;height:58px;background:#fff;border-bottom:1px solid #e5eae7;display:flex;align-items:center;padding:0 24px;z-index:1030;justify-content:space-between;}
+#tb .pt{font-weight:700;color:var(--g3);font-size:1rem;display:flex;align-items:center;gap:9px;font-family:'Plus Jakarta Sans',sans-serif;letter-spacing:-.01em;}
+#mc{margin-left:var(--sw);margin-top:58px;padding:26px 28px;min-height:calc(100vh - 58px);}
+.card{background:var(--card);border:1px solid #e5eae7;border-radius:var(--r-md);box-shadow:var(--shadow-sm);}
+.card-hdr{padding:15px 20px;border-bottom:1px solid #eef1ef;display:flex;align-items:center;justify-content:space-between;background:#fff;border-radius:var(--r-md) var(--r-md) 0 0;}
+.card-hdr .title{font-weight:700;color:var(--g3);font-size:.88rem;display:flex;align-items:center;gap:10px;font-family:'Plus Jakarta Sans',sans-serif;letter-spacing:-.005em;}
+.card-hdr .title i{width:30px;height:30px;background:var(--gl);color:var(--g1);border-radius:8px;display:inline-flex;align-items:center;justify-content:center;font-size:.82rem;flex-shrink:0;}
+.card-body{padding:20px;}
+.sc{border-radius:var(--r-md);padding:19px 20px;color:#fff;border:none;box-shadow:var(--shadow-md);position:relative;overflow:hidden;}
+.sc .sv{font-size:1.85rem;font-weight:800;line-height:1;font-family:'Plus Jakarta Sans',sans-serif;letter-spacing:-.02em;}
+.sc .sl{font-size:.73rem;opacity:.92;margin-top:4px;font-weight:500;}
+.bg-g{background:linear-gradient(135deg,#0d7a52,#0a5f40);}
+.bg-b{background:linear-gradient(135deg,#2b7a9e,#1f5f7d);}
+.bg-o{background:linear-gradient(135deg,#b3760f,#8f5e0c);}
+.bg-r{background:linear-gradient(135deg,#c0392b,#9c2e22);}
+.bg-v{background:linear-gradient(135deg,#6d5bb3,#584893);}
+.bg-t{background:linear-gradient(135deg,#1b8fa3,#146d7d);}
+.bg-pk{background:linear-gradient(135deg,#b8447a,#943a63);}
 .table{width:100%;border-collapse:collapse;}
-.table th{background:#fafbfa;font-size:.68rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:12px 14px;border-bottom:1px solid var(--gl);text-align:left;}
-.table td{padding:13px 14px;font-size:.85rem;border-bottom:1px solid var(--gl);vertical-align:middle;}
+.table th{background:#fafbfa;font-size:.7rem;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--g2);padding:11px 12px;border-bottom:1.5px solid #e5eae7;text-align:left;}
+.table td{padding:11px 12px;font-size:.85rem;border-bottom:1px solid #f0f2f0;vertical-align:middle;}
 .table tr:last-child td{border-bottom:none;}
 .table tr:hover td{background:#fafcfa;}
-.bk{display:inline-block;font-size:.72rem;padding:4px 11px;border-radius:8px;font-weight:700;}
-.ok{background:#e3f6ec;color:#0d7a52;}.att{background:#fdf1d8;color:#93670a;}
-.err{background:#fdecec;color:#a02a2a;}.inf{background:#e2f2ff;color:#0c5c8f;}
-.vio{background:#f0eefa;color:#5a3f96;}.grey{background:#f3f4f6;color:#374151;}
+.bk{display:inline-block;font-size:.7rem;padding:3px 10px;border-radius:20px;font-weight:600;}
+.ok{background:#e6f2ea;color:#0a3b28;}.att{background:#fbf0da;color:#6b4a0c;}
+.err{background:#fae4e1;color:#7a251c;}.inf{background:#dde9f0;color:#1c4258;}
+.vio{background:#ede9fe;color:#3b0764;}.grey{background:#f3f4f6;color:#374151;}
 .form-label{font-size:.82rem;font-weight:600;color:var(--g3);margin-bottom:5px;display:block;}
-.form-control,.form-select{border:1.5px solid var(--gl);border-radius:var(--r-sm);padding:10px 13px;font-size:.87rem;width:100%;transition:border-color .15s,box-shadow .15s;background:#fff;color:var(--txt);}
+.form-control,.form-select{border:1.5px solid #dfe7e2;border-radius:8px;padding:9px 12px;font-size:.87rem;width:100%;transition:border-color .15s,box-shadow .15s;background:#fff;color:var(--txt);}
 .form-control:focus,.form-select:focus{border-color:var(--g1);outline:none;box-shadow:0 0 0 3px rgba(13,122,82,.13);}
-.ig-text{background:#f6f8f6;border:1.5px solid var(--gl);border-right:none;border-radius:var(--r-sm) 0 0 var(--r-sm);padding:10px 13px;}
-.btn{display:inline-flex;align-items:center;gap:6px;padding:10px 18px;border-radius:var(--r-sm);font-size:.83rem;font-weight:700;cursor:pointer;border:none;transition:filter .15s,box-shadow .15s,transform .1s;text-decoration:none;}
+.ig-text{background:#f6f8f6;border:1.5px solid #dfe7e2;border-right:none;border-radius:8px 0 0 8px;padding:9px 12px;}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:9px 17px;border-radius:8px;font-size:.83rem;font-weight:600;cursor:pointer;border:none;transition:filter .15s,box-shadow .15s,transform .1s;text-decoration:none;}
 .btn:hover{filter:brightness(1.07);}
 .btn:active{transform:translateY(1px);}
 .btn-g{background:var(--g1);color:#fff;box-shadow:0 1px 2px rgba(13,122,82,.25);}.btn-r{background:var(--err);color:#fff;box-shadow:0 1px 2px rgba(192,57,43,.25);}
 .btn-o{background:var(--warn);color:#fff;}.btn-b{background:var(--acc);color:#fff;}
-.btn-v{background:#7a5cc0;color:#fff;}
+.btn-v{background:#8b5cf6;color:#fff;}
 .btn-outline-g{background:transparent;border:1.5px solid var(--g1);color:var(--g1);}
 .btn-outline-g:hover{background:var(--g1);color:#fff;}
 .btn-outline-b{background:transparent;border:1.5px solid var(--acc);color:var(--acc);}
 .btn-outline-b:hover{background:var(--acc);color:#fff;}
 .btn-outline-r{background:transparent;border:1.5px solid var(--err);color:var(--err);}
 .btn-outline-r:hover{background:var(--err);color:#fff;}
-.btn-sm{padding:6px 11px;font-size:.76rem;border-radius:7px;}
-.al{border-radius:var(--r-sm);padding:11px 15px;font-size:.85rem;margin-bottom:10px;display:flex;align-items:center;gap:8px;}
-.al-s{background:#e3f6ec;border:1px solid var(--gd);color:var(--g3);}
-.al-e{background:#fdecec;border:1px solid #f3aeae;color:#7f1d1d;}
-.al-w{background:#fdf1d8;border:1px solid #f0d28a;color:#78350f;}
-.al-i{background:#e2f2ff;border:1px solid #a8d3ef;color:#1e3a8a;}
-.carte-urgence{background:#fff;border-radius:var(--r-sm);padding:11px 13px;box-shadow:0 1px 3px rgba(0,0,0,.08);}
+.btn-sm{padding:5px 10px;font-size:.76rem;border-radius:6px;}
+.al{border-radius:8px;padding:10px 14px;font-size:.85rem;margin-bottom:10px;display:flex;align-items:center;gap:8px;}
+.al-s{background:#e6f2ea;border:1px solid #8fc4a8;color:#0a3b28;}
+.al-e{background:#fee2e2;border:1px solid #fca5a5;color:#7f1d1d;}
+.al-w{background:#fef3c7;border:1px solid #fde047;color:#78350f;}
+.al-i{background:#dbeafe;border:1px solid #93c5fd;color:#1e3a8a;}
+.carte-urgence{background:#fff;border-radius:9px;padding:11px 13px;box-shadow:0 1px 3px rgba(0,0,0,.08);}
 .urgence-pulse{animation:urgPulse 1.8s infinite;}
 @keyframes urgPulse{0%,100%{box-shadow:0 1px 3px rgba(0,0,0,.08);}50%{box-shadow:0 0 0 4px rgba(127,29,29,.25);}}
 .notif-wrap{position:relative;}
 .notif-dot{position:absolute;top:-4px;right:-4px;width:18px;height:18px;background:var(--err);border-radius:50%;font-size:.6rem;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;border:2px solid #fff;}
-.avatar{width:42px;height:42px;border-radius:11px;object-fit:cover;background:var(--g1);color:#fff;display:flex;align-items:center;justify-content:center;border:none;}
+.avatar{width:42px;height:42px;border-radius:50%;object-fit:cover;background:var(--gm);display:flex;align-items:center;justify-content:center;border:2px solid var(--gd);}
 .nav-tabs{display:flex;gap:4px;border-bottom:2px solid var(--gd);margin-bottom:16px;}
 .nav-tab{padding:8px 16px;border-radius:8px 8px 0 0;font-size:.84rem;font-weight:600;cursor:pointer;border:none;background:transparent;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-2px;}
 .nav-tab.active{background:#fff;color:var(--g1);border:2px solid var(--gd);border-bottom:2px solid #fff;}
-.urg-1{background:#a02a2a;color:#fff;}.urg-2{background:#e0654a;color:#fff;}
-.urg-3{background:#d9a02c;color:#fff;}.urg-4{background:#0d7a52;color:#fff;}.urg-5{background:#e2f2ff;color:#1e3a8a;}
-.stat-dispo{background:#e3f6ec;color:#0d7a52;}.stat-occ{background:#fdf1d8;color:#78350f;}.stat-conge{background:#f0eefa;color:#5a3f96;}
-.doc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:16px;}
-.doc-card{background:#fff;border:1px solid var(--gl);border-radius:var(--r-lg);padding:18px;box-shadow:var(--shadow-sm);}
-.doc-card-top{display:flex;align-items:center;gap:12px;margin-bottom:12px;}
-.doc-av{width:52px;height:52px;border-radius:14px;background:linear-gradient(135deg,var(--g1),var(--g3));color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:1rem;flex-shrink:0;font-family:'Plus Jakarta Sans',sans-serif;}
-.doc-name{font-weight:700;font-size:.92rem;color:var(--txt);}
-.doc-spec{color:#c4682f;font-weight:700;font-size:.78rem;}
-.doc-dept{color:var(--muted);font-size:.74rem;}
-.doc-chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;}
-.doc-contact{font-size:.78rem;color:var(--muted);margin-bottom:12px;display:flex;flex-direction:column;gap:3px;}
-.doc-contact i{width:14px;color:var(--g1);}
-.doc-centres{border-top:1px dashed var(--gl);padding-top:10px;margin-bottom:10px;}
-.doc-acts{display:flex;align-items:center;justify-content:space-between;gap:8px;border-top:1px solid var(--gl);padding-top:10px;}
-.doc-mat{font-size:.7rem;color:var(--muted);font-weight:700;}
+.urg-1{background:#7f1d1d;color:#fff;}.urg-2{background:#ef4444;color:#fff;}
+.urg-3{background:#f59e0b;color:#fff;}.urg-4{background:#0d7a52;color:#fff;}.urg-5{background:#dbeafe;color:#1e3a8a;}
+.stat-dispo{background:#e6f2ea;color:#0a3b28;}.stat-occ{background:#fef3c7;color:#78350f;}.stat-conge{background:#dbeafe;color:#1e3a8a;}
 /* Charts */
 .chart-bar{display:flex;align-items:flex-end;gap:8px;height:120px;padding:8px 0;}
 .bar{flex:1;border-radius:6px 6px 0 0;min-width:20px;transition:.3s;position:relative;}
@@ -619,87 +603,6 @@ h1,h2,h3,h4,h5,h6,.brand-font{font-family:'Plus Jakarta Sans',system-ui,sans-ser
   .table-responsive-stack td:before{position:absolute;left:8px;width:40%;white-space:nowrap;font-weight:600;font-size:.7rem;color:var(--g2);content:attr(data-label);}
 }
 ::-webkit-scrollbar{width:4px;}::-webkit-scrollbar-track{background:#f6f8f6;}::-webkit-scrollbar-thumb{background:var(--gd);border-radius:4px;}
-
-/* ===== Classes exactes des maquettes (dashboard/rendez-vous/medecin-profil) ===== */
-:root{--gold:#d9a02c;--clay:#c4682f;--purple:#7a5cc0;--teal2:#0f9a78;}
-.welcome{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:14px;margin-bottom:22px;}
-.welcome h2{margin:0 0 4px;font-size:1.35rem;font-family:'Plus Jakarta Sans',sans-serif;}
-.welcome .date{color:var(--muted);font-size:.85rem;display:flex;align-items:center;gap:7px;}
-.welcome .btns{display:flex;gap:10px;}
-.grid8{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;margin-bottom:24px;}
-.kcard{position:relative;border-radius:var(--r-lg);padding:22px 20px;color:#fff;overflow:hidden;min-height:130px;}
-.kcard .bubble{position:absolute;top:-30px;right:-30px;width:110px;height:110px;border-radius:50%;background:rgba(255,255,255,.13);}
-.kcard .bubble2{position:absolute;bottom:-40px;right:20px;width:70px;height:70px;border-radius:50%;background:rgba(255,255,255,.08);}
-.kcard .ic{width:42px;height:42px;border-radius:11px;background:rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;font-size:1.05rem;margin-bottom:26px;}
-.kcard .lbl{font-size:.66rem;letter-spacing:.07em;text-transform:uppercase;opacity:.88;font-weight:700;}
-.kcard .val{font-size:1.9rem;font-weight:800;margin:2px 0 6px;font-family:'Plus Jakarta Sans',sans-serif;}
-.kcard .sub{font-size:.72rem;opacity:.85;display:flex;align-items:center;gap:6px;}
-.k1{background:linear-gradient(135deg,var(--g1),#07211a);}
-.k2{background:linear-gradient(135deg,var(--g4),var(--teal2));}
-.k3{background:linear-gradient(135deg,var(--gold),#b9800f);}
-.k4{background:linear-gradient(135deg,#14b389,var(--g1));}
-.k5{background:linear-gradient(135deg,var(--acc),#146678);}
-.k6{background:linear-gradient(135deg,var(--purple),#5a3f96);}
-.k7{background:linear-gradient(135deg,var(--clay),#96501f);}
-.k8{background:linear-gradient(135deg,var(--teal2),#0a6a52);}
-.panels{display:grid;grid-template-columns:1.6fr 1fr;gap:18px;}
-.panel-card{background:var(--card);border-radius:var(--r-lg);border:1px solid var(--gl);padding:20px 22px;}
-.panel-card h3{font-size:.92rem;margin:0 0 16px;display:flex;align-items:center;gap:9px;font-family:'Plus Jakarta Sans',sans-serif;}
-.panel-card h3 i{color:var(--g1);}
-.donut-legend2{width:100%;font-size:.78rem;margin-top:10px;}
-.donut-legend2 div{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px dashed var(--gl);}
-.donut-legend2 div:last-child{border-bottom:none;}
-.donut-legend2 .dotc{width:9px;height:9px;border-radius:3px;display:inline-block;margin-right:6px;}
-@media(max-width:1100px){.grid8{grid-template-columns:repeat(2,1fr);}.panels{grid-template-columns:1fr;}}
-
-.pg-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px;}
-.pg-head h2{margin:0 0 3px;font-size:1.2rem;display:flex;align-items:center;gap:10px;font-family:'Plus Jakarta Sans',sans-serif;}
-.pg-head h2 i{color:var(--g1);}
-.pg-head .cnt{color:var(--muted);font-size:.83rem;}
-.filters-mk{display:grid;grid-template-columns:1.6fr 1fr 1fr 1fr auto auto;gap:10px;margin-bottom:20px;}
-.filters-mk input,.filters-mk select{border:1px solid var(--gl);border-radius:var(--r-sm);padding:11px 13px;font-size:.83rem;font-family:inherit;background:#fff;color:var(--txt);}
-.filters-mk input:focus,.filters-mk select:focus{outline:2px solid var(--g4);outline-offset:1px;}
-.btn-filter-mk{background:var(--g1);color:#fff;border:none;border-radius:var(--r-sm);padding:0 16px;display:flex;align-items:center;gap:8px;font-weight:700;font-size:.83rem;cursor:pointer;}
-.btn-reset-mk{background:#fff;border:1px solid var(--gl);border-radius:var(--r-sm);width:44px;display:flex;align-items:center;justify-content:center;color:var(--muted);cursor:pointer;}
-.mk-table{width:100%;border-collapse:collapse;}
-.mk-table th{text-align:left;font-size:.68rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:700;padding:0 14px 12px;border-bottom:1px solid var(--gl);}
-.mk-table td{padding:14px;border-bottom:1px solid var(--gl);font-size:.85rem;vertical-align:middle;}
-.mk-table tr:last-child td{border-bottom:none;}
-.apt-id{color:var(--g1);font-weight:700;}
-.pat-mk{display:flex;align-items:center;gap:10px;}
-.pat-mk .av{width:34px;height:34px;border-radius:9px;background:var(--g1);color:#fff;font-size:.72rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex:none;}
-.pat-mk .nm{font-weight:600;}
-.pat-mk .idp{color:var(--muted);font-size:.72rem;}
-.dt-mk{font-weight:600;}
-.tm-mk{color:var(--muted);font-size:.76rem;}
-.serial-mk{background:var(--gl);color:var(--g1);font-weight:700;font-size:.72rem;padding:3px 9px;border-radius:7px;}
-.badge-mk{display:inline-block;padding:4px 11px;border-radius:8px;font-size:.72rem;font-weight:700;}
-.b-confirme{background:#e2f2ff;color:#0c5c8f;}.b-attente{background:#fdf1d8;color:#93670a;}
-.b-annule{background:#fdecec;color:#a02a2a;}.b-termine{background:#e3f6ec;color:#0d7a52;}
-.acts-mk{display:flex;gap:7px;}
-.ic-btn-mk{width:32px;height:32px;border-radius:8px;border:1px solid var(--gl);background:#fff;display:flex;align-items:center;justify-content:center;font-size:.78rem;cursor:pointer;text-decoration:none;}
-.ic-btn-mk.view{color:#1f6fb2;border-color:#cfe4f5;}
-.ic-btn-mk.edit{color:#b98a10;border-color:#f2e2b8;}
-.ic-btn-mk.del{color:#c23a3a;border-color:#f3cccc;}
-
-.profile-grid{display:grid;grid-template-columns:1fr 1.6fr;gap:18px;align-items:start;}
-.doc-hero{text-align:center;}
-.doc-hero .av{width:84px;height:84px;border-radius:50%;background:var(--g1);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:1.3rem;margin:0 auto 14px;}
-.doc-hero .nm{font-weight:700;font-size:1.1rem;margin-bottom:3px;}
-.doc-hero .spec{color:var(--clay);font-weight:700;font-size:.85rem;margin-bottom:2px;}
-.doc-hero .dept{color:var(--muted);font-size:.8rem;margin-bottom:16px;}
-.status-pill{display:block;background:var(--g1);color:#fff;font-weight:700;font-size:.85rem;padding:10px;border-radius:var(--r-sm);}
-.detail-row{display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px dashed var(--gl);}
-.detail-row:last-child{border-bottom:none;}
-.detail-row .ic{width:34px;height:34px;border-radius:9px;background:var(--gl);color:var(--g1);display:flex;align-items:center;justify-content:center;flex:none;}
-.detail-row .lbl{font-size:.72rem;color:var(--muted);margin-bottom:2px;}
-.detail-row .val{font-weight:600;font-size:.87rem;}
-.week-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
-.day-card{background:var(--bg);border:1px solid var(--gl);border-radius:13px;padding:15px;}
-.day-card .day{font-weight:700;font-size:.85rem;margin-bottom:6px;}
-.day-card .hrs{font-size:.8rem;color:var(--muted);margin-bottom:6px;}
-.day-card .cap{font-size:.76rem;color:var(--g1);font-weight:700;}
-@media(max-width:1000px){.profile-grid{grid-template-columns:1fr;}.week-grid{grid-template-columns:repeat(2,1fr);}}
 </style>"""
 
 JS_BASE="""<script>
@@ -1046,7 +949,7 @@ def dashboard():
         nb_att=len([a for a in DB["liste_attente"] if a["statut"]=="En attente"])
         nb_stock_pb=len([s for s in DB["stocks"] if s["statut"] in ["Faible","Epuise"]])
 
-        # Donnees pour graphique consultations par service
+        # Données pour graphique consultations par service
         cons_by_svc={}
         for c in DB["consultations"]:
             med=next((m for m in DB["medecins"] if m["matricule"]==c["matricule"]),None)
@@ -1055,142 +958,48 @@ def dashboard():
                 cons_by_svc[sv]=cons_by_svc.get(sv,0)+1
         chart_labels=list(cons_by_svc.keys()); chart_vals=list(cons_by_svc.values())
 
-        # Donnees pour graphique statuts RDV
+        # Données pour graphique statuts RDV
         rdv_stats={"Confirme":0,"En attente":0,"Annule":0,"Termine":0}
         for r in DB["rdvs"]: rdv_stats[r["statut"]]=rdv_stats.get(r["statut"],0)+1
 
-        # Medecins par statut
+        # Médecins par statut
         med_stats={"Disponible":0,"Occupe":0,"En conge":0}
         for username,ud in DB["users"].items():
             if ud["role"]=="medecin": med_stats[ud.get("status_med","Disponible")]=med_stats.get(ud.get("status_med","Disponible"),0)+1
 
-        # ---- 8 metriques exactes de la maquette dashboard.html ----
-        today=date.today()
-        rdv_today=len([r for r in DB["rdvs"] if r["date"]==today])
-        revenu_mois=sum(p["montant"] for p in DB["paiements"] if p["date"] and p["date"].month==today.month and p["date"].year==today.year)
-        personnel_total=nb_m+len([ud2 for un2,ud2 in DB["users"].items() if ud2.get("role") in ["receptionniste","pharmacien","infirmier"]])
-        rdv_attente=rdv_stats.get("En attente",0)
-        lits_dispo=len([l for l in DB["lits"] if l["statut"]=="Libre"])
-
-        # ---- Serie 6 derniers mois (revenus encaisses + nb RDV crees) ----
-        mois_labels=[]; mois_rev=[]; mois_rdv=[]
-        for i in range(5,-1,-1):
-            mm=today.month-i; yy=today.year
-            while mm<1: mm+=12; yy-=1
-            mois_labels.append(MOIS_FR[mm-1].capitalize())
-            mois_rev.append(sum(p["montant"] for p in DB["paiements"] if p["date"] and p["date"].month==mm and p["date"].year==yy))
-            mois_rdv.append(len([r for r in DB["rdvs"] if r["date"] and r["date"].month==mm and r["date"].year==yy]))
-
-        ud_admin=DB["users"].get(u,{})
-        prenom_admin=ud_admin.get("prenom","") or "Administrateur"
-        date_fr=f"{JOURS_FR[today.weekday()]} {today.day} {MOIS_FR[today.month-1].capitalize()} {today.year}"
-        centre_nom=DB["centres"][0]["nom"] if DB.get("centres") else "LE TROPICAL"
-
         extra_js=f"""<script>
-const moisLbl={json.dumps(mois_labels)};
-new Chart(document.getElementById('chartRevRdv'),{{
-  type:'bar',
-  data:{{labels:moisLbl,datasets:[
-    {{type:'bar',label:'Revenu (FCFA)',data:{json.dumps(mois_rev)},backgroundColor:'#0d7a52',borderRadius:8,yAxisID:'y'}},
-    {{type:'line',label:'Rendez-vous',data:{json.dumps(mois_rdv)},borderColor:'#d9a02c',backgroundColor:'#d9a02c',tension:.35,yAxisID:'y1',pointRadius:3}}
-  ]}},
-  options:{{responsive:true,plugins:{{legend:{{position:'top',labels:{{boxWidth:12,font:{{size:11}}}}}}}},
-    scales:{{y:{{beginAtZero:true,grid:{{color:'#eef2f0'}}}},y1:{{position:'right',beginAtZero:true,grid:{{display:false}}}}}}}}
-}});
-new Chart(document.getElementById('chartDonutRdv'),{{
-  type:'doughnut',
-  data:{{labels:{json.dumps(list(rdv_stats.keys()))},datasets:[{{data:{json.dumps(list(rdv_stats.values()))},backgroundColor:['#0d7a52','#d9a02c','#c4682f','#1f8fa6'],borderWidth:0}}]}},
-  options:{{cutout:'72%',plugins:{{legend:{{display:false}}}}}}
-}});
 // Graphique consultations par service
 const ctx1=document.getElementById('chartCons');
-if(ctx1){{new Chart(ctx1,{{type:'bar',data:{{labels:{json.dumps(chart_labels)},datasets:[{{label:'Consultations',data:{json.dumps(chart_vals)},backgroundColor:['#0d7a52','#1f8fa6','#d9a02c','#c4682f','#7a5cc0','#0f9a78','#ec4899'],borderRadius:6}}]}},options:{{responsive:true,plugins:{{legend:{{display:false}}}},scales:{{y:{{beginAtZero:true,ticks:{{stepSize:1}}}}}}}}}})}}
-// Graphique RDV par statut (detail)
+if(ctx1){{new Chart(ctx1,{{type:'bar',data:{{labels:{json.dumps(chart_labels)},datasets:[{{label:'Consultations',data:{json.dumps(chart_vals)},backgroundColor:['#0d7a52','#2b7a9e','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#ec4899'],borderRadius:6}}]}},options:{{responsive:true,plugins:{{legend:{{display:false}}}},scales:{{y:{{beginAtZero:true,ticks:{{stepSize:1}}}}}}}}}})}}
+
+// Graphique RDV par statut
 const ctx2=document.getElementById('chartRdv');
-if(ctx2){{new Chart(ctx2,{{type:'doughnut',data:{{labels:{json.dumps(list(rdv_stats.keys()))},datasets:[{{data:{json.dumps(list(rdv_stats.values()))},backgroundColor:['#0d7a52','#d9a02c','#c4682f','#1f8fa6'],borderWidth:2}}]}},options:{{responsive:true,plugins:{{legend:{{position:'right'}}}}}}}})}}
+if(ctx2){{new Chart(ctx2,{{type:'doughnut',data:{{labels:{json.dumps(list(rdv_stats.keys()))},datasets:[{{data:{json.dumps(list(rdv_stats.values()))},backgroundColor:['#0d7a52','#f59e0b','#ef4444','#06b6d4'],borderWidth:2}}]}},options:{{responsive:true,plugins:{{legend:{{position:'right'}}}}}}}})}}
+
 // Graphique stocks
 const ctxS=document.getElementById('chartStock');
 if(ctxS){{const sn=[{','.join([repr(next((m["libelle"] for m in DB["medicaments"] if m["id_stock"]==s["id"]),"?")) for s in DB["stocks"]])}];const sv=[{','.join([str(s["quantite"]) for s in DB["stocks"]])}];new Chart(ctxS,{{type:'bar',data:{{labels:sn,datasets:[{{label:'Quantite',data:sv,backgroundColor:sv.map(v=>v==0?'#ef4444':v<20?'#f59e0b':'#0d7a52'),borderRadius:4}}]}},options:{{responsive:true,plugins:{{legend:{{display:false}}}},scales:{{y:{{beginAtZero:true}}}}}}}})}}
 </script>"""
 
         body=f"""
-<div class="welcome">
-  <div>
-    <h2>Bon retour, {prenom_admin} 👋</h2>
-    <div class="date"><i class="fas fa-calendar"></i>{date_fr} — Centre {centre_nom}</div>
-  </div>
-  <div class="btns">
-    <a href="/a-patients" class="btn btn-g" style="color:#fff;text-decoration:none;"><i class="fas fa-user-plus"></i>Nouveau patient</a>
-    <a href="/r-rdvs" class="btn" style="background:var(--g1);color:#fff;text-decoration:none;"><i class="fas fa-calendar-check"></i>Nouveau RDV</a>
-  </div>
-</div>
-
-<div class="grid8">
-  <div class="kcard k1"><div class="bubble"></div><div class="bubble2"></div>
-    <div class="ic"><i class="fas fa-user-injured"></i></div>
-    <div class="lbl">Total patients</div><div class="val">{nb_p:,}</div>
-    <div class="sub"><i class="fas fa-arrow-up"></i>Patients enregistres</div></div>
-
-  <div class="kcard k2"><div class="bubble"></div><div class="bubble2"></div>
-    <div class="ic"><i class="fas fa-user-doctor"></i></div>
-    <div class="lbl">Medecins actifs</div><div class="val">{nb_m}</div>
-    <div class="sub"><i class="fas fa-heart-pulse"></i>Toutes specialites</div></div>
-
-  <div class="kcard k3"><div class="bubble"></div><div class="bubble2"></div>
-    <div class="ic"><i class="fas fa-calendar-day"></i></div>
-    <div class="lbl">RDV aujourd'hui</div><div class="val">{rdv_today}</div>
-    <div class="sub"><i class="fas fa-clock"></i>Programmes</div></div>
-
-  <div class="kcard k4"><div class="bubble"></div><div class="bubble2"></div>
-    <div class="ic"><i class="fas fa-sack-dollar"></i></div>
-    <div class="lbl">Revenu du mois</div><div class="val">{revenu_mois:,}</div>
-    <div class="sub"><i class="fas fa-chart-line"></i>FCFA — ce mois</div></div>
-
-  <div class="kcard k5"><div class="bubble"></div><div class="bubble2"></div>
-    <div class="ic"><i class="fas fa-id-badge"></i></div>
-    <div class="lbl">Personnel total</div><div class="val">{personnel_total}</div>
-    <div class="sub"><i class="fas fa-building"></i>Tous services</div></div>
-
-  <div class="kcard k6"><div class="bubble"></div><div class="bubble2"></div>
-    <div class="ic"><i class="fas fa-hourglass-half"></i></div>
-    <div class="lbl">RDV en attente</div><div class="val">{rdv_attente}</div>
-    <div class="sub"><i class="fas fa-bell"></i>Confirmation requise</div></div>
-
-  <div class="kcard k7"><div class="bubble"></div><div class="bubble2"></div>
-    <div class="ic"><i class="fas fa-pills"></i></div>
-    <div class="lbl">Stock faible</div><div class="val">{nb_stock_pb}</div>
-    <div class="sub"><i class="fas fa-triangle-exclamation"></i>Medicaments a reapprovisionner</div></div>
-
-  <div class="kcard k8"><div class="bubble"></div><div class="bubble2"></div>
-    <div class="ic"><i class="fas fa-bed"></i></div>
-    <div class="lbl">Lits disponibles</div><div class="val">{lits_dispo}</div>
-    <div class="sub"><i class="fas fa-hospital-user"></i>{len(DB["lits"])-lits_dispo} occupes</div></div>
-</div>
-
-<div class="panels mb-3">
-  <div class="panel-card">
-    <h3><i class="fas fa-chart-column"></i>Revenus &amp; rendez-vous (6 derniers mois)</h3>
-    <canvas id="chartRevRdv" height="110"></canvas>
-  </div>
-  <div class="panel-card">
-    <h3><i class="fas fa-chart-pie"></i>Statut des rendez-vous</h3>
-    <canvas id="chartDonutRdv" height="180"></canvas>
-    <div class="donut-legend2">
-      {"".join(f'<div><span><span class="dotc" style="background:{c};"></span>{k}</span><b>{v}</b></div>' for k,v,c in zip(rdv_stats.keys(),rdv_stats.values(),["#0d7a52","#d9a02c","#c4682f","#1f8fa6"]))}
-    </div>
-  </div>
-</div>
-
 <div class="row g-3 mb-3">
-  <div class="col-md-3"><div class="sc bg-r"><div class="sv">{nb_urg}</div><div class="sl">Urgences actives</div></div></div>
+  <div class="col-md-2"><div class="sc bg-g"><div class="sv">{nb_p}</div><div class="sl">Patients</div></div></div>
+  <div class="col-md-2"><div class="sc bg-b"><div class="sv">{nb_m}</div><div class="sl">Medecins</div></div></div>
+  <div class="col-md-2"><div class="sc bg-v"><div class="sv">{nb_s}</div><div class="sl">Services</div></div></div>
+  <div class="col-md-2"><div class="sc bg-o"><div class="sv">{nb_rdv}</div><div class="sl">RDV total</div></div></div>
+  <div class="col-md-2"><div class="sc bg-r"><div class="sv">{nb_urg}</div><div class="sl">Urgences actives</div></div></div>
+  <div class="col-md-2"><div class="sc bg-t"><div class="sv">{nb_att}</div><div class="sl">En attente</div></div></div>
+</div>
+<div class="row g-3 mb-3">
+  <div class="col-md-3"><div class="sc bg-g"><div class="sv">{total_enc:,} FCFA</div><div class="sl">Recettes encaissees</div></div></div>
   <div class="col-md-3"><div class="sc bg-o"><div class="sv">{total_fact-total_enc:,} FCFA</div><div class="sl">Reste a encaisser</div></div></div>
   <div class="col-md-3"><div class="sc bg-r"><div class="sv">{nb_imp}</div><div class="sl">Factures impayees</div></div></div>
-  <div class="col-md-3"><div class="sc bg-pk"><div class="sv">{nb_s}</div><div class="sl">Services</div></div></div>
+  <div class="col-md-3"><div class="sc bg-pk"><div class="sv">{nb_stock_pb}</div><div class="sl">Alertes stock</div></div></div>
 </div>
 <div class="row g-3 mb-3">
   <div class="col-md-6"><div class="card"><div class="card-hdr"><div class="title"><i class="fas fa-chart-bar"></i>Consultations par service</div></div>
     <div class="card-body"><canvas id="chartCons" height="180"></canvas></div></div></div>
-  <div class="col-md-3"><div class="card"><div class="card-hdr"><div class="title"><i class="fas fa-chart-pie"></i>Statuts RDV (detail)</div></div>
+  <div class="col-md-3"><div class="card"><div class="card-hdr"><div class="title"><i class="fas fa-chart-pie"></i>Statuts RDV</div></div>
     <div class="card-body"><canvas id="chartRdv" height="200"></canvas></div></div></div>
   <div class="col-md-3"><div class="card"><div class="card-hdr"><div class="title"><i class="fas fa-user-md"></i>Medecins</div></div>
     <div class="card-body">
@@ -1352,59 +1161,37 @@ def a_medecins():
         st_c="ok" if st=="Disponible" else "inf" if "conge" in st.lower() else "att"
         med_cids=get_med_centres(m["matricule"])
         chk_centres="".join(f'<label style="display:block;font-size:.78rem;"><input type="checkbox" name="centres" value="{c["id"]}" {"checked" if c["id"] in med_cids else ""}> {c["nom"]}</label>' for c in DB.get("centres",[]))
-        initials=f'{m["prenom"][:1]}{m["nom"][:1]}'.upper()
-        rows+=f"""<div class="doc-card">
-          <div class="doc-card-top">
-            <div class="doc-av">{initials}</div>
-            <div>
-              <div class="doc-name">Dr. {m["prenom"]} {m["nom"]}</div>
-              <div class="doc-spec">{m["specialite"]}</div>
-              <div class="doc-dept">{sname(m["id_service"])}{" &middot; Chef de service" if m.get("est_chef") else ""}</div>
-            </div>
-          </div>
-          <div class="doc-chips">
-            <span class="bk {st_c}">{st}</span>
-            <span class="bk {"vio" if m.get("est_chef") else "grey"}">{"Chef" if m.get("est_chef") else "Medecin"}</span>
-            <span class="bk {"ok" if tc else "grey"}"><i class="fas fa-video" style="font-size:.65rem;"></i> {"Teleconsult" if tc else "Sur site"}</span>
-          </div>
-          <div class="doc-contact">
-            <div><i class="fas fa-phone"></i>{m["telephone"]}</div>
-            <div><i class="fas fa-envelope"></i>{m["email"] or "—"}</div>
-          </div>
-          <div class="doc-centres">
-            <span class="bk inf">{", ".join(cname(c) for c in med_cids) or "Aucun centre"}</span>
-            <button type="button" class="btn btn-sm btn-outline-b mt-1" style="font-size:.7rem;" onclick="document.getElementById('aff_{m["matricule"]}').style.display='block'"><i class="fas fa-hospital"></i>Gerer centres</button>
-            <div id="aff_{m["matricule"]}" style="display:none;margin-top:8px;padding:10px;background:var(--gl);border-radius:var(--r-sm);">
-              <form method="POST" action="/a-affecter-centres/{m["matricule"]}">
-                {chk_centres}
-                <button type="submit" class="btn btn-sm btn-g mt-1"><i class="fas fa-save"></i>Sauvegarder</button>
-              </form>
-            </div>
-          </div>
-          <div class="doc-acts">
-            <span class="doc-mat">{m["matricule"]}</span>
-            <div style="display:flex;gap:6px;">
-              <a href="/a-medecin-profil/{m['matricule']}" class="ic-btn-mk view" title="Voir le profil"><i class="fas fa-eye"></i></a>
-              <form method="POST" action="/a-reset-password/{m.get('username','')}" onsubmit="return confirm('Reinitialiser le mot de passe ?')"><button type="submit" class="btn btn-sm btn-outline-b" title="Reinitialiser mot de passe"><i class="fas fa-key"></i></button></form>
-              <form method="POST" action="/a-supprimer-medecin/{m['matricule']}" onsubmit="return confirm('Supprimer ce medecin ?')"><button type="submit" class="btn btn-sm btn-outline-r" title="Supprimer"><i class="fas fa-trash"></i></button></form>
-            </div>
-          </div>
-        </div>"""
+        rows+=f"""<tr>
+          <td><strong>{m["matricule"]}</strong></td>
+          <td><strong>Dr. {m["prenom"]} {m["nom"]}</strong></td>
+          <td>{m["specialite"]}</td>
+          <td>{m["telephone"]}</td>
+          <td>{m["email"]}</td>
+          <td>{sname(m["id_service"])}</td>
+          <td><span class="bk inf">{", ".join(cname(c) for c in get_med_centres(m["matricule"]))}</span><br>
+          <button class="btn btn-sm btn-outline-b mt-1" style="font-size:.7rem;" onclick="document.getElementById('aff_{m["matricule"]}').style.display='block'"><i class="fas fa-plus"></i>Centres</button>
+          <div id="aff_{m["matricule"]}" style="display:none;margin-top:6px;padding:8px;background:#dbeafe;border-radius:6px;min-width:180px;">
+            <form method="POST" action="/a-affecter-centres/{m["matricule"]}">
+              {chk_centres}
+              <button type="submit" class="btn btn-sm btn-g mt-1"><i class="fas fa-save"></i>Sauvegarder</button>
+            </form></div></td>
+          <td><span class="bk {"vio" if m.get("est_chef") else "grey"}">{"Chef" if m.get("est_chef") else "Med."}</span></td>
+          <td><span class="bk {st_c}">{st}</span></td>
+          <td><span class="bk {"ok" if tc else "err"}">{"Oui" if tc else "Non"}</span></td>
+          <td><form method="POST" action="/a-supprimer-medecin/{m['matricule']}" onsubmit="return confirm('Supprimer ce medecin ?')"><button type="submit" class="btn btn-sm btn-danger"><i class="fas fa-trash"></i></button></form>
+          <form method="POST" action="/a-reset-password/{m.get('username','')}" onsubmit="return confirm('Reinitialiser le mot de passe ?')"><button type="submit" class="btn btn-sm btn-outline-b mt-1" title="Reset mot de passe"><i class="fas fa-key"></i></button></form></td>
+        </tr>"""
     body=f"""<div class="row g-3">
-  <div class="col-lg-8">
-    <div class="card" style="margin-bottom:16px;"><div class="card-hdr"><div class="title"><i class="fas fa-user-md"></i>Medecins ({len(meds_list)})</div>
-    <div style="display:flex;gap:8px;align-items:center;">
-      <form method="GET" style="display:flex;gap:6px;align-items:center;">
-        <select name="centre" class="form-select form-select-sm" style="width:auto;" onchange="this.form.submit()">
-          <option value="">Tous les centres</option>
-          {"".join(f'<option value="{c["id"]}" {"selected" if filtre_centre==str(c["id"]) else ""}>{c["nom"]}</option>' for c in DB.get("centres",[]))}
-        </select>
-      </form>
-      <button class="btn btn-sm btn-g" onclick="document.getElementById('fm').classList.toggle('d-none')"><i class="fas fa-plus"></i>Ajouter</button>
-    </div></div></div>
-    <div class="doc-grid">{rows}</div>
-  </div>
-  <div class="col-lg-4"><div id="fm" class="card d-none"><div class="card-hdr"><div class="title">Ajouter un medecin</div></div><div class="card-body">
+  <div class="col-lg-8"><div class="card"><div class="card-hdr"><div class="title"><i class="fas fa-user-md"></i>Medecins ({len(meds_list)})</div>
+    <form method="GET" style="display:flex;gap:6px;align-items:center;">
+      <select name="centre" class="form-select form-select-sm" style="width:auto;" onchange="this.form.submit()">
+        <option value="">Tous les centres</option>
+        {"".join(f'<option value="{c["id"]}" {"selected" if filtre_centre==str(c["id"]) else ""}>{c["nom"]}</option>' for c in DB.get("centres",[]))}
+      </select>
+    </form>
+    <button class="btn btn-sm btn-g" onclick="document.getElementById('fm').classList.toggle('d-none')"><i class="fas fa-plus"></i>Ajouter</button>
+  </div><div style="overflow-x:auto;"><table class="table"><thead><tr><th>Matricule</th><th>Nom complet</th><th>Specialite</th><th>Telephone</th><th>Email</th><th>Service</th><th>Centre</th><th>Fonction</th><th>Statut</th><th>Teleconsult</th><th>Action</th></tr></thead><tbody>{rows}</tbody></table></div></div></div>
+  <div class="col-lg-4"><div id="fm" class="card"><div class="card-hdr"><div class="title">Ajouter un medecin</div></div><div class="card-body">
     <form method="POST"><div class="row g-2">
       <div class="col-6"><label class="form-label">Specialite *</label><select name="specialite" class="form-select"><option>Medecine Generale</option><option>Pediatrie</option><option>Gynecologie-Obstetrique</option><option>Cardiologie</option><option>Chirurgie Generale</option><option>Urgences</option><option>Biologie medicale</option><option>Dermatologie</option><option>Neurologie</option></select></div>
       <div class="col-12"><div class="al al-i" style="font-size:.78rem;"><i class="fas fa-id-badge"></i>Le matricule sera genere automatiquement (ex: MED009)</div></div>
@@ -1422,83 +1209,6 @@ def a_medecins():
   </div></div></div>
 </div>"""
     return page("Medecins","admin",session["user"],body)
-
-@app.route("/a-medecin-profil/<string:mat>")
-@login_required
-@role_required("admin")
-def a_medecin_profil(mat):
-    m=next((x for x in DB["medecins"] if x["matricule"]==mat),None)
-    if not m:
-        flash("Medecin introuvable.","danger"); return redirect(url_for("a_medecins"))
-    ud=DB["users"].get(m["username"],{})
-    st=ud.get("status_med","Disponible")
-    tc=ud.get("teleconsult_actif",False)
-    svc=next((s for s in DB["services"] if s["id"]==m["id_service"]),None)
-    centre=next((c for c in DB.get("centres",[]) if c["id"]==m.get("id_centre")),None)
-    initials=f'{m["prenom"][:1]}{m["nom"][:1]}'.upper()
-
-    creneaux_par_jour={c["jour"]:c for c in DB["creneaux"] if c["matricule"]==mat}
-    jours_html=""
-    for j in JOURS_FR:
-        c=creneaux_par_jour.get(j)
-        if c:
-            jours_html+=f"""<div class="day-card"><div class="day">{j}</div><div class="hrs">{c["heure_debut"]} &ndash; {c["heure_fin"]}</div><div class="cap">{"Creneau actif" if c["actif"] else "Creneau inactif"}</div></div>"""
-        else:
-            jours_html+=f"""<div class="day-card" style="opacity:.5;"><div class="day">{j}</div><div class="hrs">Pas de creneau</div></div>"""
-
-    rdvs_med=sorted([r for r in DB["rdvs"] if r["matricule"]==mat],key=lambda x:x["date"],reverse=True)[:5]
-    rows_rdv=""
-    for r in rdvs_med:
-        bcls="b-confirme" if r["statut"]=="Confirme" else "b-attente" if r["statut"]=="En attente" else "b-annule" if r["statut"]=="Annule" else "b-termine"
-        rows_rdv+=f'<tr><td>{pname(r["id_patient"])}</td><td>{r["date"]}</td><td>{r["type"]}</td><td><span class="badge-mk {bcls}">{r["statut"]}</span></td></tr>'
-    if not rows_rdv:
-        rows_rdv='<tr><td colspan=4 style="text-align:center;color:var(--muted);padding:16px;">Aucun rendez-vous</td></tr>'
-
-    body=f"""<div class="pg-head">
-  <h2><i class="fas fa-user-doctor"></i>Dr. {m["prenom"]} {m["nom"]}</h2>
-  <div style="display:flex;gap:10px;">
-    <a href="/a-medecins" class="btn btn-outline-g"><i class="fas fa-arrow-left"></i>Retour</a>
-  </div>
-</div>
-
-<div class="profile-grid">
-  <div style="display:flex;flex-direction:column;gap:18px;">
-    <div class="card doc-hero">
-      <div class="av">{initials}</div>
-      <div class="nm">Dr. {m["prenom"]} {m["nom"]}</div>
-      <div class="spec">{m["specialite"]}</div>
-      <div class="dept">{svc["libelle"] if svc else "Service non defini"}</div>
-      <span class="status-pill" style="background:{"var(--g1)" if st=="Disponible" else "var(--warn)" if st=="Occupe" else "var(--purple)"};">{st}</span>
-    </div>
-
-    <div class="card">
-      <h3><i class="fas fa-id-card"></i>Details</h3>
-      <div class="detail-row"><div class="ic"><i class="fas fa-hashtag"></i></div><div><div class="lbl">Matricule</div><div class="val">{m["matricule"]}</div></div></div>
-      <div class="detail-row"><div class="ic"><i class="fas fa-stethoscope"></i></div><div><div class="lbl">Specialite</div><div class="val">{m["specialite"]}</div></div></div>
-      <div class="detail-row"><div class="ic"><i class="fas fa-tag"></i></div><div><div class="lbl">Tarif ticket</div><div class="val">{svc["tarif_ticket"]:,} FCFA</div></div></div>
-      <div class="detail-row"><div class="ic"><i class="fas fa-hospital"></i></div><div><div class="lbl">Centre</div><div class="val">{centre["nom"] if centre else "Non affecte"}</div></div></div>
-      <div class="detail-row"><div class="ic"><i class="fas fa-phone"></i></div><div><div class="lbl">Telephone</div><div class="val">{m["telephone"]}</div></div></div>
-      <div class="detail-row"><div class="ic"><i class="fas fa-envelope"></i></div><div><div class="lbl">Email</div><div class="val">{m["email"] or "—"}</div></div></div>
-      <div class="detail-row"><div class="ic"><i class="fas fa-video"></i></div><div><div class="lbl">Teleconsultation</div><div class="val">{"Activee" if tc else "Non activee"}</div></div></div>
-    </div>
-  </div>
-
-  <div style="display:flex;flex-direction:column;gap:18px;">
-    <div class="card">
-      <h3><i class="fas fa-calendar-week"></i>Planning hebdomadaire</h3>
-      <div class="week-grid">{jours_html}</div>
-    </div>
-
-    <div class="card">
-      <h3><i class="fas fa-calendar-check"></i>Rendez-vous recents ({len(rdvs_med)})</h3>
-      <table style="width:100%;border-collapse:collapse;">
-        <thead><tr><th style="text-align:left;font-size:.68rem;text-transform:uppercase;color:var(--muted);padding:0 12px 10px;border-bottom:1px solid var(--gl);">Patient</th><th style="text-align:left;font-size:.68rem;text-transform:uppercase;color:var(--muted);padding:0 12px 10px;border-bottom:1px solid var(--gl);">Date</th><th style="text-align:left;font-size:.68rem;text-transform:uppercase;color:var(--muted);padding:0 12px 10px;border-bottom:1px solid var(--gl);">Type</th><th style="text-align:left;font-size:.68rem;text-transform:uppercase;color:var(--muted);padding:0 12px 10px;border-bottom:1px solid var(--gl);">Statut</th></tr></thead>
-        <tbody>{rows_rdv}</tbody>
-      </table>
-    </div>
-  </div>
-</div>"""
-    return page(f"Profil — Dr. {m['prenom']} {m['nom']}","admin",session["user"],body)
 
 @app.route("/a-affecter-centres/<string:mat>",methods=["POST"])
 @login_required
@@ -2780,8 +2490,6 @@ def m_rdvs():
     rows=""
     for r in rdvs:
         sc="ok" if r["statut"]=="Confirme" else "att" if r["statut"]=="En attente" else "err" if r["statut"]=="Annule" else "grey"
-        pn=pname(r["id_patient"]); _pp=pn.split()
-        pini=(_pp[0][:1]+_pp[-1][:1]).upper() if len(_pp)>=2 else pn[:2].upper()
         ann_btn=""
         if r["statut"] in ["Confirme","En attente"]:
             ann_btn=f"""<button class="btn btn-sm btn-outline-r" onclick="document.getElementById('ann_{r['id']}').style.display='block'"><i class="fas fa-times"></i>Annuler</button>
@@ -2793,27 +2501,11 @@ def m_rdvs():
               </form>
             </div>"""
         lien=f'<a href="{r["lien_teleconsult"]}" target="_blank" class="btn btn-sm btn-b"><i class="fas fa-video"></i>Rejoindre</a>' if r.get("lien_teleconsult") and r["statut"]=="Confirme" else ""
-        rows+=f'<tr data-statut="{r["statut"]}"><td><strong>{r["date"]}</strong></td><td>{r["heure"]}</td><td><div style="display:flex;align-items:center;gap:9px;"><div class="doc-av" style="width:32px;height:32px;font-size:.68rem;border-radius:9px;">{pini}</div><span>{pn}</span></div></td><td>{r.get("motif","")}</td><td><span class="bk inf">{r["type"]}</span></td><td><span class="bk {sc}">{r["statut"]}</span></td><td>{lien}{ann_btn}</td></tr>'
-    body=f"""<div class="card"><div class="card-hdr"><div class="title"><i class="fas fa-calendar-check"></i>Mes Rendez-vous ({len(rdvs)})</div></div>
-<div style="padding:12px 18px;display:flex;gap:10px;flex-wrap:wrap;">
-  <input type="text" id="smr" class="form-control" placeholder="Rechercher un patient, motif..." oninput="filtrerMrdv()" style="max-width:260px;">
-  <select id="fmr" class="form-select" onchange="filtrerMrdv()" style="max-width:170px;"><option value="">Tous statuts</option><option>Confirme</option><option>Annule</option><option>Termine</option><option>En attente</option></select>
-</div>
-<div style="overflow-x:auto;"><table class="table" id="tmr"><thead><tr><th>Date</th><th>Heure</th><th>Patient</th><th>Motif</th><th>Type</th><th>Statut</th><th>Actions</th></tr></thead><tbody>
+        rows+=f'<tr><td><strong>{r["date"]}</strong></td><td>{r["heure"]}</td><td>{pname(r["id_patient"])}</td><td>{r.get("motif","")}</td><td><span class="bk inf">{r["type"]}</span></td><td><span class="bk {sc}">{r["statut"]}</span></td><td>{lien}{ann_btn}</td></tr>'
+    body=f"""<div class="card"><div class="card-hdr"><div class="title"><i class="fas fa-calendar-check"></i>Mes Rendez-vous</div></div>
+<div style="overflow-x:auto;"><table class="table"><thead><tr><th>Date</th><th>Heure</th><th>Patient</th><th>Motif</th><th>Type</th><th>Statut</th><th>Actions</th></tr></thead><tbody>
 {rows if rows else "<tr><td colspan=7 class='text-center' style='color:var(--muted);padding:20px;'>Aucun RDV</td></tr>"}
-</tbody></table></div></div>
-<script>
-function filtrerMrdv(){{
-  const v=document.getElementById('smr').value.toLowerCase();
-  const f=document.getElementById('fmr').value;
-  document.querySelectorAll('#tmr tbody tr').forEach(r=>{{
-    if(!r.dataset.statut){{return;}}
-    const okText=!v||r.textContent.toLowerCase().includes(v);
-    const okF=!f||r.dataset.statut===f;
-    r.style.display=(okText&&okF)?'':'none';
-  }});
-}}
-</script>"""
+</tbody></table></div></div>"""
     return page("Mes Rendez-vous","medecin",session["user"],body)
 
 @app.route("/m-hospitalisations",methods=["GET","POST"])
@@ -3701,12 +3393,10 @@ def p_rdvs():
     for r in rdvs:
         sc="ok" if r["statut"]=="Confirme" else "att" if r["statut"]=="En attente" else "err"
         lien=f'<a href="{r["lien_teleconsult"]}" target="_blank" class="btn btn-sm btn-b"><i class="fas fa-video"></i>Rejoindre</a>' if r.get("lien_teleconsult") and r["statut"]=="Confirme" else ""
-        mn=mname(r["matricule"]); _mm=mn.replace("Dr. ","").split()
-        mini=(_mm[0][:1]+_mm[-1][:1]).upper() if len(_mm)>=2 else mn[:2].upper()
-        rows+=f'<tr><td><strong>{r["date"]}</strong></td><td>{r["heure"]}</td><td><div style="display:flex;align-items:center;gap:9px;"><div class="doc-av" style="width:32px;height:32px;font-size:.68rem;border-radius:9px;">{mini}</div><span>{mn}</span></div></td><td>{r.get("motif","")}</td><td><span class="bk inf">{r["type"]}</span></td><td><span class="bk {sc}">{r["statut"]}</span></td><td>{lien}</td></tr>'
+        rows+=f'<tr><td><strong>{r["date"]}</strong></td><td>{r["heure"]}</td><td>{mname(r["matricule"])}</td><td>{r.get("motif","")}</td><td><span class="bk inf">{r["type"]}</span></td><td><span class="bk {sc}">{r["statut"]}</span></td><td>{lien}</td></tr>'
     opts_s="".join(f'<option value="{s["id"]}">{s["libelle"]}</option>' for s in DB["services"])
     body=f"""<div class="row g-3">
-  <div class="col-lg-8"><div class="card"><div class="card-hdr"><div class="title"><i class="fas fa-calendar-check"></i>Mes Rendez-vous ({len(rdvs)})</div></div>
+  <div class="col-lg-8"><div class="card"><div class="card-hdr"><div class="title"><i class="fas fa-calendar-check"></i>Mes Rendez-vous</div></div>
   <div style="overflow-x:auto;"><table class="table"><thead><tr><th>Date</th><th>Heure</th><th>Medecin</th><th>Motif</th><th>Type</th><th>Statut</th><th>Lien</th></tr></thead><tbody>
   {rows if rows else "<tr><td colspan=7 class='text-center' style='color:var(--muted);padding:20px;'>Aucun RDV</td></tr>"}
   </tbody></table></div></div></div>
@@ -4206,41 +3896,23 @@ def r_rdvs():
     pid_pre=request.args.get("pid",""); dem_pre=request.args.get("dem","0")
     rows=""
     for r in sorted(DB["rdvs"],key=lambda x:x["date"],reverse=True):
-        bcls="b-confirme" if r["statut"]=="Confirme" else "b-attente" if r["statut"]=="En attente" else "b-annule" if r["statut"]=="Annule" else "b-termine"
-        pn=pname(r["id_patient"]); _pp=pn.split()
-        pini=(_pp[0][:1]+_pp[-1][:1]).upper() if len(_pp)>=2 else pn[:2].upper()
-        actions=f"""<button type="button" class="ic-btn-mk view" title="Voir" onclick="document.getElementById('voir_{r['id']}').style.display=document.getElementById('voir_{r['id']}').style.display==='block'?'none':'block'"><i class="fas fa-eye"></i></button>"""
+        sc="ok" if r["statut"]=="Confirme" else "att" if r["statut"]=="En attente" else "err"
+        actions=""
         if r["statut"] in ["Confirme","En attente"]:
-            actions+=f"""<button type="button" class="ic-btn-mk edit" title="Reprogrammer" onclick="document.getElementById('rep_{r['id']}').style.display='block'"><i class="fas fa-pen"></i></button>
-            <button type="button" class="ic-btn-mk del" title="Annuler" onclick="document.getElementById('ann_{r['id']}').style.display='block'"><i class="fas fa-trash"></i></button>"""
-        panels=f"""<div id="voir_{r['id']}" style="display:none;margin-top:8px;padding:10px;background:var(--gl);border-radius:var(--r-sm);font-size:.8rem;">
-              <div><strong>Patient :</strong> {pn} (PAT-{r["id_patient"]:06d})</div>
-              <div><strong>Medecin :</strong> {mname(r["matricule"])}</div>
-              <div><strong>Motif :</strong> {r.get("motif","") or "—"}</div>
-              {"<div><strong>Lien teleconsultation :</strong> <a href='"+r["lien_teleconsult"]+"' target='_blank'>Ouvrir</a></div>" if r.get("lien_teleconsult") else ""}
-            </div>"""
-        if r["statut"] in ["Confirme","En attente"]:
-            panels+=f"""<div id="rep_{r['id']}" style="display:none;margin-top:8px;padding:10px;background:var(--gl);border-radius:var(--r-sm);">
+            actions+=f"""<button class="btn btn-sm btn-outline-b" onclick="document.getElementById('rep_{r['id']}').style.display='block'"><i class="fas fa-redo"></i></button>
+            <div id="rep_{r['id']}" style="display:none;margin-top:6px;padding:8px;background:#dbeafe;border-radius:6px;">
               <form method="POST"><input type="hidden" name="action" value="reprogrammer"><input type="hidden" name="rid" value="{r['id']}">
                 <div class="row g-1"><div class="col-6"><input type="date" name="new_date" class="form-control form-control-sm" required></div><div class="col-6"><input type="time" name="new_heure" class="form-control form-control-sm" required></div></div>
                 <input type="text" name="motif_rep" class="form-control form-control-sm mt-1" placeholder="Motif reprogrammation">
                 <button type="submit" class="btn btn-sm btn-b mt-1"><i class="fas fa-check"></i>Confirmer</button>
               </form></div>
-            <div id="ann_{r['id']}" style="display:none;margin-top:8px;padding:10px;background:#fdecec;border-radius:var(--r-sm);">
+            <button class="btn btn-sm btn-outline-r ms-1" onclick="document.getElementById('ann_{r['id']}').style.display='block'"><i class="fas fa-times"></i></button>
+            <div id="ann_{r['id']}" style="display:none;margin-top:6px;padding:8px;background:#fee2e2;border-radius:6px;">
               <form method="POST"><input type="hidden" name="action" value="annuler"><input type="hidden" name="rid" value="{r['id']}">
                 <input type="text" name="motif_ann" class="form-control form-control-sm mb-1" placeholder="Motif annulation" required>
                 <button type="submit" class="btn btn-sm btn-r"><i class="fas fa-check"></i>Confirmer</button>
               </form></div>"""
-        rows+=f"""<tr data-statut="{r["statut"]}" data-medecin="{r["matricule"]}" data-date="{r["date"]}">
-          <td class="apt-id">RDV-{r["id"]:06d}</td>
-          <td><div class="pat-mk"><div class="av">{pini}</div><div><div class="nm">{pn}</div><div class="idp">PAT-{r["id_patient"]:06d}</div></div></div></td>
-          <td>{mname(r["matricule"])}</td>
-          <td><div class="dt-mk">{r["date"]}</div><div class="tm-mk">{r["heure"]}</div></td>
-          <td><span class="serial-mk">#{r["id"]}</span></td>
-          <td>{r["type"]}</td>
-          <td><span class="badge-mk {bcls}">{r["statut"]}</span></td>
-          <td><div class="acts-mk">{actions}</div>{panels}</td>
-        </tr>"""
+        rows+=f'<tr data-f="{r["statut"]}"><td><strong>{r["date"]}</strong></td><td>{r["heure"]}</td><td>{pname(r["id_patient"])}</td><td>{mname(r["matricule"])}</td><td>{r.get("motif","")}</td><td><span class="bk inf">{r["type"]}</span></td><td><span class="bk {sc}">{r["statut"]}</span></td><td>{actions}</td></tr>'
     opts_p="".join(f'<option value="{p["id"]}" {"selected" if str(p["id"])==pid_pre else ""}>{p["prenom"]} {p["nom"]}</option>' for p in DB["patients"])
     # Afficher les créneaux de chaque médecin dans le select
     def med_opt(m):
@@ -4248,30 +3920,16 @@ def r_rdvs():
         jours=", ".join(sorted(set(c["jour"] for c in crens))) if crens else "Aucun creneau"
         return f'<option value="{m["matricule"]}">Dr. {m["prenom"]} {m["nom"]} ({m["specialite"]}) — {jours}</option>'
     opts_m="".join(med_opt(m) for m in DB["medecins"])
-    opts_m_filtre="".join(f'<option value="{m["matricule"]}">Dr. {m["prenom"]} {m["nom"]}</option>' for m in DB["medecins"])
-    body=f"""<div class="pg-head">
-  <div><h2><i class="fas fa-calendar-check"></i>Rendez-vous</h2><div class="cnt">{len(DB["rdvs"])} rendez-vous au total</div></div>
-  <button type="button" class="btn btn-g" onclick="document.getElementById('panelNouveauRdv').scrollIntoView({{behavior:'smooth'}});document.getElementById('panelNouveauRdv').classList.add('d-none')"><i class="fas fa-plus"></i>Nouveau rendez-vous</button>
-</div>
-<div class="row g-3">
-  <div class="col-lg-8">
-  <div class="card" style="padding:14px 18px;margin-bottom:16px;">
-    <div class="filters-mk">
-      <input type="text" id="srr" placeholder="Rechercher (patient, medecin, motif...)" oninput="filtrerRdv()">
-      <input type="date" id="drr" onchange="filtrerRdv()">
-      <select id="frr" onchange="filtrerRdv()"><option value="">Tous statuts</option><option>Confirme</option><option>Annule</option><option>Termine</option><option>En attente</option></select>
-      <select id="mrr" onchange="filtrerRdv()"><option value="">Tous medecins</option>{opts_m_filtre}</select>
-      <button type="button" class="btn-filter-mk" onclick="filtrerRdv()"><i class="fas fa-filter"></i>Filtrer</button>
-      <button type="button" class="btn-reset-mk" onclick="document.getElementById('srr').value='';document.getElementById('drr').value='';document.getElementById('frr').value='';document.getElementById('mrr').value='';filtrerRdv()"><i class="fas fa-rotate-left"></i></button>
-    </div>
+    body=f"""<div class="row g-3">
+  <div class="col-lg-8"><div class="card"><div class="card-hdr"><div class="title"><i class="fas fa-calendar-check"></i>Tous les RDV ({len(DB["rdvs"])})</div></div>
+  <div style="padding:12px 18px;display:flex;gap:10px;flex-wrap:wrap;">
+    <input type="text" id="srr" class="form-control" placeholder="Rechercher (patient, medecin, motif...)" oninput="srchFilter('trr','srr','frr')" style="max-width:280px;">
+    <select id="frr" class="form-select" onchange="srchFilter('trr','srr','frr')" style="max-width:170px;"><option value="">Tous statuts</option><option>Confirme</option><option>Annule</option><option>Termine</option><option>En attente</option></select>
   </div>
-  <div class="card" style="padding:0;overflow:hidden;">
-  <div style="overflow-x:auto;"><table class="mk-table" id="trr"><thead><tr>
-    <th>RDV N°</th><th>Patient</th><th>Medecin</th><th>Date &amp; heure</th><th>Serie</th><th>Type</th><th>Statut</th><th>Actions</th>
-  </tr></thead><tbody>
+  <div style="overflow-x:auto;"><table class="table" id="trr"><thead><tr><th>Date</th><th>Heure</th><th>Patient</th><th>Medecin</th><th>Motif</th><th>Type</th><th>Statut</th><th>Actions</th></tr></thead><tbody>
   {rows if rows else "<tr><td colspan=8 class='text-center' style='color:var(--muted);padding:20px;'>Aucun RDV</td></tr>"}
   </tbody></table></div></div></div>
-  <div class="col-lg-4" id="panelNouveauRdv"><div class="card"><div class="card-hdr"><div class="title">Nouveau RDV</div></div><div class="card-body">
+  <div class="col-lg-4"><div class="card"><div class="card-hdr"><div class="title">Nouveau RDV</div></div><div class="card-body">
     <div class="al al-i mb-2" style="font-size:.78rem;"><i class="fas fa-info-circle"></i>Le systeme verifie automatiquement les creneaux du medecin. Les RDV hors creneaux ou en doublon sont refuses.</div>
     <form method="POST" id="formRdv" onsubmit="return confirmerSiHorsCreneau()"><input type="hidden" name="action" value="creer"><input type="hidden" name="dem_id" value="{dem_pre}"><div class="row g-2">
       <div class="col-12"><label class="form-label">Patient *</label><select name="patient" class="form-select" required><option value="">--</option>{opts_p}</select></div>
@@ -4285,22 +3943,6 @@ def r_rdvs():
     </div></form>
   </div></div></div>
 </div>
-<script>
-function filtrerRdv(){{
-  const v=document.getElementById('srr').value.toLowerCase();
-  const d=document.getElementById('drr').value;
-  const f=document.getElementById('frr').value;
-  const m=document.getElementById('mrr').value;
-  document.querySelectorAll('#trr tbody tr').forEach(r=>{{
-    if(!r.dataset.statut){{return;}}
-    const okText=!v||r.textContent.toLowerCase().includes(v);
-    const okDate=!d||r.dataset.date===d;
-    const okStatut=!f||r.dataset.statut===f;
-    const okMed=!m||r.dataset.medecin===m;
-    r.style.display=(okText&&okDate&&okStatut&&okMed)?'':'none';
-  }});
-}}
-</script>
 <script>
 let _heureDispoConnue=[];
 function elt(html){{ const d=document.createElement('div'); d.innerHTML=html.trim(); return d.firstChild; }}
