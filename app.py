@@ -487,69 +487,71 @@ def api_creneaux_disponibles():
 # CSS, Sidebar, Topbar, Page builder, PDF (gen_pdf), Page Login
 # =======================================================
 
-CSS="""<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"><style>
-:root{--g1:#0d7a52;--g2:#0a5f40;--g3:#0a3b28;--gl:#e6f2ea;--gm:#c7e0d1;--gd:#8fc4a8;--acc:#2b7a9e;--warn:#c07f0e;--err:#c0392b;--bg:#f5f7f6;--card:#ffffff;--txt:#1c2622;--muted:#61756c;--sw:264px;--r-sm:8px;--r-md:12px;--r-lg:16px;--shadow-sm:0 1px 2px rgba(10,40,30,.05),0 1px 3px rgba(10,40,30,.06);--shadow-md:0 2px 8px rgba(10,40,30,.06),0 8px 24px -8px rgba(10,40,30,.10);}
+CSS="""<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"><style>
+:root{--g1:#14614A;--g2:#0F4D3A;--g3:#092A1F;--gl:#DCEBE3;--gm:#C6DED0;--gd:#8FB39E;--acc:#3B5A82;--warn:#C68A2E;--err:#B23B3B;--bg:#F1E9D8;--card:#ffffff;--txt:#1C2420;--muted:#6B7A70;--clay:#B9532C;--clay-deep:#96421F;--gold:#D9A441;--line:#E4DCC8;--sw:264px;--r-sm:8px;--r-md:12px;--r-lg:18px;--shadow-sm:0 1px 2px rgba(30,20,10,.05),0 1px 3px rgba(30,20,10,.07);--shadow-md:0 2px 10px rgba(30,20,10,.07),0 10px 26px -10px rgba(20,15,8,.16);}
 *{box-sizing:border-box;margin:0;padding:0;}
-body{background:var(--bg);font-family:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif;color:var(--txt);font-size:.9rem;line-height:1.5;-webkit-font-smoothing:antialiased;}
-h1,h2,h3,h4,h5,h6,.brand-font{font-family:'Plus Jakarta Sans',system-ui,sans-serif;letter-spacing:-.01em;}
-#sb{position:fixed;top:0;left:0;width:var(--sw);height:100vh;background:linear-gradient(180deg,var(--g3) 0%,#082e21 100%);overflow-y:auto;z-index:1040;display:flex;flex-direction:column;box-shadow:2px 0 12px rgba(0,0,0,.08);}
+body{background:var(--bg);font-family:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',sans-serif;color:var(--txt);font-size:.9rem;line-height:1.5;-webkit-font-smoothing:antialiased;}
+h1,h2,h3,h4,h5,h6,.brand-font{font-family:'Fraunces',serif;letter-spacing:-.01em;font-weight:600;}
+#sb{position:fixed;top:0;left:0;width:var(--sw);height:100vh;background:linear-gradient(180deg,var(--g3) 0%,#051710 100%);overflow-y:auto;z-index:1040;display:flex;flex-direction:column;box-shadow:2px 0 12px rgba(0,0,0,.1);}
 #sb .logo{padding:22px 18px 16px;border-bottom:1px solid rgba(255,255,255,.1);}
 #sb .logo .brand{display:flex;align-items:center;gap:11px;}
-#sb .logo .ico{width:40px;height:40px;background:linear-gradient(135deg,var(--g1),#0f9166);border-radius:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 2px 8px rgba(13,122,82,.35);}
-#sb .logo h6{color:#fff;font-size:.98rem;font-weight:700;margin:0;font-family:'Plus Jakarta Sans',sans-serif;letter-spacing:-.01em;}
-#sb .logo small{color:#8fc4a8;font-size:.68rem;letter-spacing:.02em;}
-#sb .sec{padding:16px 16px 6px;font-size:.62rem;font-weight:700;letter-spacing:1.6px;color:#6fa88a;text-transform:uppercase;}
-#sb a.nl{display:flex;align-items:center;gap:10px;padding:9px 14px;color:#cfe3d7;border-radius:9px;margin:1.5px 10px;font-size:.83rem;font-weight:500;text-decoration:none;transition:background .15s,color .15s;}
+#sb .logo .ico{width:40px;height:40px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.25);border-radius:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+#sb .logo h6{color:#fff;font-size:.98rem;font-weight:600;margin:0;font-family:'Fraunces',serif;letter-spacing:-.01em;}
+#sb .logo small{color:#8FB39E;font-size:.68rem;letter-spacing:.02em;}
+#sb .sec{padding:16px 16px 6px;font-size:.62rem;font-weight:700;letter-spacing:1.6px;color:#5E8570;text-transform:uppercase;}
+#sb a.nl{display:flex;align-items:center;gap:10px;padding:9px 14px;color:#CBDED2;border-radius:9px;margin:1.5px 10px;font-size:.83rem;font-weight:500;text-decoration:none;transition:background .15s,color .15s;}
 #sb a.nl:hover{background:rgba(255,255,255,.06);color:#fff;}
-#sb a.nl.active{background:var(--g1);color:#fff;box-shadow:0 2px 6px rgba(13,122,82,.4);}
+#sb a.nl.active{background:rgba(255,255,255,.14);color:#fff;box-shadow:none;border-left:3px solid var(--clay);padding-left:11px;}
 #sb a.nl i{width:16px;text-align:center;font-size:.82rem;opacity:.9;}
 #sb .sb-foot{padding:14px;border-top:1px solid rgba(255,255,255,.1);margin-top:auto;}
-#tb{position:fixed;top:0;left:var(--sw);right:0;height:58px;background:#fff;border-bottom:1px solid #e5eae7;display:flex;align-items:center;padding:0 24px;z-index:1030;justify-content:space-between;}
-#tb .pt{font-weight:700;color:var(--g3);font-size:1rem;display:flex;align-items:center;gap:9px;font-family:'Plus Jakarta Sans',sans-serif;letter-spacing:-.01em;}
+#tb{position:fixed;top:0;left:var(--sw);right:0;height:58px;background:#fff;border-bottom:1px solid var(--line);display:flex;align-items:center;padding:0 24px;z-index:1030;justify-content:space-between;}
+#tb .pt{font-weight:600;color:var(--g3);font-size:1.02rem;display:flex;align-items:center;gap:9px;font-family:'Fraunces',serif;letter-spacing:-.01em;}
 #mc{margin-left:var(--sw);margin-top:58px;padding:26px 28px;min-height:calc(100vh - 58px);}
-.card{background:var(--card);border:1px solid #e5eae7;border-radius:var(--r-md);box-shadow:var(--shadow-sm);}
-.card-hdr{padding:15px 20px;border-bottom:1px solid #eef1ef;display:flex;align-items:center;justify-content:space-between;background:#fff;border-radius:var(--r-md) var(--r-md) 0 0;}
-.card-hdr .title{font-weight:700;color:var(--g3);font-size:.88rem;display:flex;align-items:center;gap:10px;font-family:'Plus Jakarta Sans',sans-serif;letter-spacing:-.005em;}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r-md);box-shadow:var(--shadow-sm);}
+.card-hdr{padding:15px 20px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;background:#fff;border-radius:var(--r-md) var(--r-md) 0 0;}
+.card-hdr .title{font-weight:600;color:var(--g3);font-size:.92rem;display:flex;align-items:center;gap:10px;font-family:'Fraunces',serif;letter-spacing:-.005em;}
 .card-hdr .title i{width:30px;height:30px;background:var(--gl);color:var(--g1);border-radius:8px;display:inline-flex;align-items:center;justify-content:center;font-size:.82rem;flex-shrink:0;}
 .card-body{padding:20px;}
-.sc{border-radius:var(--r-md);padding:19px 20px;color:#fff;border:none;box-shadow:var(--shadow-md);position:relative;overflow:hidden;}
-.sc .sv{font-size:1.85rem;font-weight:800;line-height:1;font-family:'Plus Jakarta Sans',sans-serif;letter-spacing:-.02em;}
-.sc .sl{font-size:.73rem;opacity:.92;margin-top:4px;font-weight:500;}
-.bg-g{background:linear-gradient(135deg,#0d7a52,#0a5f40);}
-.bg-b{background:linear-gradient(135deg,#2b7a9e,#1f5f7d);}
-.bg-o{background:linear-gradient(135deg,#b3760f,#8f5e0c);}
-.bg-r{background:linear-gradient(135deg,#c0392b,#9c2e22);}
-.bg-v{background:linear-gradient(135deg,#6d5bb3,#584893);}
-.bg-t{background:linear-gradient(135deg,#1b8fa3,#146d7d);}
-.bg-pk{background:linear-gradient(135deg,#b8447a,#943a63);}
+.sc{background:#fff;border:1px solid var(--line);border-radius:var(--r-lg);padding:19px 22px;color:var(--txt);box-shadow:var(--shadow-sm);position:relative;overflow:hidden;transition:transform .15s ease,box-shadow .15s ease;}
+.sc::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--accent,var(--g1));}
+.sc:hover{transform:translateY(-2px);box-shadow:var(--shadow-md);}
+.sc .sv{font-size:1.7rem;font-weight:600;line-height:1;font-family:'Fraunces',serif;letter-spacing:-.02em;color:var(--accent,var(--g1));}
+.sc .sl{font-size:.72rem;color:var(--muted);margin-top:5px;font-weight:600;text-transform:uppercase;letter-spacing:.03em;}
+.bg-g{--accent:#0F4D3A;}
+.bg-b{--accent:#3B5A82;}
+.bg-o{--accent:#C68A2E;}
+.bg-r{--accent:#B23B3B;}
+.bg-v{--accent:#6d5bb3;}
+.bg-t{--accent:#B9532C;}
+.bg-pk{--accent:#b8447a;}
 .table{width:100%;border-collapse:collapse;}
-.table th{background:#fafbfa;font-size:.7rem;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--g2);padding:11px 12px;border-bottom:1.5px solid #e5eae7;text-align:left;}
-.table td{padding:11px 12px;font-size:.85rem;border-bottom:1px solid #f0f2f0;vertical-align:middle;}
+.table th{background:#FAF6EC;font-size:.7rem;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--g2);padding:11px 12px;border-bottom:1.5px solid var(--line);text-align:left;}
+.table td{padding:11px 12px;font-size:.85rem;border-bottom:1px solid #F1EADC;vertical-align:middle;}
 .table tr:last-child td{border-bottom:none;}
-.table tr:hover td{background:#fafcfa;}
+.table tr:hover td{background:#FBF8F0;}
 .bk{display:inline-block;font-size:.7rem;padding:3px 10px;border-radius:20px;font-weight:600;}
-.ok{background:#e6f2ea;color:#0a3b28;}.att{background:#fbf0da;color:#6b4a0c;}
-.err{background:#fae4e1;color:#7a251c;}.inf{background:#dde9f0;color:#1c4258;}
+.ok{background:var(--gl);color:var(--g3);}.att{background:#FBEBD8;color:#8a6415;}
+.err{background:#F6DEDE;color:#7a251c;}.inf{background:#dde9f0;color:#1c4258;}
 .vio{background:#ede9fe;color:#3b0764;}.grey{background:#f3f4f6;color:#374151;}
 .form-label{font-size:.82rem;font-weight:600;color:var(--g3);margin-bottom:5px;display:block;}
-.form-control,.form-select{border:1.5px solid #dfe7e2;border-radius:8px;padding:9px 12px;font-size:.87rem;width:100%;transition:border-color .15s,box-shadow .15s;background:#fff;color:var(--txt);}
-.form-control:focus,.form-select:focus{border-color:var(--g1);outline:none;box-shadow:0 0 0 3px rgba(13,122,82,.13);}
-.ig-text{background:#f6f8f6;border:1.5px solid #dfe7e2;border-right:none;border-radius:8px 0 0 8px;padding:9px 12px;}
-.btn{display:inline-flex;align-items:center;gap:6px;padding:9px 17px;border-radius:8px;font-size:.83rem;font-weight:600;cursor:pointer;border:none;transition:filter .15s,box-shadow .15s,transform .1s;text-decoration:none;}
+.form-control,.form-select{border:1.5px solid var(--line);border-radius:8px;padding:9px 12px;font-size:.87rem;width:100%;transition:border-color .15s,box-shadow .15s;background:#fff;color:var(--txt);font-family:'IBM Plex Sans';}
+.form-control:focus,.form-select:focus{border-color:var(--clay);outline:none;box-shadow:0 0 0 3px rgba(185,83,44,.14);}
+.ig-text{background:#FAF6EC;border:1.5px solid var(--line);border-right:none;border-radius:8px 0 0 8px;padding:9px 12px;}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:9px 17px;border-radius:8px;font-size:.83rem;font-weight:600;cursor:pointer;border:none;transition:filter .15s,box-shadow .15s,transform .1s;text-decoration:none;font-family:'IBM Plex Sans';}
 .btn:hover{filter:brightness(1.07);}
 .btn:active{transform:translateY(1px);}
-.btn-g{background:var(--g1);color:#fff;box-shadow:0 1px 2px rgba(13,122,82,.25);}.btn-r{background:var(--err);color:#fff;box-shadow:0 1px 2px rgba(192,57,43,.25);}
+.btn-g{background:var(--clay);color:#fff;box-shadow:0 1px 2px rgba(185,83,44,.3);}.btn-r{background:var(--err);color:#fff;box-shadow:0 1px 2px rgba(178,59,59,.25);}
 .btn-o{background:var(--warn);color:#fff;}.btn-b{background:var(--acc);color:#fff;}
 .btn-v{background:#8b5cf6;color:#fff;}
-.btn-outline-g{background:transparent;border:1.5px solid var(--g1);color:var(--g1);}
-.btn-outline-g:hover{background:var(--g1);color:#fff;}
+.btn-outline-g{background:transparent;border:1.5px solid var(--clay);color:var(--clay);}
+.btn-outline-g:hover{background:var(--clay);color:#fff;}
 .btn-outline-b{background:transparent;border:1.5px solid var(--acc);color:var(--acc);}
 .btn-outline-b:hover{background:var(--acc);color:#fff;}
 .btn-outline-r{background:transparent;border:1.5px solid var(--err);color:var(--err);}
 .btn-outline-r:hover{background:var(--err);color:#fff;}
 .btn-sm{padding:5px 10px;font-size:.76rem;border-radius:6px;}
 .al{border-radius:8px;padding:10px 14px;font-size:.85rem;margin-bottom:10px;display:flex;align-items:center;gap:8px;}
-.al-s{background:#e6f2ea;border:1px solid #8fc4a8;color:#0a3b28;}
+.al-s{background:var(--gl);border:1px solid var(--gd);color:var(--g3);}
 .al-e{background:#fee2e2;border:1px solid #fca5a5;color:#7f1d1d;}
 .al-w{background:#fef3c7;border:1px solid #fde047;color:#78350f;}
 .al-i{background:#dbeafe;border:1px solid #93c5fd;color:#1e3a8a;}
@@ -561,10 +563,10 @@ h1,h2,h3,h4,h5,h6,.brand-font{font-family:'Plus Jakarta Sans',system-ui,sans-ser
 .avatar{width:42px;height:42px;border-radius:50%;object-fit:cover;background:var(--gm);display:flex;align-items:center;justify-content:center;border:2px solid var(--gd);}
 .nav-tabs{display:flex;gap:4px;border-bottom:2px solid var(--gd);margin-bottom:16px;}
 .nav-tab{padding:8px 16px;border-radius:8px 8px 0 0;font-size:.84rem;font-weight:600;cursor:pointer;border:none;background:transparent;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-2px;}
-.nav-tab.active{background:#fff;color:var(--g1);border:2px solid var(--gd);border-bottom:2px solid #fff;}
+.nav-tab.active{background:#fff;color:var(--clay);border:2px solid var(--gd);border-bottom:2px solid #fff;}
 .urg-1{background:#7f1d1d;color:#fff;}.urg-2{background:#ef4444;color:#fff;}
-.urg-3{background:#f59e0b;color:#fff;}.urg-4{background:#0d7a52;color:#fff;}.urg-5{background:#dbeafe;color:#1e3a8a;}
-.stat-dispo{background:#e6f2ea;color:#0a3b28;}.stat-occ{background:#fef3c7;color:#78350f;}.stat-conge{background:#dbeafe;color:#1e3a8a;}
+.urg-3{background:#f59e0b;color:#fff;}.urg-4{background:var(--g1);color:#fff;}.urg-5{background:#dbeafe;color:#1e3a8a;}
+.stat-dispo{background:var(--gl);color:var(--g3);}.stat-occ{background:#fef3c7;color:#78350f;}.stat-conge{background:#dbeafe;color:#1e3a8a;}
 /* Charts */
 .chart-bar{display:flex;align-items:flex-end;gap:8px;height:120px;padding:8px 0;}
 .bar{flex:1;border-radius:6px 6px 0 0;min-width:20px;transition:.3s;position:relative;}
@@ -598,11 +600,11 @@ h1,h2,h3,h4,h5,h6,.brand-font{font-family:'Plus Jakarta Sans',system-ui,sans-ser
 @media(max-width:576px){
   .table-responsive-stack table, .table-responsive-stack thead, .table-responsive-stack tbody, .table-responsive-stack th, .table-responsive-stack td, .table-responsive-stack tr{display:block;}
   .table-responsive-stack thead tr{position:absolute;top:-9999px;left:-9999px;}
-  .table-responsive-stack tr{border:1px solid #dfe7e2;border-radius:8px;margin-bottom:8px;padding:6px;}
-  .table-responsive-stack td{border:none;border-bottom:1px solid #f6f8f6;position:relative;padding-left:45%;}
+  .table-responsive-stack tr{border:1px solid var(--line);border-radius:8px;margin-bottom:8px;padding:6px;}
+  .table-responsive-stack td{border:none;border-bottom:1px solid #F1EADC;position:relative;padding-left:45%;}
   .table-responsive-stack td:before{position:absolute;left:8px;width:40%;white-space:nowrap;font-weight:600;font-size:.7rem;color:var(--g2);content:attr(data-label);}
 }
-::-webkit-scrollbar{width:4px;}::-webkit-scrollbar-track{background:#f6f8f6;}::-webkit-scrollbar-thumb{background:var(--gd);border-radius:4px;}
+::-webkit-scrollbar{width:4px;}::-webkit-scrollbar-track{background:#FAF6EC;}::-webkit-scrollbar-thumb{background:var(--gd);border-radius:4px;}
 </style>"""
 
 JS_BASE="""<script>
@@ -787,7 +789,81 @@ def gen_pdf(titre,lignes):
     out+=xr+tr
     return out
 
-LOGIN_HTML=f"""<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet"><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet"><title>Connexion — LE TROPICAL</title>{CSS}<style>.lw{{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#0a3b28,#0d7a52 55%,#146d5f);}}.lc{{background:#fff;border-radius:20px;box-shadow:0 24px 60px -12px rgba(6,28,20,.45);width:100%;max-width:420px;overflow:hidden;}}.lh{{background:linear-gradient(135deg,#0a3b28,#0d7a52);padding:32px;text-align:center;color:#fff;}}.li{{width:68px;height:68px;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.25);border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:1.7rem;margin-bottom:12px;}}</style></head><body><div class="lw"><div class="lc"><div class="lh"><div class="li"><i class="fas fa-heartbeat"></i></div><h4 class="mb-0 fw-bold" style="font-family:'Plus Jakarta Sans',sans-serif;letter-spacing:-.01em;">LE TROPICAL</h4><p class="mb-0 mt-1" style="opacity:.75;font-size:.82rem;">SGRDMS — Centre de Sante</p></div><div style="padding:28px 30px;">{{ERR}}<div class="mb-3"><label class="form-label fw-semibold" style="font-size:.83rem;">Identifiant</label><div style="display:flex;"><span class="ig-text"><i class="fas fa-user" style="color:#0d7a52;"></i></span><input type="text" id="usr" class="form-control" placeholder="Votre identifiant" required autofocus style="border-radius:0 8px 8px 0;border-left:none;"></div></div><div class="mb-3"><label class="form-label fw-semibold" style="font-size:.83rem;">Mot de passe</label><div style="display:flex;"><span class="ig-text"><i class="fas fa-lock" style="color:#0d7a52;"></i></span><input type="password" id="pwd" class="form-control" placeholder="Mot de passe" required style="border-radius:0 8px 8px 0;border-left:none;"><button type="button" onclick="tp()" class="btn btn-sm btn-outline-g" style="margin-left:6px;"><i class="fas fa-eye" id="ei"></i></button></div></div><button type="button" onclick="doLogin()" class="btn btn-g w-100 mt-1" style="justify-content:center;padding:11px;font-size:.92rem;"><i class="fas fa-sign-in-alt"></i>Se connecter</button><p style="text-align:center;font-size:.74rem;color:var(--muted);margin-top:12px;"><i class="fas fa-key me-1"></i>Mot de passe oublie ? Contactez votre administrateur.</p><p style="text-align:center;font-size:.74rem;color:var(--muted);margin-top:4px;"><i class="fas fa-shield-alt me-1"></i>Acces reserve au personnel autorise</p></div></div></div><script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script><script>function doLogin(){{const u=document.getElementById('usr').value,p=document.getElementById('pwd').value;if(!u||!p){{alert('Remplir tous les champs');return;}}const f=document.createElement('form');f.method='POST';f.action='/login';[['username',u],['password',p]].forEach(([k,v])=>{{const i=document.createElement('input');i.name=k;i.value=v;f.appendChild(i);}});document.body.appendChild(f);f.submit();}}document.addEventListener('keydown',e=>{{if(e.key==='Enter')doLogin();}});function tp(){{const p=document.getElementById('pwd'),e=document.getElementById('ei');p.type=p.type==='password'?'text':'password';e.className='fas fa-eye'+(p.type==='text'?'-slash':'');}}</script></body></html>"""
+LOGIN_HTML=f"""<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+<title>Connexion — LE TROPICAL</title>
+{CSS}
+<style>
+.lw{{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(160deg,#092A1F 0%,#14614A 55%,#1A7A5C 100%);position:relative;overflow:hidden;padding:24px;}}
+.lw::before{{content:"";position:absolute;inset:0;opacity:.08;background-image:repeating-linear-gradient(45deg,#fff 0 1.5px,transparent 1.5px 30px),repeating-linear-gradient(-45deg,#fff 0 1.5px,transparent 1.5px 30px);}}
+.lc{{position:relative;background:#fff;border-radius:20px;box-shadow:0 24px 60px -12px rgba(6,20,15,.5);width:100%;max-width:412px;overflow:hidden;}}
+.lh{{background:linear-gradient(135deg,#092A1F,#14614A);padding:32px 32px 26px;text-align:center;color:#fff;}}
+.li{{width:60px;height:60px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.28);border-radius:16px;display:inline-flex;align-items:center;justify-content:center;font-size:1.5rem;margin-bottom:14px;}}
+.lh h4{{color:#fff;font-size:1.4rem;margin:0;}}
+.lh p{{opacity:.78;font-size:.82rem;margin:6px 0 0;font-family:'IBM Plex Sans';}}
+.lpulse{{height:26px;margin-top:16px;}}
+.lpulse svg{{width:100%;height:100%;}}
+.lpulse path{{fill:none;stroke:var(--gold);stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:260;stroke-dashoffset:260;animation:ldraw 2s .2s ease-out forwards;}}
+@keyframes ldraw{{to{{stroke-dashoffset:0;}}}}
+@media (prefers-reduced-motion:reduce){{.lpulse path{{animation:none;stroke-dashoffset:0;}}}}
+</style>
+</head>
+<body>
+<div class="lw">
+  <div class="lc">
+    <div class="lh">
+      <div class="li"><i class="fas fa-heartbeat"></i></div>
+      <h4>LE TROPICAL</h4>
+      <p>SGRDMS — Centre de Santé, Thiès</p>
+      <div class="lpulse"><svg viewBox="0 0 300 26" preserveAspectRatio="none"><path d="M0 13 H90 L104 4 L118 22 L132 2 L146 24 L160 13 H300"/></svg></div>
+    </div>
+    <div style="padding:30px 32px;">
+      {{ERR}}
+      <div class="mb-3">
+        <label class="form-label">Identifiant</label>
+        <div style="display:flex;">
+          <span class="ig-text"><i class="fas fa-user" style="color:var(--g1);"></i></span>
+          <input type="text" id="usr" class="form-control" placeholder="Votre identifiant" required autofocus style="border-radius:0 8px 8px 0;border-left:none;">
+        </div>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Mot de passe</label>
+        <div style="display:flex;">
+          <span class="ig-text"><i class="fas fa-lock" style="color:var(--g1);"></i></span>
+          <input type="password" id="pwd" class="form-control" placeholder="Mot de passe" required style="border-radius:0 8px 8px 0;border-left:none;">
+          <button type="button" onclick="tp()" class="btn btn-sm btn-outline-g" style="margin-left:6px;"><i class="fas fa-eye" id="ei"></i></button>
+        </div>
+      </div>
+      <button type="button" onclick="doLogin()" class="btn btn-g w-100 mt-1" style="justify-content:center;padding:12px;font-size:.92rem;"><i class="fas fa-sign-in-alt"></i>Se connecter</button>
+      <p style="text-align:center;font-size:.74rem;color:var(--muted);margin-top:14px;"><i class="fas fa-key me-1"></i>Mot de passe oublié ? Contactez votre administrateur.</p>
+      <p style="text-align:center;font-size:.74rem;color:var(--muted);margin-top:4px;"><i class="fas fa-shield-alt me-1"></i>Accès réservé au personnel autorisé</p>
+    </div>
+  </div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
+<script>
+function doLogin(){{
+  const u=document.getElementById('usr').value,p=document.getElementById('pwd').value;
+  if(!u||!p){{alert('Remplir tous les champs');return;}}
+  const f=document.createElement('form');
+  f.method='POST'; f.action='/login';
+  [['username',u],['password',p]].forEach(([k,v])=>{{const i=document.createElement('input');i.name=k;i.value=v;f.appendChild(i);}});
+  document.body.appendChild(f); f.submit();
+}}
+document.addEventListener('keydown',e=>{{if(e.key==='Enter')doLogin();}});
+function tp(){{
+  const p=document.getElementById('pwd'),e=document.getElementById('ei');
+  p.type = p.type==='password' ? 'text' : 'password';
+  e.className = 'fas fa-eye'+(p.type==='text'?'-slash':'');
+}}
+</script>
+</body>
+</html>"""
 # SGRDMS v7 — Part 3: Login, Dashboard admin (stats + charts), Admin complet
 
 # =======================================================
