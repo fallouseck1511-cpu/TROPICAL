@@ -531,8 +531,8 @@ h1,h2,h3,h4,h5,h6,.brand-font{font-family:'Fraunces',serif;letter-spacing:-.01em
 .table tr:hover td{background:#FBF8F0;}
 .bk{display:inline-block;font-size:.7rem;padding:3px 10px;border-radius:20px;font-weight:600;}
 .ok{background:var(--gl);color:var(--g3);}.att{background:#FBEBD8;color:#8a6415;}
-.err{background:#F6DEDE;color:#7a251c;}.inf{background:#dde9f0;color:#1c4258;}
-.vio{background:#ede9fe;color:#3b0764;}.grey{background:#f3f4f6;color:#374151;}
+.err{background:#F6DEDE;color:#7a251c;}.inf{background:#E2EBF3;color:#2A4560;}
+.vio{background:#E8E4F5;color:#3D2E6B;}.grey{background:#F0EDE4;color:#5A6158;}
 .form-label{font-size:.82rem;font-weight:600;color:var(--g3);margin-bottom:5px;display:block;}
 .form-control,.form-select{border:1.5px solid var(--line);border-radius:8px;padding:9px 12px;font-size:.87rem;width:100%;transition:border-color .15s,box-shadow .15s;background:#fff;color:var(--txt);font-family:'IBM Plex Sans';}
 .form-control:focus,.form-select:focus{border-color:var(--clay);outline:none;box-shadow:0 0 0 3px rgba(185,83,44,.14);}
@@ -542,7 +542,7 @@ h1,h2,h3,h4,h5,h6,.brand-font{font-family:'Fraunces',serif;letter-spacing:-.01em
 .btn:active{transform:translateY(1px);}
 .btn-g{background:var(--clay);color:#fff;box-shadow:0 1px 2px rgba(185,83,44,.3);}.btn-r{background:var(--err);color:#fff;box-shadow:0 1px 2px rgba(178,59,59,.25);}
 .btn-o{background:var(--warn);color:#fff;}.btn-b{background:var(--acc);color:#fff;}
-.btn-v{background:#8b5cf6;color:#fff;}
+.btn-v{background:#6D5BB3;color:#fff;}
 .btn-outline-g{background:transparent;border:1.5px solid var(--clay);color:var(--clay);}
 .btn-outline-g:hover{background:var(--clay);color:#fff;}
 .btn-outline-b{background:transparent;border:1.5px solid var(--acc);color:var(--acc);}
@@ -552,21 +552,22 @@ h1,h2,h3,h4,h5,h6,.brand-font{font-family:'Fraunces',serif;letter-spacing:-.01em
 .btn-sm{padding:5px 10px;font-size:.76rem;border-radius:6px;}
 .al{border-radius:8px;padding:10px 14px;font-size:.85rem;margin-bottom:10px;display:flex;align-items:center;gap:8px;}
 .al-s{background:var(--gl);border:1px solid var(--gd);color:var(--g3);}
-.al-e{background:#fee2e2;border:1px solid #fca5a5;color:#7f1d1d;}
-.al-w{background:#fef3c7;border:1px solid #fde047;color:#78350f;}
-.al-i{background:#dbeafe;border:1px solid #93c5fd;color:#1e3a8a;}
-.carte-urgence{background:#fff;border-radius:9px;padding:11px 13px;box-shadow:0 1px 3px rgba(0,0,0,.08);}
+.al-e{background:#F6DEDE;border:1px solid #DFAFAF;color:#7a251c;}
+.al-w{background:#FBEBD8;border:1px solid #E8C88A;color:#7A5312;}
+.al-i{background:#E2EBF3;border:1px solid #AFC4D8;color:#2A4560;}
+.carte-urgence{background:#fff;border:1px solid var(--line);border-radius:var(--r-md);padding:12px 14px;box-shadow:var(--shadow-sm);}
 .urgence-pulse{animation:urgPulse 1.8s infinite;}
 @keyframes urgPulse{0%,100%{box-shadow:0 1px 3px rgba(0,0,0,.08);}50%{box-shadow:0 0 0 4px rgba(127,29,29,.25);}}
 .notif-wrap{position:relative;}
 .notif-dot{position:absolute;top:-4px;right:-4px;width:18px;height:18px;background:var(--err);border-radius:50%;font-size:.6rem;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;border:2px solid #fff;}
-.avatar{width:42px;height:42px;border-radius:50%;object-fit:cover;background:var(--gm);display:flex;align-items:center;justify-content:center;border:2px solid var(--gd);}
-.nav-tabs{display:flex;gap:4px;border-bottom:2px solid var(--gd);margin-bottom:16px;}
-.nav-tab{padding:8px 16px;border-radius:8px 8px 0 0;font-size:.84rem;font-weight:600;cursor:pointer;border:none;background:transparent;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-2px;}
-.nav-tab.active{background:#fff;color:var(--clay);border:2px solid var(--gd);border-bottom:2px solid #fff;}
-.urg-1{background:#7f1d1d;color:#fff;}.urg-2{background:#ef4444;color:#fff;}
-.urg-3{background:#f59e0b;color:#fff;}.urg-4{background:var(--g1);color:#fff;}.urg-5{background:#dbeafe;color:#1e3a8a;}
-.stat-dispo{background:var(--gl);color:var(--g3);}.stat-occ{background:#fef3c7;color:#78350f;}.stat-conge{background:#dbeafe;color:#1e3a8a;}
+.avatar{width:42px;height:42px;border-radius:50%;object-fit:cover;background:var(--g2);color:#fff;font-family:'Fraunces',serif;font-weight:600;display:flex;align-items:center;justify-content:center;border:none;}
+.nav-tabs{display:inline-flex;gap:3px;background:#E9E0CC;padding:3px;border-radius:999px;margin-bottom:16px;border:none;flex-wrap:wrap;}
+.nav-tab{padding:7px 16px;border-radius:999px;font-size:.81rem;font-weight:600;cursor:pointer;border:none;background:transparent;color:var(--muted);transition:background .15s,color .15s;}
+.nav-tab:hover{color:var(--g2);}
+.nav-tab.active{background:#fff;color:var(--g2);border:none;box-shadow:0 1px 3px rgba(30,20,10,.12);}
+.urg-1{background:#7A2420;color:#fff;}.urg-2{background:#B23B3B;color:#fff;}
+.urg-3{background:#D9A441;color:#fff;}.urg-4{background:var(--g1);color:#fff;}.urg-5{background:#E2EBF3;color:#2A4560;}
+.stat-dispo{background:var(--gl);color:var(--g3);}.stat-occ{background:#FBEBD8;color:#7A5312;}.stat-conge{background:#E2EBF3;color:#2A4560;}
 /* Charts */
 .chart-bar{display:flex;align-items:flex-end;gap:8px;height:120px;padding:8px 0;}
 .bar{flex:1;border-radius:6px 6px 0 0;min-width:20px;transition:.3s;position:relative;}
@@ -889,8 +890,8 @@ def view_doc(ref_type, ref_id):
         pat = next((p for p in DB["patients"] if p["id"]==o["id_patient"]), None)
         titre = f"Ordonnance ORD-{o['id']:04d}"
         dl_url = f"/p-download/ordonnance/{ref_id}"
-        lignes_html = "".join(f'<div style="background:#f6f8f6;border-radius:8px;padding:12px 16px;margin-bottom:8px;border-left:4px solid var(--g1);"><strong>{l["libelle"]}</strong><br><small style="color:var(--muted);">Posologie : {l["posologie"]} &nbsp;|&nbsp; Durée : {l["duree"]}</small></div>' for l in o["lignes"])
-        contenu = f"""<div style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:28px;max-width:640px;margin:0 auto;font-family:sans-serif;">
+        lignes_html = "".join(f'<div style="background:#FAF6EC;border-radius:8px;padding:12px 16px;margin-bottom:8px;border-left:4px solid var(--g1);"><strong>{l["libelle"]}</strong><br><small style="color:var(--muted);">Posologie : {l["posologie"]} &nbsp;|&nbsp; Durée : {l["duree"]}</small></div>' for l in o["lignes"])
+        contenu = f"""<div style="background:#fff;border:1px solid #E4DCC8;border-radius:12px;padding:28px;max-width:640px;margin:0 auto;font-family:sans-serif;">
   <div style="text-align:center;margin-bottom:20px;padding-bottom:16px;border-bottom:2px solid var(--g1);">
     <div style="font-size:1.3rem;font-weight:800;color:var(--g3);">CENTRE DE SANTE LE TROPICAL</div>
     <div style="font-size:.85rem;color:var(--muted);">ORDONNANCE MÉDICALE</div>
@@ -903,16 +904,16 @@ def view_doc(ref_type, ref_id):
     <div><span style="color:var(--muted);">Téléphone</span><div>{"" if not pat else pat["telephone"]}</div></div>
     <div><span style="color:var(--muted);">Assurance</span><div>{"" if not pat else pat["assurance"]}</div></div>
   </div>
-  <div style="font-weight:700;color:var(--g3);margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid #e5e7eb;"><i class="fas fa-pills me-2"></i>Médicaments prescrits — Durée : {o["duree"]} jours</div>
+  <div style="font-weight:700;color:var(--g3);margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid #E4DCC8;"><i class="fas fa-pills me-2"></i>Médicaments prescrits — Durée : {o["duree"]} jours</div>
   {lignes_html}
-  {"<div style='margin-top:12px;padding:10px;background:#fef9c3;border-radius:6px;font-size:.78rem;'><i class='fas fa-exclamation-triangle' style='color:#d97706;'></i> <strong>Avertissements :</strong> "+"; ".join(a["message"][:80] for a in o.get("alertes_interactions",[]))+"</div>" if o.get("alertes_interactions") else ""}
+  {"<div style='margin-top:12px;padding:10px;background:#FBEBD8;border-radius:6px;font-size:.78rem;'><i class='fas fa-exclamation-triangle' style='color:#C68A2E;'></i> <strong>Avertissements :</strong> "+"; ".join(a["message"][:80] for a in o.get("alertes_interactions",[]))+"</div>" if o.get("alertes_interactions") else ""}
 </div>"""
     elif ref_type == "resultat":
         r = next((x for x in DB["resultats_examens"] if x["id"]==ref_id), None)
         if not r: flash("Document introuvable","danger"); return redirect(url_for("dashboard"))
         pat = next((p for p in DB["patients"] if p["id"]==r["id_patient"]), None)
         titre = f"Résultat — {r['type']}"
-        contenu = f"""<div style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:28px;max-width:640px;margin:0 auto;">
+        contenu = f"""<div style="background:#fff;border:1px solid #E4DCC8;border-radius:12px;padding:28px;max-width:640px;margin:0 auto;">
   <div style="text-align:center;margin-bottom:20px;padding-bottom:16px;border-bottom:2px solid var(--g1);">
     <div style="font-size:1.3rem;font-weight:800;color:var(--g3);">CENTRE DE SANTE LE TROPICAL</div>
     <div style="font-size:.85rem;color:var(--muted);">RÉSULTAT D'EXAMEN</div>
@@ -925,7 +926,7 @@ def view_doc(ref_type, ref_id):
     <div><span style="color:var(--muted);">Médecin</span><div>{mname(r["matricule"])}</div></div>
     <div><span style="color:var(--muted);">Statut</span><div><span class="bk ok">{r["statut"]}</span></div></div>
   </div>
-  <div style="background:#f6f8f6;border-radius:10px;padding:18px;border-left:4px solid var(--g1);margin-top:12px;">
+  <div style="background:#FAF6EC;border-radius:10px;padding:18px;border-left:4px solid var(--g1);margin-top:12px;">
     <div style="font-weight:700;color:var(--g3);margin-bottom:8px;"><i class="fas fa-flask me-2"></i>Résultats et observations</div>
     <div style="line-height:1.8;">{r["commentaire"]}</div>
   </div>
@@ -939,11 +940,11 @@ def view_doc(ref_type, ref_id):
         lignes_fac=fac.get("lignes") or []
         lignes_html="".join(f'<tr><td style="padding:6px;">{l["libelle"]}</td><td style="padding:6px;color:var(--muted);">{l["type_ligne"]}</td><td style="padding:6px;text-align:center;">{l["quantite"]}</td><td style="padding:6px;text-align:right;">{l["prix_unitaire"]:,}</td><td style="padding:6px;text-align:right;font-weight:600;">{l["montant"]:,}</td></tr>' for l in lignes_fac)
         tableau_lignes=f"""<table style="width:100%;font-size:.85rem;margin-bottom:16px;border-collapse:collapse;">
-    <thead><tr style="border-bottom:2px solid #e5e7eb;"><th style="padding:6px;text-align:left;">Libelle</th><th style="padding:6px;text-align:left;">Type</th><th style="padding:6px;">Qte</th><th style="padding:6px;text-align:right;">P.U.</th><th style="padding:6px;text-align:right;">Montant</th></tr></thead>
+    <thead><tr style="border-bottom:2px solid #E4DCC8;"><th style="padding:6px;text-align:left;">Libelle</th><th style="padding:6px;text-align:left;">Type</th><th style="padding:6px;">Qte</th><th style="padding:6px;text-align:right;">P.U.</th><th style="padding:6px;text-align:right;">Montant</th></tr></thead>
     <tbody>{lignes_html}</tbody></table>""" if lignes_html else ""
         ech = fac.get("date_echeance") or "-"
         en_retard = fac["reste_a_payer"]>0 and ech!="-" and _ds(ech)<date.today().strftime("%Y-%m-%d")
-        contenu = f"""<div style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:28px;max-width:640px;margin:0 auto;">
+        contenu = f"""<div style="background:#fff;border:1px solid #E4DCC8;border-radius:12px;padding:28px;max-width:640px;margin:0 auto;">
   <div style="text-align:center;margin-bottom:20px;padding-bottom:16px;border-bottom:2px solid var(--g1);">
     <div style="font-size:1.3rem;font-weight:800;color:var(--g3);">CENTRE DE SANTE LE TROPICAL</div>
     <div style="font-size:.85rem;color:var(--muted);">FACTURE — {fac["num_facture"]}</div>
@@ -958,25 +959,25 @@ def view_doc(ref_type, ref_id):
   </div>
   {tableau_lignes}
   <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;">
-    <div style="background:#f6f8f6;border-radius:8px;padding:14px;text-align:center;">
+    <div style="background:#FAF6EC;border-radius:8px;padding:14px;text-align:center;">
       <div style="font-size:1.1rem;font-weight:800;color:var(--g3);">{fac["montant"]:,} F</div>
       <div style="font-size:.75rem;color:var(--muted);">Total</div>
     </div>
-    <div style="background:#eff6ff;border-radius:8px;padding:14px;text-align:center;">
-      <div style="font-size:1.1rem;font-weight:800;color:#1d4ed8;">{fac["part_assurance"]:,} F</div>
+    <div style="background:#E2EBF3;border-radius:8px;padding:14px;text-align:center;">
+      <div style="font-size:1.1rem;font-weight:800;color:#3B5A82;">{fac["part_assurance"]:,} F</div>
       <div style="font-size:.75rem;color:var(--muted);">Assurance</div>
     </div>
-    <div style="background:#fff7ed;border-radius:8px;padding:14px;text-align:center;">
-      <div style="font-size:1.1rem;font-weight:800;color:#c2410c;">{fac["part_patient"]:,} F</div>
+    <div style="background:#FDF5E6;border-radius:8px;padding:14px;text-align:center;">
+      <div style="font-size:1.1rem;font-weight:800;color:#96421F;">{fac["part_patient"]:,} F</div>
       <div style="font-size:.75rem;color:var(--muted);">Part patient</div>
     </div>
   </div>
   <table style="width:100%;font-size:.88rem;">
-    <tr style="background:#f9fafb;"><td style="padding:8px;">Montant payé</td><td style="font-weight:700;color:var(--g3);text-align:right;">{fac["montant_paye"]:,} FCFA</td></tr>
+    <tr style="background:#FAF6EC;"><td style="padding:8px;">Montant payé</td><td style="font-weight:700;color:var(--g3);text-align:right;">{fac["montant_paye"]:,} FCFA</td></tr>
     <tr><td style="padding:8px;">Reste à payer</td><td style="font-weight:700;color:{"var(--err)" if fac["reste_a_payer"]>0 else "var(--g1)"};text-align:right;">{fac["reste_a_payer"]:,} FCFA</td></tr>
-    <tr style="background:#f9fafb;"><td style="padding:8px;">Echeance de paiement</td><td style="text-align:right;{"color:var(--err);font-weight:700;" if en_retard else ""}">{ech}{" (en retard)" if en_retard else ""}</td></tr>
+    <tr style="background:#FAF6EC;"><td style="padding:8px;">Echeance de paiement</td><td style="text-align:right;{"color:var(--err);font-weight:700;" if en_retard else ""}">{ech}{" (en retard)" if en_retard else ""}</td></tr>
     <tr><td style="padding:8px;">Mode paiement</td><td style="text-align:right;">{fac["mode_paiement"]}</td></tr>
-    <tr style="background:#f9fafb;"><td style="padding:8px;">Statut</td><td style="text-align:right;"><span class="bk {"ok" if fac["statut"]=="Payee" else "att" if fac["statut"]=="Partielle" else "err"}">{fac["statut"]}</span></td></tr>
+    <tr style="background:#FAF6EC;"><td style="padding:8px;">Statut</td><td style="text-align:right;"><span class="bk {"ok" if fac["statut"]=="Payee" else "att" if fac["statut"]=="Partielle" else "err"}">{fac["statut"]}</span></td></tr>
   </table>
 </div>"""
     else:
@@ -1046,15 +1047,15 @@ def dashboard():
         extra_js=f"""<script>
 // Graphique consultations par service
 const ctx1=document.getElementById('chartCons');
-if(ctx1){{new Chart(ctx1,{{type:'bar',data:{{labels:{json.dumps(chart_labels)},datasets:[{{label:'Consultations',data:{json.dumps(chart_vals)},backgroundColor:['#0d7a52','#2b7a9e','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#ec4899'],borderRadius:6}}]}},options:{{responsive:true,plugins:{{legend:{{display:false}}}},scales:{{y:{{beginAtZero:true,ticks:{{stepSize:1}}}}}}}}}})}}
+if(ctx1){{new Chart(ctx1,{{type:'bar',data:{{labels:{json.dumps(chart_labels)},datasets:[{{label:'Consultations',data:{json.dumps(chart_vals)},backgroundColor:['#0F4D3A','#3B5A82','#D9A441','#B23B3B','#6D5BB3','#4A8A93','#B8447A'],borderRadius:6}}]}},options:{{responsive:true,plugins:{{legend:{{display:false}}}},scales:{{y:{{beginAtZero:true,ticks:{{stepSize:1}}}}}}}}}})}}
 
 // Graphique RDV par statut
 const ctx2=document.getElementById('chartRdv');
-if(ctx2){{new Chart(ctx2,{{type:'doughnut',data:{{labels:{json.dumps(list(rdv_stats.keys()))},datasets:[{{data:{json.dumps(list(rdv_stats.values()))},backgroundColor:['#0d7a52','#f59e0b','#ef4444','#06b6d4'],borderWidth:2}}]}},options:{{responsive:true,plugins:{{legend:{{position:'right'}}}}}}}})}}
+if(ctx2){{new Chart(ctx2,{{type:'doughnut',data:{{labels:{json.dumps(list(rdv_stats.keys()))},datasets:[{{data:{json.dumps(list(rdv_stats.values()))},backgroundColor:['#0F4D3A','#D9A441','#B23B3B','#4A8A93'],borderWidth:2}}]}},options:{{responsive:true,plugins:{{legend:{{position:'right'}}}}}}}})}}
 
 // Graphique stocks
 const ctxS=document.getElementById('chartStock');
-if(ctxS){{const sn=[{','.join([repr(next((m["libelle"] for m in DB["medicaments"] if m["id_stock"]==s["id"]),"?")) for s in DB["stocks"]])}];const sv=[{','.join([str(s["quantite"]) for s in DB["stocks"]])}];new Chart(ctxS,{{type:'bar',data:{{labels:sn,datasets:[{{label:'Quantite',data:sv,backgroundColor:sv.map(v=>v==0?'#ef4444':v<20?'#f59e0b':'#0d7a52'),borderRadius:4}}]}},options:{{responsive:true,plugins:{{legend:{{display:false}}}},scales:{{y:{{beginAtZero:true}}}}}}}})}}
+if(ctxS){{const sn=[{','.join([repr(next((m["libelle"] for m in DB["medicaments"] if m["id_stock"]==s["id"]),"?")) for s in DB["stocks"]])}];const sv=[{','.join([str(s["quantite"]) for s in DB["stocks"]])}];new Chart(ctxS,{{type:'bar',data:{{labels:sn,datasets:[{{label:'Quantite',data:sv,backgroundColor:sv.map(v=>v==0?'#B23B3B':v<20?'#D9A441':'#0F4D3A'),borderRadius:4}}]}},options:{{responsive:true,plugins:{{legend:{{display:false}}}},scales:{{y:{{beginAtZero:true}}}}}}}})}}
 </script>"""
 
         body=f"""
@@ -1108,7 +1109,7 @@ if(ctxS){{const sn=[{','.join([repr(next((m["libelle"] for m in DB["medicaments"
   <div class="col-md-3"><a href="/p-dossier" class="card" style="text-decoration:none;display:block;"><div class="card-body text-center py-4"><i class="fas fa-folder-open fa-2x" style="color:var(--g1);"></i><div style="font-weight:600;color:var(--g3);margin-top:8px;">Mon Dossier</div><div style="font-size:.78rem;color:var(--muted);">{dos["num_dossier"] if dos else "-"}</div></div></a></div>
   <div class="col-md-3"><a href="/p-rdvs" class="card" style="text-decoration:none;display:block;"><div class="card-body text-center py-4"><i class="fas fa-calendar-check fa-2x" style="color:var(--acc);"></i><div style="font-weight:600;color:var(--g3);margin-top:8px;">Mes RDV</div></div></a></div>
   <div class="col-md-3"><a href="/p-factures" class="card" style="text-decoration:none;display:block;"><div class="card-body text-center py-4"><i class="fas fa-file-invoice-dollar fa-2x" style="color:var(--warn);"></i><div style="font-weight:600;color:var(--g3);margin-top:8px;">Mes Factures</div><div style="font-size:.78rem;color:var(--muted);">{nb_imp} en attente</div></div></a></div>
-  <div class="col-md-3"><a href="/p-tickets" class="card" style="text-decoration:none;display:block;"><div class="card-body text-center py-4"><i class="fas fa-ticket-alt fa-2x" style="color:#8b5cf6;"></i><div style="font-weight:600;color:var(--g3);margin-top:8px;">Acheter un ticket</div></div></a></div>
+  <div class="col-md-3"><a href="/p-tickets" class="card" style="text-decoration:none;display:block;"><div class="card-body text-center py-4"><i class="fas fa-ticket-alt fa-2x" style="color:#6D5BB3;"></i><div style="font-weight:600;color:var(--g3);margin-top:8px;">Acheter un ticket</div></div></a></div>
 </div>"""
         return page("Tableau de bord","patient",u,body)
 
@@ -1246,7 +1247,7 @@ def a_medecins():
           <td>{sname(m["id_service"])}</td>
           <td><span class="bk inf">{", ".join(cname(c) for c in get_med_centres(m["matricule"]))}</span><br>
           <button class="btn btn-sm btn-outline-b mt-1" style="font-size:.7rem;" onclick="document.getElementById('aff_{m["matricule"]}').style.display='block'"><i class="fas fa-plus"></i>Centres</button>
-          <div id="aff_{m["matricule"]}" style="display:none;margin-top:6px;padding:8px;background:#dbeafe;border-radius:6px;min-width:180px;">
+          <div id="aff_{m["matricule"]}" style="display:none;margin-top:6px;padding:8px;background:#E2EBF3;border-radius:6px;min-width:180px;">
             <form method="POST" action="/a-affecter-centres/{m["matricule"]}">
               {chk_centres}
               <button type="submit" class="btn btn-sm btn-g mt-1"><i class="fas fa-save"></i>Sauvegarder</button>
@@ -1732,9 +1733,9 @@ def a_rapports_financiers():
 
     extra_js=f"""<script>
 const ctxM=document.getElementById('chartMensuel');
-if(ctxM){{new Chart(ctxM,{{type:'line',data:{{labels:{json.dumps(mois_labels)},datasets:[{{label:'Recettes (FCFA)',data:{json.dumps(mois_vals)},borderColor:'#0d7a52',backgroundColor:'rgba(13,122,82,.1)',fill:true,tension:.3}}]}},options:{{responsive:true,plugins:{{legend:{{display:false}}}},scales:{{y:{{beginAtZero:true}}}}}}}})}}
+if(ctxM){{new Chart(ctxM,{{type:'line',data:{{labels:{json.dumps(mois_labels)},datasets:[{{label:'Recettes (FCFA)',data:{json.dumps(mois_vals)},borderColor:'#0F4D3A',backgroundColor:'rgba(13,122,82,.1)',fill:true,tension:.3}}]}},options:{{responsive:true,plugins:{{legend:{{display:false}}}},scales:{{y:{{beginAtZero:true}}}}}}}})}}
 const ctxT=document.getElementById('chartTypes');
-if(ctxT){{new Chart(ctxT,{{type:'doughnut',data:{{labels:{json.dumps(list(rev_type.keys()))},datasets:[{{data:{json.dumps(list(rev_type.values()))},backgroundColor:['#0d7a52','#2b7a9e','#f59e0b','#ef4444','#8b5cf6'],borderWidth:2}}]}},options:{{responsive:true,plugins:{{legend:{{position:'right'}}}}}}}})}}
+if(ctxT){{new Chart(ctxT,{{type:'doughnut',data:{{labels:{json.dumps(list(rev_type.keys()))},datasets:[{{data:{json.dumps(list(rev_type.values()))},backgroundColor:['#0F4D3A','#3B5A82','#D9A441','#B23B3B','#6D5BB3'],borderWidth:2}}]}},options:{{responsive:true,plugins:{{legend:{{position:'right'}}}}}}}})}}
 </script>"""
 
     body=f"""
@@ -1846,16 +1847,16 @@ def a_statistiques():
     def row_occ(nom,pris,cap,taux):
         if taux is None:
             return f'<tr><td>{nom}</td><td>{pris}</td><td>{cap}</td><td><span style="color:var(--muted);">Aucun creneau defini</span></td></tr>'
-        col="var(--err)" if taux>90 else "var(--g1)" if taux>=40 else "#f59e0b"
-        return f'<tr><td>{nom}</td><td>{pris}</td><td>{cap}</td><td><div style="display:flex;align-items:center;gap:8px;"><div style="flex:1;background:#e5e7eb;border-radius:6px;height:8px;overflow:hidden;"><div style="width:{min(100,taux)}%;background:{col};height:100%;"></div></div><strong style="color:{col};min-width:42px;">{taux}%</strong></div></td></tr>'
+        col="var(--err)" if taux>90 else "var(--g1)" if taux>=40 else "#D9A441"
+        return f'<tr><td>{nom}</td><td>{pris}</td><td>{cap}</td><td><div style="display:flex;align-items:center;gap:8px;"><div style="flex:1;background:#E4DCC8;border-radius:6px;height:8px;overflow:hidden;"><div style="width:{min(100,taux)}%;background:{col};height:100%;"></div></div><strong style="color:{col};min-width:42px;">{taux}%</strong></div></td></tr>'
     rows_occ="".join(row_occ(*r) for r in occ_rows)
     rows_motifs="".join(f'<tr><td>{i+1}</td><td>{m}</td><td><strong>{n}</strong></td></tr>' for i,(m,n) in enumerate(top_motifs))
 
     extra_js=f"""<script>
 const ctxE=document.getElementById('chartEvolution');
-if(ctxE){{new Chart(ctxE,{{type:'line',data:{{labels:{json.dumps(mois_labels)},datasets:[{{label:'Consultations',data:{json.dumps(cons_mois)},borderColor:'#0d7a52',backgroundColor:'rgba(13,122,82,.1)',fill:true,tension:.3}},{{label:'Rendez-vous',data:{json.dumps(rdv_mois)},borderColor:'#2b7a9e',backgroundColor:'rgba(43,122,158,.08)',fill:true,tension:.3}}]}},options:{{responsive:true,plugins:{{legend:{{display:true}}}},scales:{{y:{{beginAtZero:true,ticks:{{stepSize:1}}}}}}}}}})}}
+if(ctxE){{new Chart(ctxE,{{type:'line',data:{{labels:{json.dumps(mois_labels)},datasets:[{{label:'Consultations',data:{json.dumps(cons_mois)},borderColor:'#0F4D3A',backgroundColor:'rgba(13,122,82,.1)',fill:true,tension:.3}},{{label:'Rendez-vous',data:{json.dumps(rdv_mois)},borderColor:'#3B5A82',backgroundColor:'rgba(43,122,158,.08)',fill:true,tension:.3}}]}},options:{{responsive:true,plugins:{{legend:{{display:true}}}},scales:{{y:{{beginAtZero:true,ticks:{{stepSize:1}}}}}}}}}})}}
 const ctxM=document.getElementById('chartMotifs');
-if(ctxM){{new Chart(ctxM,{{type:'bar',indexAxis:'y',data:{{labels:{json.dumps([m for m,n in top_motifs])},datasets:[{{label:'Nb consultations',data:{json.dumps([n for m,n in top_motifs])},backgroundColor:'#8b5cf6',borderRadius:4}}]}},options:{{responsive:true,plugins:{{legend:{{display:false}}}},scales:{{x:{{beginAtZero:true,ticks:{{stepSize:1}}}}}}}}}})}}
+if(ctxM){{new Chart(ctxM,{{type:'bar',indexAxis:'y',data:{{labels:{json.dumps([m for m,n in top_motifs])},datasets:[{{label:'Nb consultations',data:{json.dumps([n for m,n in top_motifs])},backgroundColor:'#6D5BB3',borderRadius:4}}]}},options:{{responsive:true,plugins:{{legend:{{display:false}}}},scales:{{x:{{beginAtZero:true,ticks:{{stepSize:1}}}}}}}}}})}}
 </script>"""
 
     body=f"""
@@ -1992,7 +1993,7 @@ def a_assurances():
     for c in DB.get("contrats_assurance",[]):
         reste=max(0,c["plafond_annuel"]-c.get("montant_utilise",0))
         pct=int((c.get("montant_utilise",0)/c["plafond_annuel"])*100) if c["plafond_annuel"]>0 else 0
-        rows+=f'<tr data-f="{c["assureur"]}"><td><strong>{c["num_contrat"]}</strong></td><td>{pname(c["id_patient"])}</td><td><span class="bk inf">{c["assureur"]}</span></td><td>{c["taux_prise_en_charge"]}%</td><td>{c["plafond_annuel"]:,}</td><td style="color:var(--warn);font-weight:600;">{c.get("montant_utilise",0):,}</td><td style="color:{f"var(--g1)" if reste>0 else "var(--err)"};font-weight:700;">{reste:,}</td><td>{c["date_debut"]} → {c["date_fin"]}</td><td><span class="bk {"ok" if c["statut"]=="Actif" else "err"}">{c["statut"]}</span></td><td><div style="background:#e5e7eb;border-radius:20px;height:8px;min-width:80px;"><div style="background:{"var(--g1)" if pct<80 else "var(--warn)" if pct<100 else "var(--err)"};width:{min(pct,100)}%;height:8px;border-radius:20px;"></div></div><small>{pct}%</small></td></tr>'
+        rows+=f'<tr data-f="{c["assureur"]}"><td><strong>{c["num_contrat"]}</strong></td><td>{pname(c["id_patient"])}</td><td><span class="bk inf">{c["assureur"]}</span></td><td>{c["taux_prise_en_charge"]}%</td><td>{c["plafond_annuel"]:,}</td><td style="color:var(--warn);font-weight:600;">{c.get("montant_utilise",0):,}</td><td style="color:{f"var(--g1)" if reste>0 else "var(--err)"};font-weight:700;">{reste:,}</td><td>{c["date_debut"]} → {c["date_fin"]}</td><td><span class="bk {"ok" if c["statut"]=="Actif" else "err"}">{c["statut"]}</span></td><td><div style="background:#E4DCC8;border-radius:20px;height:8px;min-width:80px;"><div style="background:{"var(--g1)" if pct<80 else "var(--warn)" if pct<100 else "var(--err)"};width:{min(pct,100)}%;height:8px;border-radius:20px;"></div></div><small>{pct}%</small></td></tr>'
     opts_p="".join(f'<option value="{p["id"]}">{p["prenom"]} {p["nom"]}</option>' for p in DB["patients"])
     body=f"""<div class="card mb-3"><div class="card-hdr"><div class="title"><i class="fas fa-shield-alt"></i>Contrats d assurance ({len(DB.get("contrats_assurance",[]))})</div>
     <button class="btn btn-sm btn-g" onclick="document.getElementById('fc').classList.toggle('d-none')"><i class="fas fa-plus"></i>Nouveau</button>
@@ -2299,7 +2300,7 @@ def m_dossier(pid):
             actions=f'''<form method="POST" action="/m-examen-preleve/{r["id"]}" style="display:inline;"><button type="submit" class="btn btn-sm btn-outline-b"><i class="fas fa-vial"></i>Marquer preleve</button></form>'''
         elif r["statut"]=="Preleve":
             actions=f'''<button type="button" class="btn btn-sm btn-g" onclick="document.getElementById('resf_{r["id"]}').style.display='block'"><i class="fas fa-file-medical"></i>Saisir resultat</button>
-            <div id="resf_{r["id"]}" style="display:none;margin-top:6px;padding:10px;background:#f6f8f6;border-radius:8px;">
+            <div id="resf_{r["id"]}" style="display:none;margin-top:6px;padding:10px;background:#FAF6EC;border-radius:8px;">
               <form method="POST" action="/m-examen-resultat/{r["id"]}">
                 <input type="text" name="valeur" class="form-control form-control-sm mb-1" placeholder="Valeur mesuree" required>
                 <input type="text" name="valeurs_reference" class="form-control form-control-sm mb-1" placeholder="Valeurs de reference (optionnel)">
@@ -2315,7 +2316,7 @@ def m_dossier(pid):
     rows_o="".join(f'<tr><td>ORD-{o["id"]:04d}</td><td>{o["date"]}</td><td>{", ".join(l["libelle"] for l in o["lignes"])}</td><td>{o["duree"]} j</td></tr>' for o in ords)
     infos="".join(f'<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--gl);font-size:.82rem;"><span style="color:var(--muted);">{k}</span><span style="font-weight:600;">{v}</span></div>' for k,v in [("Sexe",pat["sexe"]),("Naissance",pat["date_naissance"]),("Groupe sg.",f'<span class="bk {gc}">{gs}</span>'),("Assurance",pat["assurance"]),("Telephone",pat["telephone"]),("Email",pat.get("email","-")),("Adresse",pat.get("adresse","-")),("Dossier",dos["num_dossier"] if dos else "-"),("Diagnostic gen.",dos["diagnostic_general"] if dos else "-")])
     if allergies:
-        allergies_html="".join(f'<span class="badge" style="background:{"#dc3545" if a["severite"] in ("Elevee","Critique") else "#ffc107"};color:#fff;margin:2px;padding:4px 8px;border-radius:6px;font-size:.75rem;display:inline-block;"><i class="fas fa-exclamation-triangle"></i> {a["libelle"]} ({a["severite"]})</span>' for a in allergies)
+        allergies_html="".join(f'<span class="badge" style="background:{"#B23B3B" if a["severite"] in ("Elevee","Critique") else "#D9A441"};color:#fff;margin:2px;padding:4px 8px;border-radius:6px;font-size:.75rem;display:inline-block;"><i class="fas fa-exclamation-triangle"></i> {a["libelle"]} ({a["severite"]})</span>' for a in allergies)
     else:
         allergies_html='<span style="color:var(--muted);font-size:.8rem;">Aucune allergie connue</span>'
 
@@ -2363,9 +2364,9 @@ def m_dossier(pid):
         chart_const_js=f"""<script>
         (function(){{
         const ctx1=document.getElementById('chartPoids');
-        if(ctx1) new Chart(ctx1,{{type:'line',data:{{labels:{json.dumps(labels)},datasets:[{{label:'Poids (kg)',data:{json.dumps(poids_data)},borderColor:'#0d7a52',backgroundColor:'rgba(13,122,82,.1)',fill:true,tension:.3}}]}},options:{{responsive:true,plugins:{{legend:{{display:true}}}}}}}});
+        if(ctx1) new Chart(ctx1,{{type:'line',data:{{labels:{json.dumps(labels)},datasets:[{{label:'Poids (kg)',data:{json.dumps(poids_data)},borderColor:'#0F4D3A',backgroundColor:'rgba(13,122,82,.1)',fill:true,tension:.3}}]}},options:{{responsive:true,plugins:{{legend:{{display:true}}}}}}}});
         const ctx2=document.getElementById('chartTension');
-        if(ctx2) new Chart(ctx2,{{type:'line',data:{{labels:{json.dumps(labels)},datasets:[{{label:'Systolique',data:{json.dumps(ts_data)},borderColor:'#ef4444',tension:.3}},{{label:'Diastolique',data:{json.dumps(td_data)},borderColor:'#2b7a9e',tension:.3}}]}},options:{{responsive:true,plugins:{{legend:{{display:true}}}}}}}});
+        if(ctx2) new Chart(ctx2,{{type:'line',data:{{labels:{json.dumps(labels)},datasets:[{{label:'Systolique',data:{json.dumps(ts_data)},borderColor:'#B23B3B',tension:.3}},{{label:'Diastolique',data:{json.dumps(td_data)},borderColor:'#3B5A82',tension:.3}}]}},options:{{responsive:true,plugins:{{legend:{{display:true}}}}}}}});
         }})();
         </script>"""
 
@@ -2767,7 +2768,7 @@ def m_urgences():
     body=f"""{alerte}<div class="row g-3 mb-3">
   <div class="col-md-3"><div class="sc bg-r"><div class="sv">{len(actifs_moi)}</div><div class="sl">Mes patients</div></div></div>
   <div class="col-md-3"><div class="sc bg-o"><div class="sv">{len(actifs_libre)}</div><div class="sl">Non assignes</div></div></div>
-  <div class="col-md-3"><div class="sc" style="background:#7f1d1d;"><div class="sv">{len([t for t in actifs_moi+actifs_libre if t["niveau_urgence"].startswith("1")])}</div><div class="sl">Reanimation</div></div></div>
+  <div class="col-md-3"><div class="sc" style="background:#7A2420;"><div class="sv">{len([t for t in actifs_moi+actifs_libre if t["niveau_urgence"].startswith("1")])}</div><div class="sl">Reanimation</div></div></div>
   <div class="col-md-3"><div class="sc bg-r"><div class="sv">{len([t for t in actifs_moi+actifs_libre if t["niveau_urgence"].startswith("2")])}</div><div class="sl">Urgent</div></div></div>
 </div>
 <div class="nav-tabs"><button class="nav-tab active" onclick="showTab('um1',this)">Mes patients ({len(actifs_moi)})</button><button class="nav-tab" onclick="showTab('um2',this)">Non assignes ({len(actifs_libre)})</button></div>
@@ -2850,12 +2851,12 @@ def m_ordo(cid):
             opts="".join(f'<option value="{m["id"]}">{m["libelle"]}</option>' for m in DB["medicaments"])
             alerte_html="".join(f'<div class="al {"al-d" if a["bloquant"] else "al-w"} mb-2"><i class="fas fa-{"exclamation-triangle" if a["bloquant"] else "info-circle"}"></i><span style="font-size:.83rem;">{a["message"]}</span></div>' for a in alertes)
             body=f"""<div class="row justify-content-center"><div class="col-lg-7"><div class="card">
-<div class="card-hdr" style="background:#dc2626;"><div class="title" style="color:#fff;"><i class="fas fa-exclamation-triangle"></i>ALERTE — Interactions detectees</div></div>
+<div class="card-hdr" style="background:#B23B3B;"><div class="title" style="color:#fff;"><i class="fas fa-exclamation-triangle"></i>ALERTE — Interactions detectees</div></div>
 <div class="card-body">
   <div class="al al-d mb-3"><i class="fas fa-ban"></i><strong>Validation bloquee.</strong> Des interactions a risque eleve ou critique ont ete detectees. Vous devez modifier la prescription.</div>
   {alerte_html}
-  <div style="margin-top:16px;padding:12px;background:#fef2f2;border-radius:8px;border-left:4px solid #dc2626;">
-    <p style="font-weight:700;color:#991b1b;font-size:.85rem;margin:0;">Regles metier : Les prescriptions doivent etre verifiees contre le module d interactions. Si le niveau de risque est eleve ou critique, le systeme bloque la validation.</p>
+  <div style="margin-top:16px;padding:12px;background:#F9ECEC;border-radius:8px;border-left:4px solid #B23B3B;">
+    <p style="font-weight:700;color:#7A2420;font-size:.85rem;margin:0;">Regles metier : Les prescriptions doivent etre verifiees contre le module d interactions. Si le niveau de risque est eleve ou critique, le systeme bloque la validation.</p>
   </div>
   <div style="display:flex;gap:8px;margin-top:16px;">
     <a href="/m-ordo/{cid}" class="btn btn-g"><i class="fas fa-edit"></i>Modifier la prescription</a>
@@ -3299,7 +3300,7 @@ def p_dossier():
     rows_c="".join(f'<tr><td>{c["date"]}</td><td>{mname(c["matricule"])}</td><td><strong>{c["diagnostic"]}</strong></td><td>{c.get("observation","")[:60]}</td><td>{c["type"]}</td></tr>' for c in conss)
     infos="".join(f'<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--gl);font-size:.82rem;"><span style="color:var(--muted);">{k}</span><span style="font-weight:600;">{v}</span></div>' for k,v in [("Nom complet",f'{pat["prenom"]} {pat["nom"]}'),("Sexe",pat["sexe"]),("Naissance",pat["date_naissance"]),("Telephone",pat["telephone"]),("Email",pat.get("email","-")),("Adresse",pat.get("adresse","-")),("Assurance",pat["assurance"]),("Groupe sanguin",f'<span class="bk {gc}">{gs}</span>'),("Statut",pat.get("statut","Actif")),("N° Dossier",dos["num_dossier"] if dos else "-"),("Depuis",dos["date_creation"] if dos else "-"),("Diagnostic gen.",dos["diagnostic_general"] if dos else "-")])
     if allergies:
-        allergies_html="".join(f'<span class="badge" style="background:{"#dc3545" if a["severite"] in ("Elevee","Critique") else "#ffc107"};color:#fff;margin:2px;padding:4px 8px;border-radius:6px;font-size:.75rem;display:inline-block;"><i class="fas fa-exclamation-triangle"></i> {a["libelle"]} ({a["severite"]})</span>' for a in allergies)
+        allergies_html="".join(f'<span class="badge" style="background:{"#B23B3B" if a["severite"] in ("Elevee","Critique") else "#D9A441"};color:#fff;margin:2px;padding:4px 8px;border-radius:6px;font-size:.75rem;display:inline-block;"><i class="fas fa-exclamation-triangle"></i> {a["libelle"]} ({a["severite"]})</span>' for a in allergies)
     else:
         allergies_html='<span style="color:var(--muted);font-size:.8rem;">Aucune allergie connue</span>'
 
@@ -3318,7 +3319,7 @@ def p_dossier():
         labels=[_ds(c["date"]) for c in constantes]
         poids_data=[c["poids"] for c in constantes]
         chart_const='<canvas id="chartPoidsP" height="90"></canvas>'
-        chart_const_js=f"""<script>(function(){{const ctx=document.getElementById('chartPoidsP');if(ctx)new Chart(ctx,{{type:'line',data:{{labels:{json.dumps(labels)},datasets:[{{label:'Poids (kg)',data:{json.dumps(poids_data)},borderColor:'#0d7a52',backgroundColor:'rgba(13,122,82,.1)',fill:true,tension:.3}}]}},options:{{responsive:true}}}});}})();</script>"""
+        chart_const_js=f"""<script>(function(){{const ctx=document.getElementById('chartPoidsP');if(ctx)new Chart(ctx,{{type:'line',data:{{labels:{json.dumps(labels)},datasets:[{{label:'Poids (kg)',data:{json.dumps(poids_data)},borderColor:'#0F4D3A',backgroundColor:'rgba(13,122,82,.1)',fill:true,tension:.3}}]}},options:{{responsive:true}}}});}})();</script>"""
 
     def row_vac(v):
         rappel=v.get("rappel_prevu")
@@ -3379,14 +3380,14 @@ def p_documents():
                         "<hr style='margin:12px 0;'>","<div style='font-weight:600;color:var(--g3);margin-bottom:8px;'><i class='fas fa-pills me-1'></i>Médicaments prescrits</div>",
                     ]
                     for l in o["lignes"]:
-                        contenu_lignes.append(f"<div style='background:#f6f8f6;border-radius:8px;padding:10px 14px;margin-bottom:8px;border-left:3px solid var(--g1);'><strong>{l['libelle']}</strong><br><small>Posologie : {l['posologie']} | Durée : {l['duree']}</small></div>")
+                        contenu_lignes.append(f"<div style='background:#FAF6EC;border-radius:8px;padding:10px 14px;margin-bottom:8px;border-left:3px solid var(--g1);'><strong>{l['libelle']}</strong><br><small>Posologie : {l['posologie']} | Durée : {l['duree']}</small></div>")
             elif ref_type=="resultat":
                 r=next((x for x in DB["resultats_examens"] if x["id"]==ref_id),None)
                 if r:
                     contenu_lignes=[f"<div style='font-weight:700;font-size:1.05rem;color:var(--g3);margin-bottom:12px;'>RÉSULTAT D'EXAMEN</div>",
                         f"<div class='row g-2'><div class='col-md-6'><small style='color:var(--muted);'>Type</small><div><strong>{r['type']}</strong></div></div><div class='col-md-6'><small style='color:var(--muted);'>Date</small><div>{r['date']}</div></div><div class='col-12'><small style='color:var(--muted);'>Médecin</small><div>{mname(r['matricule'])}</div></div></div>",
                         "<hr style='margin:12px 0;'>",
-                        f"<div style='background:#f6f8f6;border-radius:8px;padding:14px;'><i class='fas fa-microscope me-2' style='color:var(--g3);'></i>{r['commentaire']}</div>",
+                        f"<div style='background:#FAF6EC;border-radius:8px;padding:14px;'><i class='fas fa-microscope me-2' style='color:var(--g3);'></i>{r['commentaire']}</div>",
                         f"<div class='mt-2'><span class='bk ok'>{r['statut']}</span></div>",
                     ]
             elif ref_type=="facture":
@@ -3579,14 +3580,14 @@ def p_resultats():
         r=next((x for x in ress if str(x["id"])==str(voir_id)),None)
         if r:
             etapes=f"""<div style="display:flex;gap:0;margin-bottom:18px;">
-              <div style="flex:1;text-align:center;padding:8px;background:{"#e6f2ea" if r["statut"] in ("Prescrit","Preleve","Disponible") else "#f6f8f6"};border-radius:8px 0 0 8px;"><i class="fas fa-file-prescription"></i><div style="font-size:.72rem;font-weight:600;">Prescrit</div><div style="font-size:.7rem;color:var(--muted);">{r["date"]}</div></div>
-              <div style="flex:1;text-align:center;padding:8px;background:{"#e6f2ea" if r["statut"] in ("Preleve","Disponible") else "#f6f8f6"};"><i class="fas fa-vial"></i><div style="font-size:.72rem;font-weight:600;">Preleve</div><div style="font-size:.7rem;color:var(--muted);">{_ds(r.get("date_prelevement")) or "-"}</div></div>
-              <div style="flex:1;text-align:center;padding:8px;background:{"#e6f2ea" if r["statut"]=="Disponible" else "#f6f8f6"};border-radius:0 8px 8px 0;"><i class="fas fa-file-medical"></i><div style="font-size:.72rem;font-weight:600;">Resultat</div><div style="font-size:.7rem;color:var(--muted);">{_ds(r.get("date_resultat")) or "-"}</div></div>
+              <div style="flex:1;text-align:center;padding:8px;background:{"#DCEBE3" if r["statut"] in ("Prescrit","Preleve","Disponible") else "#FAF6EC"};border-radius:8px 0 0 8px;"><i class="fas fa-file-prescription"></i><div style="font-size:.72rem;font-weight:600;">Prescrit</div><div style="font-size:.7rem;color:var(--muted);">{r["date"]}</div></div>
+              <div style="flex:1;text-align:center;padding:8px;background:{"#DCEBE3" if r["statut"] in ("Preleve","Disponible") else "#FAF6EC"};"><i class="fas fa-vial"></i><div style="font-size:.72rem;font-weight:600;">Preleve</div><div style="font-size:.7rem;color:var(--muted);">{_ds(r.get("date_prelevement")) or "-"}</div></div>
+              <div style="flex:1;text-align:center;padding:8px;background:{"#DCEBE3" if r["statut"]=="Disponible" else "#FAF6EC"};border-radius:0 8px 8px 0;"><i class="fas fa-file-medical"></i><div style="font-size:.72rem;font-weight:600;">Resultat</div><div style="font-size:.7rem;color:var(--muted);">{_ds(r.get("date_resultat")) or "-"}</div></div>
             </div>"""
             contenu_resultat=""
             if r["statut"]=="Disponible":
                 anormal_html=f'<span class="bk err" style="margin-left:6px;"><i class="fas fa-exclamation-triangle"></i> Anormal</span>' if r.get("anormal") else '<span class="bk ok" style="margin-left:6px;">Normal</span>'
-                contenu_resultat=f"""<div style="background:#f6f8f6;border-radius:10px;padding:18px;border-left:4px solid var(--g1);">
+                contenu_resultat=f"""<div style="background:#FAF6EC;border-radius:10px;padding:18px;border-left:4px solid var(--g1);">
                   <div style="font-weight:600;color:var(--g3);margin-bottom:8px;"><i class="fas fa-flask me-2"></i>Resultat {anormal_html}</div>
                   <div style="font-size:.95rem;font-weight:700;margin-bottom:4px;">{r.get("valeur") or "-"}</div>
                   {"<div style='font-size:.8rem;color:var(--muted);'>Valeurs de reference : "+r["valeurs_reference"]+"</div>" if r.get("valeurs_reference") else ""}
@@ -3664,8 +3665,8 @@ def p_factures():
   <div class="col-md-3"><div class="sc bg-g"><div class="sv" style="font-size:.95rem;">{contrat["plafond_annuel"]:,} F</div><div class="sl">Plafond annuel</div></div></div>
   <div class="col-md-3"><div class="sc bg-o"><div class="sv" style="font-size:.95rem;">{contrat.get("montant_utilise",0):,} F</div><div class="sl">Utilise cette annee</div></div></div>
   <div class="col-md-3"><div class="sc {"bg-g" if reste_plaf>0 else "bg-r"}"><div class="sv" style="font-size:.95rem;">{reste_plaf:,} F</div><div class="sl">Reste disponible</div></div></div>
-  <div class="col-12"><div style="background:#f6f8f6;border-radius:8px;padding:10px 14px;font-size:.82rem;"><b>N° Contrat :</b> {contrat["num_contrat"]} &nbsp;|&nbsp; <b>Validite :</b> {contrat["date_debut"]} au {contrat["date_fin"]} &nbsp;|&nbsp; <b>Statut :</b> <span class="bk ok">{contrat["statut"]}</span></div></div>
-  <div class="col-12"><label style="font-size:.8rem;color:var(--muted);">Utilisation plafond ({pct}%)</label><div style="background:#e5e7eb;border-radius:20px;height:10px;margin-top:4px;"><div style="background:{"var(--g1)" if pct<80 else "var(--warn)" if pct<100 else "var(--err)"};width:{min(pct,100)}%;height:10px;border-radius:20px;transition:.4s;"></div></div></div>
+  <div class="col-12"><div style="background:#FAF6EC;border-radius:8px;padding:10px 14px;font-size:.82rem;"><b>N° Contrat :</b> {contrat["num_contrat"]} &nbsp;|&nbsp; <b>Validite :</b> {contrat["date_debut"]} au {contrat["date_fin"]} &nbsp;|&nbsp; <b>Statut :</b> <span class="bk ok">{contrat["statut"]}</span></div></div>
+  <div class="col-12"><label style="font-size:.8rem;color:var(--muted);">Utilisation plafond ({pct}%)</label><div style="background:#E4DCC8;border-radius:20px;height:10px;margin-top:4px;"><div style="background:{"var(--g1)" if pct<80 else "var(--warn)" if pct<100 else "var(--err)"};width:{min(pct,100)}%;height:10px;border-radius:20px;transition:.4s;"></div></div></div>
 </div></div></div>'''
     body=f"""<div class="card"><div class="card-hdr"><div class="title"><i class="fas fa-file-invoice-dollar"></i>Mes Factures ({len(facts)})</div></div>
 <div style="overflow-x:auto;"><table class="table"><thead><tr><th>Facture</th><th>Date</th><th>Total FCFA</th><th>Part assur.</th><th>A payer</th><th>Paye</th><th>Reste</th><th>Statut</th><th>Actions</th></tr></thead><tbody>
@@ -3746,7 +3747,7 @@ def p_tickets():
             origine="RDV du "+_ds(next((r["date"] for r in DB["rdvs"] if r["id"]==t.get("id_rdv")),"")) if t.get("id_rdv") else ("Consultation du "+_ds(next((c["date"] for c in DB["consultations"] if c["id"]==t.get("id_consultation")),""))) if t.get("id_consultation") else f"Motif : {t.get('justificatif','-')}"
             voir_html=f"""<div class="card mb-3" style="border:2px solid var(--g1);"><div class="card-hdr" style="background:var(--g3);"><div class="title" style="color:#fff;"><i class="fas fa-ticket-alt"></i>Detail Ticket — {t['num_ticket']}</div><a href="/p-tickets" class="btn btn-sm" style="background:rgba(255,255,255,.2);color:#fff;"><i class="fas fa-times"></i>Fermer</a></div>
 <div class="card-body"><div style="text-align:center;margin-bottom:20px;">
-  <div style="background:linear-gradient(135deg,#0a3b28,#0d7a52);border-radius:14px;padding:24px 32px;color:#fff;display:inline-block;min-width:240px;position:relative;">
+  <div style="background:linear-gradient(135deg,#0a3b28,#0F4D3A);border-radius:14px;padding:24px 32px;color:#fff;display:inline-block;min-width:240px;position:relative;">
     <div style="position:absolute;top:12px;right:12px;background:#fff;border-radius:6px;padding:4px;"><canvas id="qrTicket" width="64" height="64"></canvas></div>
     <div style="font-size:2.2rem;font-weight:800;letter-spacing:3px;">{t['num_ticket']}</div>
     <div style="font-size:1.05rem;margin-top:6px;opacity:.9;">{t['type_ticket']}</div>
@@ -3754,13 +3755,13 @@ def p_tickets():
   </div>
 </div>
 <table style="width:100%;font-size:.9rem;border-collapse:separate;border-spacing:0 4px;">
-  <tr style="background:#f6f8f6;"><td style="padding:8px 10px;color:var(--muted);">Service</td><td style="font-weight:600;">{t['type_ticket']}</td></tr>
+  <tr style="background:#FAF6EC;"><td style="padding:8px 10px;color:var(--muted);">Service</td><td style="font-weight:600;">{t['type_ticket']}</td></tr>
   <tr><td style="padding:8px 10px;color:var(--muted);">Patient</td><td><strong>{pat['prenom']} {pat['nom']}</strong></td></tr>
-  <tr style="background:#f6f8f6;"><td style="padding:8px 10px;color:var(--muted);">Justificatif</td><td>{origine}</td></tr>
+  <tr style="background:#FAF6EC;"><td style="padding:8px 10px;color:var(--muted);">Justificatif</td><td>{origine}</td></tr>
   <tr><td style="padding:8px 10px;color:var(--muted);">Prix</td><td style="font-weight:700;">{t['prix']:,} FCFA</td></tr>
-  <tr style="background:#f6f8f6;"><td style="padding:8px 10px;color:var(--muted);">Date emission</td><td>{t['date_emission']}</td></tr>
+  <tr style="background:#FAF6EC;"><td style="padding:8px 10px;color:var(--muted);">Date emission</td><td>{t['date_emission']}</td></tr>
   <tr><td style="padding:8px 10px;color:var(--muted);">Statut</td><td><span class="bk {st_cls}">{t['statut']}</span></td></tr>
-  {"<tr style='background:#f6f8f6;'><td style='padding:8px 10px;color:var(--muted);'>Contrat assur.</td><td>"+contrat['num_contrat']+" ("+contrat['assureur']+")</td></tr>" if contrat else ""}
+  {"<tr style='background:#FAF6EC;'><td style='padding:8px 10px;color:var(--muted);'>Contrat assur.</td><td>"+contrat['num_contrat']+" ("+contrat['assureur']+")</td></tr>" if contrat else ""}
 </table>
 <div class="al al-i mt-3" style="font-size:.78rem;"><i class="fas fa-info-circle"></i>{"Montrez cet ecran au receptionniste — le ticket est deja valide." if t["statut"]=="Valide" else "Ce ticket est en attente de validation par la reception avant utilisation."}</div>
 </div></div>
@@ -3976,14 +3977,14 @@ def r_rdvs():
         actions=""
         if r["statut"] in ["Confirme","En attente"]:
             actions+=f"""<button class="btn btn-sm btn-outline-b" onclick="document.getElementById('rep_{r['id']}').style.display='block'"><i class="fas fa-redo"></i></button>
-            <div id="rep_{r['id']}" style="display:none;margin-top:6px;padding:8px;background:#dbeafe;border-radius:6px;">
+            <div id="rep_{r['id']}" style="display:none;margin-top:6px;padding:8px;background:#E2EBF3;border-radius:6px;">
               <form method="POST"><input type="hidden" name="action" value="reprogrammer"><input type="hidden" name="rid" value="{r['id']}">
                 <div class="row g-1"><div class="col-6"><input type="date" name="new_date" class="form-control form-control-sm" required></div><div class="col-6"><input type="time" name="new_heure" class="form-control form-control-sm" required></div></div>
                 <input type="text" name="motif_rep" class="form-control form-control-sm mt-1" placeholder="Motif reprogrammation">
                 <button type="submit" class="btn btn-sm btn-b mt-1"><i class="fas fa-check"></i>Confirmer</button>
               </form></div>
             <button class="btn btn-sm btn-outline-r ms-1" onclick="document.getElementById('ann_{r['id']}').style.display='block'"><i class="fas fa-times"></i></button>
-            <div id="ann_{r['id']}" style="display:none;margin-top:6px;padding:8px;background:#fee2e2;border-radius:6px;">
+            <div id="ann_{r['id']}" style="display:none;margin-top:6px;padding:8px;background:#F6DEDE;border-radius:6px;">
               <form method="POST"><input type="hidden" name="action" value="annuler"><input type="hidden" name="rid" value="{r['id']}">
                 <input type="text" name="motif_ann" class="form-control form-control-sm mb-1" placeholder="Motif annulation" required>
                 <button type="submit" class="btn btn-sm btn-r"><i class="fas fa-check"></i>Confirmer</button>
@@ -4221,7 +4222,7 @@ def r_ticket_detail(tid):
     <div class="card-hdr" style="background:var(--g3);"><div class="title" style="color:#fff;"><i class="fas fa-ticket-alt" style="color:#8fc4a8;"></i>Detail Ticket {t['num_ticket']}</div></div>
     <div class="card-body">
       <div style="text-align:center;margin-bottom:20px;">
-        <div style="background:linear-gradient(135deg,#0a3b28,#0d7a52);border-radius:14px;padding:24px;color:#fff;display:inline-block;min-width:220px;position:relative;">
+        <div style="background:linear-gradient(135deg,#0a3b28,#0F4D3A);border-radius:14px;padding:24px;color:#fff;display:inline-block;min-width:220px;position:relative;">
           <div style="position:absolute;top:12px;right:12px;background:#fff;border-radius:6px;padding:4px;"><canvas id="qrTicketR" width="56" height="56"></canvas></div>
           <div style="font-size:2rem;font-weight:700;letter-spacing:2px;">{t['num_ticket']}</div>
           <div style="font-size:1rem;margin-top:4px;opacity:.9;">{t['type_ticket']}</div>
@@ -4229,15 +4230,15 @@ def r_ticket_detail(tid):
         </div>
       </div>
       <table style="width:100%;font-size:.9rem;">
-        <tr style="background:#f6f8f6;"><td style="padding:7px;color:var(--muted);">Service</td><td style="font-weight:600;">{t['type_ticket']}</td></tr>
+        <tr style="background:#FAF6EC;"><td style="padding:7px;color:var(--muted);">Service</td><td style="font-weight:600;">{t['type_ticket']}</td></tr>
         <tr><td style="padding:7px;color:var(--muted);">Patient</td><td><strong>{"" if not pat else pat["prenom"]+" "+pat["nom"]}</strong></td></tr>
-        <tr style="background:#f6f8f6;"><td style="padding:7px;color:var(--muted);">Telephone</td><td>{"" if not pat else pat["telephone"]}</td></tr>
+        <tr style="background:#FAF6EC;"><td style="padding:7px;color:var(--muted);">Telephone</td><td>{"" if not pat else pat["telephone"]}</td></tr>
         <tr><td style="padding:7px;color:var(--muted);">Justificatif</td><td>{origine}</td></tr>
-        <tr style="background:#f6f8f6;"><td style="padding:7px;color:var(--muted);">Prix</td><td style="font-weight:700;">{t['prix']:,} FCFA</td></tr>
+        <tr style="background:#FAF6EC;"><td style="padding:7px;color:var(--muted);">Prix</td><td style="font-weight:700;">{t['prix']:,} FCFA</td></tr>
         <tr><td style="padding:7px;color:var(--muted);">Date emission</td><td>{t['date_emission']}</td></tr>
-        <tr style="background:#f6f8f6;"><td style="padding:7px;color:var(--muted);">Statut</td><td><span class="bk {st_cls}">{t['statut']}</span></td></tr>
+        <tr style="background:#FAF6EC;"><td style="padding:7px;color:var(--muted);">Statut</td><td><span class="bk {st_cls}">{t['statut']}</span></td></tr>
         {"<tr><td style='padding:7px;color:var(--muted);'>Valide par</td><td>"+(t.get('valide_par') or '-')+" le "+str(t.get('date_validation') or '-')+"</td></tr>" if t["statut"]!="En attente" else ""}
-        {"<tr style='background:#f6f8f6;'><td style='padding:7px;color:var(--muted);'>Contrat assur.</td><td>"+contrat['num_contrat']+" ("+contrat['assureur']+")</td></tr>" if contrat else ""}
+        {"<tr style='background:#FAF6EC;'><td style='padding:7px;color:var(--muted);'>Contrat assur.</td><td>"+contrat['num_contrat']+" ("+contrat['assureur']+")</td></tr>" if contrat else ""}
       </table>
       <div class="al al-i mt-3" style="font-size:.78rem;"><i class="fas fa-info-circle"></i>{"Verifiez que le justificatif correspond bien avant validation." if t["statut"]=="En attente" else "Ticket deja traite."}</div>
       <div style="margin-top:16px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">
@@ -4471,7 +4472,7 @@ def r_triage():
         duree=attente_str(t["date_arrivee"]) if t["statut"] in ["En attente","En cours"] else "-"
         duree_col="var(--err)" if mins>60 else "var(--warn)" if mins>30 else "var(--muted)"
         transfer_html=f'''<button type="button" class="btn btn-sm btn-outline-b" onclick="document.getElementById('tr_{t["id"]}').style.display='block'" style="flex:1;"><i class="fas fa-exchange-alt"></i> Transferer</button>
-        <div id="tr_{t["id"]}" style="display:none;margin-top:6px;padding:8px;background:#eef4ff;border-radius:8px;width:100%;">
+        <div id="tr_{t["id"]}" style="display:none;margin-top:6px;padding:8px;background:#E2EBF3;border-radius:8px;width:100%;">
           <form method="POST"><input type="hidden" name="action" value="transferer"><input type="hidden" name="tid" value="{t["id"]}">
             <select name="service_dest" class="form-select form-select-sm mb-1">{opts_transfer_svc}</select>
             <button type="submit" class="btn btn-sm btn-b w-100"><i class="fas fa-check"></i>Confirmer</button>
@@ -4482,7 +4483,7 @@ def r_triage():
         elif t["statut"]=="En cours":
             statut_actions=f'''<form method="POST" style="flex:1;"><input type="hidden" name="action" value="update"><input type="hidden" name="tid" value="{t["id"]}"><input type="hidden" name="statut" value="Termine"><button type="submit" class="btn btn-sm btn-outline-g w-100"><i class="fas fa-check-circle"></i> Terminer</button></form>'''
         pulse=' urgence-pulse' if est_critique and t["statut"]=="En attente" else ""
-        return f'''<div class="carte-urgence{pulse}" style="border-left:5px solid {"#7f1d1d" if t["niveau_urgence"].startswith("1") else "var(--err)" if t["niveau_urgence"].startswith("2") else "var(--warn)" if t["niveau_urgence"].startswith("3") else "var(--g1)"};">
+        return f'''<div class="carte-urgence{pulse}" style="border-left:5px solid {"#7A2420" if t["niveau_urgence"].startswith("1") else "var(--err)" if t["niveau_urgence"].startswith("2") else "var(--warn)" if t["niveau_urgence"].startswith("3") else "var(--g1)"};">
           <div style="display:flex;justify-content:space-between;align-items:start;gap:6px;">
             <div>
               <div style="font-weight:700;font-size:.92rem;color:var(--g3);">{anon_badge}{nom_aff}</div>
@@ -4510,31 +4511,31 @@ def r_triage():
     opts_p="".join(f'<option value="{p["id"]}">{p["prenom"]} {p["nom"]}</option>' for p in DB["patients"])
     opts_m="".join(f'<option value="{m["matricule"]}">Dr. {m["prenom"]} {m["nom"]}</option>' for m in DB["medecins"])
     body=f"""<div class="row g-3 mb-3">
-  <div class="col-md-2"><div class="sc" style="background:#7f1d1d;"><div class="sv">{len([t for t in actifs if t["niveau_urgence"].startswith("1")])}</div><div class="sl">Reanimation</div></div></div>
+  <div class="col-md-2"><div class="sc" style="background:#7A2420;"><div class="sv">{len([t for t in actifs if t["niveau_urgence"].startswith("1")])}</div><div class="sl">Reanimation</div></div></div>
   <div class="col-md-2"><div class="sc bg-r"><div class="sv">{len([t for t in actifs if t["niveau_urgence"].startswith("2")])}</div><div class="sl">Urgent</div></div></div>
   <div class="col-md-2"><div class="sc bg-o"><div class="sv">{len([t for t in actifs if t["niveau_urgence"].startswith("3")])}</div><div class="sl">Semi-urgent</div></div></div>
   <div class="col-md-2"><div class="sc bg-g"><div class="sv">{len([t for t in actifs if not any(t["niveau_urgence"].startswith(x) for x in ["1","2","3"])])}</div><div class="sl">Peu/Non urgent</div></div></div>
   <div class="col-md-4"><div class="sc bg-b"><div class="sv">{len(actifs)}</div><div class="sl">Total actifs</div></div></div>
 </div>
-{'<div class="al al-e mb-3" style="border:2px solid #7f1d1d;animation:urgPulse 1.5s infinite;"><i class="fas fa-triangle-exclamation" style="color:#7f1d1d;"></i><strong style="color:#7f1d1d;">'+str(len(critiques_attente))+' patient(s) critique(s) en attente de prise en charge !</strong></div>' if critiques_attente else ''}
+{'<div class="al al-e mb-3" style="border:2px solid #7A2420;animation:urgPulse 1.5s infinite;"><i class="fas fa-triangle-exclamation" style="color:#7A2420;"></i><strong style="color:#7A2420;">'+str(len(critiques_attente))+' patient(s) critique(s) en attente de prise en charge !</strong></div>' if critiques_attente else ''}
 <div class="row g-3">
   <div class="col-lg-9">
     <div class="row g-2">
       <div class="col-md-4">
-        <div style="background:#fef2f2;border-radius:10px 10px 0 0;padding:10px 14px;border:1px solid #fecaca;border-bottom:none;"><strong style="color:#7f1d1d;font-size:.85rem;"><i class="fas fa-hourglass-half"></i> En attente ({len(col_attente)})</strong></div>
-        <div style="background:#fef2f2;border:1px solid #fecaca;border-top:none;border-radius:0 0 10px 10px;padding:10px;min-height:200px;max-height:640px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;">
+        <div style="background:#F9ECEC;border-radius:10px 10px 0 0;padding:10px 14px;border:1px solid #DFAFAF;border-bottom:none;"><strong style="color:#7A2420;font-size:.85rem;"><i class="fas fa-hourglass-half"></i> En attente ({len(col_attente)})</strong></div>
+        <div style="background:#F9ECEC;border:1px solid #DFAFAF;border-top:none;border-radius:0 0 10px 10px;padding:10px;min-height:200px;max-height:640px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;">
           {cartes_attente if cartes_attente else "<div style='text-align:center;color:var(--muted);font-size:.8rem;padding:20px;'>Aucun patient en attente</div>"}
         </div>
       </div>
       <div class="col-md-4">
-        <div style="background:#fffbeb;border-radius:10px 10px 0 0;padding:10px 14px;border:1px solid #fde68a;border-bottom:none;"><strong style="color:#78350f;font-size:.85rem;"><i class="fas fa-user-md"></i> En cours ({len(col_encours)})</strong></div>
-        <div style="background:#fffbeb;border:1px solid #fde68a;border-top:none;border-radius:0 0 10px 10px;padding:10px;min-height:200px;max-height:640px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;">
+        <div style="background:#FDF5E6;border-radius:10px 10px 0 0;padding:10px 14px;border:1px solid #E8C88A;border-bottom:none;"><strong style="color:#7A5312;font-size:.85rem;"><i class="fas fa-user-md"></i> En cours ({len(col_encours)})</strong></div>
+        <div style="background:#FDF5E6;border:1px solid #E8C88A;border-top:none;border-radius:0 0 10px 10px;padding:10px;min-height:200px;max-height:640px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;">
           {cartes_encours if cartes_encours else "<div style='text-align:center;color:var(--muted);font-size:.8rem;padding:20px;'>Aucun patient en charge</div>"}
         </div>
       </div>
       <div class="col-md-4">
-        <div style="background:#f0fdf4;border-radius:10px 10px 0 0;padding:10px 14px;border:1px solid #bbf7d0;border-bottom:none;"><strong style="color:var(--g3);font-size:.85rem;"><i class="fas fa-check-circle"></i> Traites (recent)</strong></div>
-        <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-top:none;border-radius:0 0 10px 10px;padding:10px;min-height:200px;max-height:640px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;">
+        <div style="background:#EDF5F0;border-radius:10px 10px 0 0;padding:10px 14px;border:1px solid #C6DED0;border-bottom:none;"><strong style="color:var(--g3);font-size:.85rem;"><i class="fas fa-check-circle"></i> Traites (recent)</strong></div>
+        <div style="background:#EDF5F0;border:1px solid #C6DED0;border-top:none;border-radius:0 0 10px 10px;padding:10px;min-height:200px;max-height:640px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;">
           {cartes_traites if cartes_traites else "<div style='text-align:center;color:var(--muted);font-size:.8rem;padding:20px;'>Aucun</div>"}
         </div>
       </div>
@@ -4588,7 +4589,7 @@ def r_teleconsult():
         if s=="Planifiee" and not lien_ok:
             return '<span class="bk att"><i class="fas fa-clock me-1"></i>Lien non envoye</span>'
         if s=="En cours":
-            return '<span class="bk inf"><i class="fas fa-circle me-1" style="color:#ef4444;animation:pulse 1s infinite;"></i>En cours</span>'
+            return '<span class="bk inf"><i class="fas fa-circle me-1" style="color:#B23B3B;animation:pulse 1s infinite;"></i>En cours</span>'
         if s=="Terminee":
             return '<span class="bk grey"><i class="fas fa-flag-checkered me-1"></i>Terminee</span>'
         if s=="Annulee":
