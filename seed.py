@@ -11,6 +11,7 @@ from models import db, Centre, Service, User, Medecin, Patient, Dossier, \
     AllergiePatient, InteractionMedicamenteuse, Notification, Historique, \
     ListeAttente, Triage, ResultatExamen, DocumentPatient, DemandeRdv
 from datetime import date
+from werkzeug.security import generate_password_hash
 
 
 def run_seed():
@@ -39,20 +40,20 @@ def run_seed():
 
     # ── USERS ───────────────────────────────────────────────────
     users = [
-        User(username="admin",          password="admin123",   role="admin",          nom="Systeme",    prenom="Admin",    email="admin@tropical.sn",     telephone="33 951 00 00"),
-        User(username="receptionniste", password="recep123",   role="receptionniste", nom="Ndiaye",     prenom="Fatou",    email="recep@tropical.sn",      telephone="77 444 55 66"),
-        User(username="pharmacien",     password="pharma123",  role="pharmacien",     nom="Fall",       prenom="Mamadou",  email="pharma@tropical.sn",     telephone="76 555 66 77"),
-        User(username="infirmier",      password="infirm123",  role="infirmier",      nom="Diatta",     prenom="Awa",      email="infirmier@tropical.sn",  telephone="77 222 33 44"),
-        User(username="dr.ndiaye",      password="med123",     role="medecin",        nom="Ndiaye",     prenom="Rokhaya",  email="dr.ndiaye@tropical.sn",  telephone="76 222 33 44", id_ref="MED001", status_med="Disponible",  teleconsult_actif=False),
-        User(username="dr.diallo",      password="med123",     role="medecin",        nom="Diallo",     prenom="Cheikh",   email="dr.diallo@tropical.sn",  telephone="77 111 22 33", id_ref="MED002", status_med="Disponible",  teleconsult_actif=True),
-        User(username="dr.toure",       password="med123",     role="medecin",        nom="Toure",      prenom="Fatou",    email="dr.toure@tropical.sn",   telephone="76 888 99 00", id_ref="MED003", status_med="Disponible",  teleconsult_actif=True),
-        User(username="dr.sarr",        password="med123",     role="medecin",        nom="Sarr",       prenom="Abdoulaye",email="dr.sarr@tropical.sn",    telephone="70 333 44 55", id_ref="MED004", status_med="En conge",    teleconsult_actif=True),
-        User(username="dr.fall",        password="med123",     role="medecin",        nom="Fall",       prenom="Mariama",  email="dr.fall@tropical.sn",    telephone="77 444 55 66", id_ref="MED005", status_med="Disponible",  teleconsult_actif=False),
-        User(username="dr.ba",          password="med123",     role="medecin",        nom="Ba",         prenom="Oumar",    email="dr.ba@tropical.sn",      telephone="76 555 66 77", id_ref="MED006", status_med="Disponible",  teleconsult_actif=True),
-        User(username="dr.gueye",       password="med123",     role="medecin",        nom="Gueye",      prenom="Aminata",  email="dr.gueye@tropical.sn",   telephone="70 666 77 88", id_ref="MED007", status_med="Disponible",  teleconsult_actif=False),
-        User(username="dr.diop",        password="med123",     role="medecin",        nom="Diop",       prenom="Moussa",   email="dr.diop@tropical.sn",    telephone="77 777 88 99", id_ref="MED008", status_med="Disponible",  teleconsult_actif=False),
-        User(username="ibra.sow",       password="patient123", role="patient",        nom="Sow",        prenom="Ibrahima", email="ibra@email.com",          telephone="77 123 45 67"),
-        User(username="aminata.d",      password="patient123", role="patient",        nom="Diallo",     prenom="Aminata",  email="aminata@email.com",       telephone="76 234 56 78"),
+        User(username="admin",          password=generate_password_hash("admin123"),   role="admin",          nom="Systeme",    prenom="Admin",    email="admin@tropical.sn",     telephone="33 951 00 00"),
+        User(username="receptionniste", password=generate_password_hash("recep123"),   role="receptionniste", nom="Ndiaye",     prenom="Fatou",    email="recep@tropical.sn",      telephone="77 444 55 66"),
+        User(username="pharmacien",     password=generate_password_hash("pharma123"),  role="pharmacien",     nom="Fall",       prenom="Mamadou",  email="pharma@tropical.sn",     telephone="76 555 66 77"),
+        User(username="infirmier",      password=generate_password_hash("infirm123"),  role="infirmier",      nom="Diatta",     prenom="Awa",      email="infirmier@tropical.sn",  telephone="77 222 33 44"),
+        User(username="dr.ndiaye",      password=generate_password_hash("med123"),     role="medecin",        nom="Ndiaye",     prenom="Rokhaya",  email="dr.ndiaye@tropical.sn",  telephone="76 222 33 44", id_ref="MED001", status_med="Disponible",  teleconsult_actif=False),
+        User(username="dr.diallo",      password=generate_password_hash("med123"),     role="medecin",        nom="Diallo",     prenom="Cheikh",   email="dr.diallo@tropical.sn",  telephone="77 111 22 33", id_ref="MED002", status_med="Disponible",  teleconsult_actif=True),
+        User(username="dr.toure",       password=generate_password_hash("med123"),     role="medecin",        nom="Toure",      prenom="Fatou",    email="dr.toure@tropical.sn",   telephone="76 888 99 00", id_ref="MED003", status_med="Disponible",  teleconsult_actif=True),
+        User(username="dr.sarr",        password=generate_password_hash("med123"),     role="medecin",        nom="Sarr",       prenom="Abdoulaye",email="dr.sarr@tropical.sn",    telephone="70 333 44 55", id_ref="MED004", status_med="En conge",    teleconsult_actif=True),
+        User(username="dr.fall",        password=generate_password_hash("med123"),     role="medecin",        nom="Fall",       prenom="Mariama",  email="dr.fall@tropical.sn",    telephone="77 444 55 66", id_ref="MED005", status_med="Disponible",  teleconsult_actif=False),
+        User(username="dr.ba",          password=generate_password_hash("med123"),     role="medecin",        nom="Ba",         prenom="Oumar",    email="dr.ba@tropical.sn",      telephone="76 555 66 77", id_ref="MED006", status_med="Disponible",  teleconsult_actif=True),
+        User(username="dr.gueye",       password=generate_password_hash("med123"),     role="medecin",        nom="Gueye",      prenom="Aminata",  email="dr.gueye@tropical.sn",   telephone="70 666 77 88", id_ref="MED007", status_med="Disponible",  teleconsult_actif=False),
+        User(username="dr.diop",        password=generate_password_hash("med123"),     role="medecin",        nom="Diop",       prenom="Moussa",   email="dr.diop@tropical.sn",    telephone="77 777 88 99", id_ref="MED008", status_med="Disponible",  teleconsult_actif=False),
+        User(username="ibra.sow",       password=generate_password_hash("patient123"), role="patient",        nom="Sow",        prenom="Ibrahima", email="ibra@email.com",          telephone="77 123 45 67"),
+        User(username="aminata.d",      password=generate_password_hash("patient123"), role="patient",        nom="Diallo",     prenom="Aminata",  email="aminata@email.com",       telephone="76 234 56 78"),
     ]
     db.session.add_all(users); db.session.flush()
 
@@ -194,7 +195,7 @@ def ensure_default_accounts():
     sans jamais toucher aux comptes/donnees existants."""
     added = []
     if User.query.filter_by(username="infirmier").first() is None:
-        u = User(username="infirmier", password="infirm123", role="infirmier",
+        u = User(username="infirmier", password=generate_password_hash("infirm123"), role="infirmier",
                  nom="Diatta", prenom="Awa", email="infirmier@tropical.sn", telephone="77 222 33 44")
         db.session.add(u)
         added.append("infirmier")

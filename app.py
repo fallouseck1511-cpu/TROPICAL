@@ -14,6 +14,7 @@ from functools import wraps
 from datetime import datetime,date,timedelta
 import json,copy,os,base64,io,csv
 from dotenv import load_dotenv
+from werkzeug.security import generate_password_hash, check_password_hash
 
 load_dotenv()  # charge .env en local, ignoré sur Render (variables injectées directement)
 
@@ -1003,7 +1004,7 @@ def login():
     if request.method=="POST":
         u=request.form.get("username",""); pw=request.form.get("password","")
         ud=DB["users"].get(u)
-        if ud and ud["password"]==pw:
+        if ud and check_password_hash(ud["password"], pw):
             session["user"]=u; session["role"]=ud["role"]
             return redirect(url_for("dashboard"))
         err='<div class="al al-e"><i class="fas fa-times-circle"></i>Identifiant ou mot de passe incorrect.</div>'
@@ -1373,7 +1374,7 @@ def reset_password_patient(pid):
         return redirect(request.referrer or url_for("dashboard"))
     import random, string
     new_pwd="".join(random.choices(string.digits,k=6))
-    DB["users"][uname]["password"]=new_pwd
+    DB["users"][uname]["password"]=generate_password_hash(new_pwd)
     add_hist(f"Reset mot de passe patient : {pat['prenom']} {pat['nom']} ({uname})","Securite",session["user"],pid)
     flash(f"Mot de passe de {pat['prenom']} {pat['nom']} reinitialise. Identifiant : <strong>{uname}</strong> | Nouveau mot de passe : <strong>{new_pwd}</strong>","success")
     return redirect(request.referrer or url_for("dashboard"))
@@ -1389,7 +1390,7 @@ def a_reset_password(uname):
         flash("Impossible de reinitialiser le mot de passe d'un admin.","danger"); return redirect(request.referrer or url_for("dashboard"))
     import random, string
     new_pwd="".join(random.choices(string.ascii_letters+string.digits,k=8))
-    u["password"]=new_pwd
+    u["password"]=generate_password_hash(new_pwd)
     nom_u=f"{u.get('prenom','')} {u.get('nom','')}".strip() or uname
     add_hist(f"Reinitialisation mot de passe : {nom_u} ({uname})","Securite",session["user"])
     flash(f"Mot de passe de {nom_u} reinitialise. Nouveau mot de passe temporaire : <strong>{new_pwd}</strong>","success")
@@ -5359,10 +5360,10 @@ def profil():
     if request.method=="POST":
         d=request.form; action=d.get("action")
         if action=="pwd":
-            if d.get("old")!=ud["password"]: flash("Ancien mot de passe incorrect.","danger"); return redirect(url_for("profil"))
+            if not check_password_hash(ud["password"], d.get("old","")): flash("Ancien mot de passe incorrect.","danger"); return redirect(url_for("profil"))
             if d.get("new1")!=d.get("new2"): flash("Mots de passe differents.","danger"); return redirect(url_for("profil"))
             if len(d.get("new1",""))<4: flash("Minimum 4 caracteres.","danger"); return redirect(url_for("profil"))
-            ud["password"]=d["new1"]; flash("Mot de passe modifie.","success")
+            ud["password"]=generate_password_hash(d["new1"]); flash("Mot de passe modifie.","success")
         elif action=="info":
             ud["email"]=d.get("email",ud.get("email",""))
             ud["telephone"]=d.get("tel",ud.get("telephone",""))
