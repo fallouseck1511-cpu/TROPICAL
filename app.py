@@ -5450,4 +5450,10 @@ def profil():
 <script>function previewPhoto(input){{if(input.files&&input.files[0]){{const r=new FileReader();r.onload=function(e){{document.getElementById('preview_img').src=e.target.result;document.getElementById('photo_preview').style.display='block';document.getElementById('photo_b64').value=e.target.result;}};r.readAsDataURL(input.files[0]);}}}}</script>"""
     return page("Mon Profil",role,u,body)
 
+@app.route("/_diag_users_tmp987")
+def _diag_users_tmp987():
+    from models import User
+    lignes = [f"{u.username} | role={u.role}" for u in User.query.order_by(User.role).all()]
+    return "<pre>" + "\n".join(lignes) + "</pre>"
+
 # ── LANCEMENT ─────────────────────────────────────────────────
