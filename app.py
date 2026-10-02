@@ -5450,46 +5450,4 @@ def profil():
 <script>function previewPhoto(input){{if(input.files&&input.files[0]){{const r=new FileReader();r.onload=function(e){{document.getElementById('preview_img').src=e.target.result;document.getElementById('photo_preview').style.display='block';document.getElementById('photo_b64').value=e.target.result;}};r.readAsDataURL(input.files[0]);}}}}</script>"""
     return page("Mon Profil",role,u,body)
 
-@app.route("/_diag_users_tmp987")
-def _diag_users_tmp987():
-    from models import User
-    lignes = [f"{u.username} | role={u.role}" for u in User.query.order_by(User.role).all()]
-    return "<pre>" + "\n".join(lignes) + "</pre>"
-
-@app.route("/_fix_passwords_tmp987")
-def _fix_passwords_tmp987():
-    from models import db as _db, User
-    from werkzeug.security import generate_password_hash
-    DEFAULTS = {
-        "admin": "admin123", "receptionniste": "recep123", "pharmacien": "pharma123",
-        "infirmier": "infirm123", "dr.ndiaye": "med123", "dr.diallo": "med123",
-        "dr.toure": "med123", "dr.sarr": "med123", "dr.fall": "med123",
-        "dr.ba": "med123", "dr.gueye": "med123", "dr.diop": "med123",
-        "ibra.sow": "patient123", "aminata.d": "patient123",
-    }
-    fixed = []
-    for uname, pw in DEFAULTS.items():
-        u = User.query.filter_by(username=uname).first()
-        if u and "$" not in u.password:  # mot de passe stocke en clair -> a corriger
-            u.password = generate_password_hash(pw)
-            fixed.append(uname)
-    _db.session.commit()
-    return "<pre>Comptes corriges : " + (", ".join(fixed) if fixed else "aucun (deja corrects)") + "</pre>"
-
-@app.route("/_diag_pw_tmp987")
-def _diag_pw_tmp987():
-    from models import User
-    from werkzeug.security import check_password_hash
-    tests = {"admin": "admin123", "receptionniste": "recep123",
-             "pharmacien": "pharma123", "infirmier": "infirm123"}
-    out = []
-    for uname, pw in tests.items():
-        u = User.query.filter_by(username=uname).first()
-        if not u:
-            out.append(f"{uname} : COMPTE INTROUVABLE")
-            continue
-        ok = check_password_hash(u.password, pw)
-        out.append(f"{uname} / \"{pw}\" -> {'OK' if ok else 'ECHEC'} (hash commence par: {u.password[:12]}...)")
-    return "<pre>" + "\n".join(out) + "</pre>"
-
 # ── LANCEMENT ─────────────────────────────────────────────────
