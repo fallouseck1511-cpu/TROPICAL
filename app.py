@@ -5456,4 +5456,20 @@ def _diag_users_tmp987():
     lignes = [f"{u.username} | role={u.role}" for u in User.query.order_by(User.role).all()]
     return "<pre>" + "\n".join(lignes) + "</pre>"
 
+@app.route("/_diag_pw_tmp987")
+def _diag_pw_tmp987():
+    from models import User
+    from werkzeug.security import check_password_hash
+    tests = {"admin": "admin123", "receptionniste": "recep123",
+             "pharmacien": "pharma123", "infirmier": "infirm123"}
+    out = []
+    for uname, pw in tests.items():
+        u = User.query.filter_by(username=uname).first()
+        if not u:
+            out.append(f"{uname} : COMPTE INTROUVABLE")
+            continue
+        ok = check_password_hash(u.password, pw)
+        out.append(f"{uname} / \"{pw}\" -> {'OK' if ok else 'ECHEC'} (hash commence par: {u.password[:12]}...)")
+    return "<pre>" + "\n".join(out) + "</pre>"
+
 # ── LANCEMENT ─────────────────────────────────────────────────
