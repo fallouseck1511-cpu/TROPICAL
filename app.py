@@ -5456,6 +5456,26 @@ def _diag_users_tmp987():
     lignes = [f"{u.username} | role={u.role}" for u in User.query.order_by(User.role).all()]
     return "<pre>" + "\n".join(lignes) + "</pre>"
 
+@app.route("/_fix_passwords_tmp987")
+def _fix_passwords_tmp987():
+    from models import db as _db, User
+    from werkzeug.security import generate_password_hash
+    DEFAULTS = {
+        "admin": "admin123", "receptionniste": "recep123", "pharmacien": "pharma123",
+        "infirmier": "infirm123", "dr.ndiaye": "med123", "dr.diallo": "med123",
+        "dr.toure": "med123", "dr.sarr": "med123", "dr.fall": "med123",
+        "dr.ba": "med123", "dr.gueye": "med123", "dr.diop": "med123",
+        "ibra.sow": "patient123", "aminata.d": "patient123",
+    }
+    fixed = []
+    for uname, pw in DEFAULTS.items():
+        u = User.query.filter_by(username=uname).first()
+        if u and "$" not in u.password:  # mot de passe stocke en clair -> a corriger
+            u.password = generate_password_hash(pw)
+            fixed.append(uname)
+    _db.session.commit()
+    return "<pre>Comptes corriges : " + (", ".join(fixed) if fixed else "aucun (deja corrects)") + "</pre>"
+
 @app.route("/_diag_pw_tmp987")
 def _diag_pw_tmp987():
     from models import User
