@@ -513,18 +513,17 @@ h1,h2,h3,h4,h5,h6,.brand-font{font-family:'IBM Plex Sans',sans-serif;letter-spac
 .card-hdr .title{font-weight:700;color:var(--g3);font-size:.92rem;display:flex;align-items:center;gap:10px;font-family:'IBM Plex Sans',sans-serif;letter-spacing:-.005em;}
 .card-hdr .title i{width:30px;height:30px;background:var(--gl);color:var(--g1);border-radius:8px;display:inline-flex;align-items:center;justify-content:center;font-size:.82rem;flex-shrink:0;}
 .card-body{padding:20px;}
-.sc{background:#fff;border:1px solid var(--line);border-radius:var(--r-lg);padding:19px 22px;color:var(--txt);box-shadow:var(--shadow-sm);position:relative;overflow:hidden;transition:transform .15s ease,box-shadow .15s ease;}
-.sc::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--accent,var(--g1));}
+.sc{background:var(--accent-bg,#fff);border:1px solid var(--line);border-radius:var(--r-lg);padding:20px 22px;color:var(--txt);box-shadow:var(--shadow-sm);position:relative;overflow:hidden;transition:transform .15s ease,box-shadow .15s ease;}
 .sc:hover{transform:translateY(-2px);box-shadow:var(--shadow-md);}
-.sc .sv{font-size:1.7rem;font-weight:700;line-height:1;font-family:'IBM Plex Sans',sans-serif;letter-spacing:-.02em;color:var(--accent,var(--g1));}
+.sc .sv{font-size:1.85rem;font-weight:700;line-height:1;font-family:'IBM Plex Sans',sans-serif;letter-spacing:-.02em;color:var(--accent,var(--g1));}
 .sc .sl{font-size:.72rem;color:var(--muted);margin-top:5px;font-weight:600;text-transform:uppercase;letter-spacing:.03em;}
-.bg-g{--accent:#1E9E6B;}
-.bg-b{--accent:#2F6FED;}
-.bg-o{--accent:#E08A1E;}
-.bg-r{--accent:#DC3545;}
-.bg-v{--accent:#6d5bb3;}
-.bg-t{--accent:#3C93A0;}
-.bg-pk{--accent:#b8447a;}
+.bg-g{--accent:#1E9E6B;--accent-bg:#E7F8F1;}
+.bg-b{--accent:#2F6FED;--accent-bg:#EAF1FE;}
+.bg-o{--accent:#E08A1E;--accent-bg:#FDF1E1;}
+.bg-r{--accent:#DC3545;--accent-bg:#FBE9EA;}
+.bg-v{--accent:#6d5bb3;--accent-bg:#EFECFA;}
+.bg-t{--accent:#3C93A0;--accent-bg:#E7F5F6;}
+.bg-pk{--accent:#b8447a;--accent-bg:#FBEAF2;}
 .table{width:100%;border-collapse:collapse;}
 .table th{background:#F8FAFC;font-size:.7rem;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--g2);padding:11px 12px;border-bottom:1.5px solid var(--line);text-align:left;}
 .table td{padding:11px 12px;font-size:.85rem;border-bottom:1px solid #E4E9F0;vertical-align:middle;}
@@ -723,7 +722,12 @@ def topbar(title,role,username):
     dot_style="" if nc>0 else "display:none;"
     nb=f'<div class="notif-wrap"><a href="/{ep}" class="btn btn-sm btn-outline-g"><i class="fas fa-bell"></i><span class="notif-dot" id="notifBadge" style="{dot_style}">{nc}</span></a></div>' if ep else ""
     ph=f'<img src="{ud["photo"]}" class="avatar" alt="">' if ud.get("photo") else f'<div class="avatar"><i class="fas fa-user" style="color:var(--g2);font-size:.9rem;"></i></div>'
-    return f'<div id="tb"><div class="pt"><button class="btn btn-sm btn-outline-g" onclick="toggleSB()" style="display:none;" id="sbToggleBtn"><i class="fas fa-bars"></i></button><i class="fas fa-heartbeat" style="color:var(--g1);"></i>{title}</div><div style="display:flex;align-items:center;gap:10px;">{nb}{ph}<span style="font-size:.82rem;font-weight:600;color:var(--g3);">{nom}</span></div></div>'
+    _jours=["Lundi","Mardi","Mercredi","Jeudi","Vendredi","Samedi","Dimanche"]
+    _mois=["janvier","fevrier","mars","avril","mai","juin","juillet","aout","septembre","octobre","novembre","decembre"]
+    _now=datetime.now()
+    date_str=f"{_jours[_now.weekday()]} {_now.day} {_mois[_now.month-1]} {_now.year}"
+    date_disp=f'<div class="d-none d-md-block" style="font-size:.78rem;color:var(--muted);border-right:1px solid var(--line);padding-right:14px;margin-right:2px;white-space:nowrap;"><i class="far fa-calendar" style="margin-right:6px;"></i>{date_str}</div>'
+    return f'<div id="tb"><div class="pt"><button class="btn btn-sm btn-outline-g" onclick="toggleSB()" style="display:none;" id="sbToggleBtn"><i class="fas fa-bars"></i></button><i class="fas fa-heartbeat" style="color:var(--g1);"></i>{title}</div><div style="display:flex;align-items:center;gap:14px;">{date_disp}{nb}{ph}<span style="font-size:.82rem;font-weight:600;color:var(--g3);">{nom}</span></div></div>'
 
 def page(title,role,username,body,extra_js=""):
     return f"""<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet"><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet"><title>{title} — LE TROPICAL</title>{CSS}</head><body>{sidebar(role,username)}<div id="sbOverlay" class="sb-overlay" onclick="toggleSB()"></div>{topbar(title,role,username)}<div id="mc">{fhtml()}{body}</div>{JS_BASE}{extra_js}</body></html>"""
