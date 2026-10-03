@@ -517,6 +517,7 @@ h1,h2,h3,h4,h5,h6,.brand-font{font-family:'IBM Plex Sans',sans-serif;letter-spac
 .sc:hover{transform:translateY(-2px);box-shadow:var(--shadow-md);}
 .sc .sv{font-size:1.85rem;font-weight:700;line-height:1;font-family:'IBM Plex Sans',sans-serif;letter-spacing:-.02em;color:var(--accent,var(--g1));}
 .sc .sl{font-size:.72rem;color:var(--muted);margin-top:5px;font-weight:600;text-transform:uppercase;letter-spacing:.03em;}
+.sc .si{width:36px;height:36px;border-radius:10px;background:#fff;color:var(--accent,var(--g1));display:inline-flex;align-items:center;justify-content:center;font-size:.92rem;margin-bottom:10px;}
 .bg-g{--accent:#1E9E6B;--accent-bg:#E7F8F1;}
 .bg-b{--accent:#2F6FED;--accent-bg:#EAF1FE;}
 .bg-o{--accent:#E08A1E;--accent-bg:#FDF1E1;}
@@ -1035,6 +1036,16 @@ def dashboard():
         nb_att=len([a for a in DB["liste_attente"] if a["statut"]=="En attente"])
         nb_stock_pb=len([s for s in DB["stocks"] if s["statut"] in ["Faible","Epuise"]])
 
+        today_s=date.today().strftime("%Y-%m-%d")
+        week_ago_s=(date.today()-timedelta(days=7)).strftime("%Y-%m-%d")
+        rdv_today_list=[r for r in DB["rdvs"] if _ds(r["date"])==today_s]
+        nb_rdv_today=len(rdv_today_list)
+        nb_rdv_today_conf=len([r for r in rdv_today_list if r["statut"]=="Confirme"])
+        hosp_encours=[h for h in DB["hospitalisations"] if h["statut"]=="En cours"]
+        nb_hosp=len(hosp_encours)
+        nb_lits_libres=len([l for l in DB["lits"] if l["statut"]=="Libre"])
+        nb_patients_sem=len([d for d in DB["dossiers"] if _ds(d["date_creation"])>=week_ago_s])
+
         # Données pour graphique consultations par service
         cons_by_svc={}
         for c in DB["consultations"]:
@@ -1044,55 +1055,81 @@ def dashboard():
                 cons_by_svc[sv]=cons_by_svc.get(sv,0)+1
         chart_labels=list(cons_by_svc.keys()); chart_vals=list(cons_by_svc.values())
 
-        # Données pour graphique statuts RDV
-        rdv_stats={"Confirme":0,"En attente":0,"Annule":0,"Termine":0}
-        for r in DB["rdvs"]: rdv_stats[r["statut"]]=rdv_stats.get(r["statut"],0)+1
-
         # Médecins par statut
         med_stats={"Disponible":0,"Occupe":0,"En conge":0}
         for username,ud in DB["users"].items():
             if ud["role"]=="medecin": med_stats[ud.get("status_med","Disponible")]=med_stats.get(ud.get("status_med","Disponible"),0)+1
 
-        extra_js=f"""<script>
-// Graphique consultations par service
-const ctx1=document.getElementById('chartCons');
-if(ctx1){{new Chart(ctx1,{{type:'bar',data:{{labels:{json.dumps(chart_labels)},datasets:[{{label:'Consultations',data:{json.dumps(chart_vals)},backgroundColor:['#2F6FED','#3C93A0','#D9A441','#DC3545','#6D5BB3','#4A8A93','#B8447A'],borderRadius:6}}]}},options:{{responsive:true,plugins:{{legend:{{display:false}}}},scales:{{y:{{beginAtZero:true,ticks:{{stepSize:1}}}}}}}}}})}}
+        # Activite des 7 derniers jours (donnees reelles, pas de chiffres inventes)
+        jours_7=[date.today()-timedelta(days=i) for i in range(6,-1,-1)]
+        day_labels=[d.strftime("%d/%m") for d in jours_7]
+        day_strs=[d.strftime("%Y-%m-%d") for d in jours_7]
+        cons_par_jour=[len([c for c in DB["consultations"] if _ds(c["date"])==ds]) for ds in day_strs]
+        rdv_par_jour=[len([r for r in DB["rdvs"] if _ds(r["date"])==ds]) for ds in day_strs]
+        hosp_par_jour=[len([h for h in DB["hospitalisations"] if _ds(h["date_entree"])==ds]) for ds in day_strs]
 
-// Graphique RDV par statut
-const ctx2=document.getElementById('chartRdv');
-if(ctx2){{new Chart(ctx2,{{type:'doughnut',data:{{labels:{json.dumps(list(rdv_stats.keys()))},datasets:[{{data:{json.dumps(list(rdv_stats.values()))},backgroundColor:['#2F6FED','#D9A441','#DC3545','#4A8A93'],borderWidth:2}}]}},options:{{responsive:true,plugins:{{legend:{{position:'right'}}}}}}}})}}
+        prochains=sorted([r for r in DB["rdvs"] if _ds(r["date"])>=today_s and r["statut"] in ("Confirme","En attente")],
+                          key=lambda r:(_ds(r["date"]),r["heure"]))[:5]
+        dernieres_cons=sorted(DB["consultations"], key=lambda c:_ds(c["date"]), reverse=True)[:5]
+
+        extra_js=f"""<script>
+// Activite de l'hopital (7 derniers jours)
+const ctxA=document.getElementById('chartActivite');
+if(ctxA){{new Chart(ctxA,{{type:'line',data:{{labels:{json.dumps(day_labels)},datasets:[
+  {{label:'Consultations',data:{json.dumps(cons_par_jour)},borderColor:'#2F6FED',backgroundColor:'rgba(47,111,237,.08)',tension:.35,fill:true}},
+  {{label:'Rendez-vous',data:{json.dumps(rdv_par_jour)},borderColor:'#E08A1E',backgroundColor:'rgba(224,138,30,.08)',tension:.35,fill:true}},
+  {{label:'Hospitalisations',data:{json.dumps(hosp_par_jour)},borderColor:'#1E9E6B',backgroundColor:'rgba(30,158,107,.08)',tension:.35,fill:true}}
+]}},options:{{responsive:true,plugins:{{legend:{{position:'bottom'}}}},scales:{{y:{{beginAtZero:true,ticks:{{stepSize:1}}}}}}}}}})}}
 
 // Graphique stocks
 const ctxS=document.getElementById('chartStock');
-if(ctxS){{const sn=[{','.join([repr(next((m["libelle"] for m in DB["medicaments"] if m["id_stock"]==s["id"]),"?")) for s in DB["stocks"]])}];const sv=[{','.join([str(s["quantite"]) for s in DB["stocks"]])}];new Chart(ctxS,{{type:'bar',data:{{labels:sn,datasets:[{{label:'Quantite',data:sv,backgroundColor:sv.map(v=>v==0?'#DC3545':v<20?'#D9A441':'#2F6FED'),borderRadius:4}}]}},options:{{responsive:true,plugins:{{legend:{{display:false}}}},scales:{{y:{{beginAtZero:true}}}}}}}})}}
+if(ctxS){{const sn=[{','.join([repr(next((m["libelle"] for m in DB["medicaments"] if m["id_stock"]==s["id"]),"?")) for s in DB["stocks"]])}];const sv=[{','.join([str(s["quantite"]) for s in DB["stocks"]])}];new Chart(ctxS,{{type:'bar',data:{{labels:sn,datasets:[{{label:'Quantite',data:sv,backgroundColor:sv.map(v=>v==0?'#DC3545':v<20?'#E08A1E':'#2F6FED'),borderRadius:4}}]}},options:{{responsive:true,plugins:{{legend:{{display:false}}}},scales:{{y:{{beginAtZero:true}}}}}}}})}}
 </script>"""
 
         body=f"""
-<div class="row g-3 mb-3">
-  <div class="col-md-2"><div class="sc bg-g"><div class="sv">{nb_p}</div><div class="sl">Patients</div></div></div>
-  <div class="col-md-2"><div class="sc bg-b"><div class="sv">{nb_m}</div><div class="sl">Medecins</div></div></div>
-  <div class="col-md-2"><div class="sc bg-v"><div class="sv">{nb_s}</div><div class="sl">Services</div></div></div>
-  <div class="col-md-2"><div class="sc bg-o"><div class="sv">{nb_rdv}</div><div class="sl">RDV total</div></div></div>
-  <div class="col-md-2"><div class="sc bg-r"><div class="sv">{nb_urg}</div><div class="sl">Urgences actives</div></div></div>
-  <div class="col-md-2"><div class="sc bg-t"><div class="sv">{nb_att}</div><div class="sl">En attente</div></div></div>
+<div class="card mb-3" style="background:linear-gradient(135deg,var(--g3),var(--g2));color:#fff;border:none;">
+  <div class="card-body" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px;">
+    <div><h5 style="color:#fff;margin-bottom:4px;">Bonjour {u} 👋</h5><div style="opacity:.85;font-size:.85rem;">Voici un aperçu de l'activite de l'hopital aujourd'hui.</div></div>
+    <div style="text-align:right;"><div style="font-size:1.4rem;font-weight:700;">{datetime.now().strftime('%H:%M')}</div><div style="font-size:.76rem;opacity:.8;">{datetime.now().strftime('%A %d %B %Y')}</div></div>
+  </div>
 </div>
 <div class="row g-3 mb-3">
-  <div class="col-md-3"><div class="sc bg-g"><div class="sv">{total_enc:,} FCFA</div><div class="sl">Recettes encaissees</div></div></div>
-  <div class="col-md-3"><div class="sc bg-o"><div class="sv">{total_fact-total_enc:,} FCFA</div><div class="sl">Reste a encaisser</div></div></div>
-  <div class="col-md-3"><div class="sc bg-r"><div class="sv">{nb_imp}</div><div class="sl">Factures impayees</div></div></div>
-  <div class="col-md-3"><div class="sc bg-pk"><div class="sv">{nb_stock_pb}</div><div class="sl">Alertes stock</div></div></div>
+  <div class="col-6 col-md-3"><div class="sc bg-b"><div class="si"><i class="fas fa-users"></i></div><div class="sv">{nb_p}</div><div class="sl">Patients</div><div style="font-size:.72rem;color:var(--muted);margin-top:4px;">+{nb_patients_sem} cette semaine</div></div></div>
+  <div class="col-6 col-md-3"><div class="sc bg-g"><div class="si"><i class="fas fa-user-md"></i></div><div class="sv">{nb_m}</div><div class="sl">Medecins</div><div style="font-size:.72rem;color:var(--muted);margin-top:4px;">{med_stats.get('Disponible',0)} disponibles</div></div></div>
+  <div class="col-6 col-md-3"><div class="sc bg-o"><div class="si"><i class="fas fa-calendar-check"></i></div><div class="sv">{nb_rdv_today}</div><div class="sl">RDV aujourd'hui</div><div style="font-size:.72rem;color:var(--muted);margin-top:4px;">{nb_rdv_today_conf} confirmes</div></div></div>
+  <div class="col-6 col-md-3"><div class="sc bg-r"><div class="si"><i class="fas fa-bed-pulse"></i></div><div class="sv">{nb_hosp}</div><div class="sl">Hospitalises</div><div style="font-size:.72rem;color:var(--muted);margin-top:4px;">{nb_lits_libres} lits libres</div></div></div>
 </div>
 <div class="row g-3 mb-3">
-  <div class="col-md-6"><div class="card"><div class="card-hdr"><div class="title"><i class="fas fa-chart-bar"></i>Consultations par service</div></div>
-    <div class="card-body"><canvas id="chartCons" height="180"></canvas></div></div></div>
-  <div class="col-md-3"><div class="card"><div class="card-hdr"><div class="title"><i class="fas fa-chart-pie"></i>Statuts RDV</div></div>
-    <div class="card-body"><canvas id="chartRdv" height="200"></canvas></div></div></div>
-  <div class="col-md-3"><div class="card"><div class="card-hdr"><div class="title"><i class="fas fa-user-md"></i>Medecins</div></div>
+  <div class="col-md-8"><div class="card"><div class="card-hdr"><div class="title"><i class="fas fa-chart-line"></i>Activite de l'hopital (7 derniers jours)</div></div>
+    <div class="card-body"><canvas id="chartActivite" height="110"></canvas></div></div></div>
+  <div class="col-md-4"><div class="card"><div class="card-hdr"><div class="title"><i class="fas fa-calendar-check"></i>Prochains rendez-vous</div></div>
     <div class="card-body">
-      {"".join(f'<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--gl);"><span style="color:var(--muted);font-size:.82rem;">{m["prenom"]} {m["nom"]}</span><span class="bk {"ok" if DB["users"].get(m["username"],{}).get("status_med","Disponible")=="Disponible" else "att" if DB["users"].get(m["username"],{}).get("status_med")=="Occupe" else "inf"}">{DB["users"].get(m["username"],{}).get("status_med","Disponible")}</span></div>' for m in DB["medecins"])}
+      {"".join(f'<div style="padding:7px 0;border-bottom:1px solid var(--gl);"><div style="display:flex;justify-content:space-between;"><strong style="font-size:.82rem;">{r["heure"]}</strong><span class="bk {"ok" if r["statut"]=="Confirme" else "att"}">{r["statut"]}</span></div><div style="font-size:.78rem;color:var(--muted);">{pname(r["id_patient"])} — {mname(r["matricule"])}</div></div>' for r in prochains) or '<div style="color:var(--muted);font-size:.82rem;">Aucun rendez-vous a venir.</div>'}
     </div></div></div>
 </div>
-<div class="row g-3">
+<div class="row g-3 mb-3">
+  <div class="col-6 col-md-3"><a href="/a-patients" class="card" style="display:block;padding:16px;text-decoration:none;color:inherit;"><i class="fas fa-user-plus" style="color:var(--g1);font-size:1.1rem;"></i><div style="font-weight:600;font-size:.85rem;margin-top:8px;">Nouveau patient</div></a></div>
+  <div class="col-6 col-md-3"><a href="/a-medecins" class="card" style="display:block;padding:16px;text-decoration:none;color:inherit;"><i class="fas fa-user-md" style="color:var(--g1);font-size:1.1rem;"></i><div style="font-weight:600;font-size:.85rem;margin-top:8px;">Nouveau medecin</div></a></div>
+  <div class="col-6 col-md-3"><a href="/a-lits" class="card" style="display:block;padding:16px;text-decoration:none;color:inherit;"><i class="fas fa-bed-pulse" style="color:var(--g1);font-size:1.1rem;"></i><div style="font-weight:600;font-size:.85rem;margin-top:8px;">Nouvelle admission</div></a></div>
+  <div class="col-6 col-md-3"><a href="/a-statistiques" class="card" style="display:block;padding:16px;text-decoration:none;color:inherit;"><i class="fas fa-chart-bar" style="color:var(--g1);font-size:1.1rem;"></i><div style="font-weight:600;font-size:.85rem;margin-top:8px;">Voir les statistiques</div></a></div>
+</div>
+<div class="row g-3 mb-3">
+  <div class="col-md-8"><div class="card"><div class="card-hdr"><div class="title"><i class="fas fa-stethoscope"></i>Dernieres consultations</div></div>
+    <div class="card-body p-0"><table class="table"><thead><tr><th>Date</th><th>Patient</th><th>Medecin</th><th>Service</th><th>Statut</th></tr></thead><tbody>
+      {"".join(f'<tr><td>{c["date"]}</td><td>{pname(c["id_patient"])}</td><td>{mname(c["matricule"])}</td><td>{sname(next((m["id_service"] for m in DB["medecins"] if m["matricule"]==c["matricule"]),0))}</td><td><span class="bk ok">Terminee</span></td></tr>' for c in dernieres_cons) or '<tr><td colspan="5" style="color:var(--muted);">Aucune consultation recente.</td></tr>'}
+    </tbody></table></div></div></div>
+  <div class="col-md-4"><div class="card"><div class="card-hdr"><div class="title"><i class="fas fa-triangle-exclamation"></i>Alertes</div></div>
+    <div class="card-body">
+      <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--gl);"><span style="font-size:.82rem;">Medicaments en alerte stock</span><span class="bk {"err" if nb_stock_pb else "ok"}">{nb_stock_pb}</span></div>
+      <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--gl);"><span style="font-size:.82rem;">Factures impayees</span><span class="bk {"att" if nb_imp else "ok"}">{nb_imp}</span></div>
+      <div style="display:flex;justify-content:space-between;padding:7px 0;"><span style="font-size:.82rem;">Urgences actives</span><span class="bk {"err" if nb_urg else "ok"}">{nb_urg}</span></div>
+    </div></div></div>
+</div>
+<div class="row g-3 mb-3">
+  <div class="col-md-6"><div class="sc bg-g"><div class="sv">{total_enc:,} FCFA</div><div class="sl">Recettes encaissees</div></div></div>
+  <div class="col-md-6"><div class="sc bg-o"><div class="sv">{total_fact-total_enc:,} FCFA</div><div class="sl">Reste a encaisser</div></div></div>
+</div>
+<div class="row g-3 mb-3">
   <div class="col-md-8"><div class="card"><div class="card-hdr"><div class="title"><i class="fas fa-chart-bar"></i>Etat des stocks medicaments</div></div>
     <div class="card-body"><canvas id="chartStock" height="150"></canvas></div></div></div>
   <div class="col-md-4"><div class="card"><div class="card-hdr"><div class="title"><i class="fas fa-building"></i>Services</div></div>
