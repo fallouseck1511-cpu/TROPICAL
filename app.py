@@ -488,60 +488,60 @@ def api_creneaux_disponibles():
 # CSS, Sidebar, Topbar, Page builder, PDF (gen_pdf), Page Login
 # =======================================================
 
-CSS="""<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"><style>
-:root{--g1:#14614A;--g2:#0F4D3A;--g3:#092A1F;--gl:#DCEBE3;--gm:#C6DED0;--gd:#8FB39E;--acc:#3B5A82;--warn:#C68A2E;--err:#B23B3B;--bg:#F1E9D8;--card:#ffffff;--txt:#1C2420;--muted:#6B7A70;--clay:#B9532C;--clay-deep:#96421F;--gold:#D9A441;--line:#E4DCC8;--sw:264px;--r-sm:8px;--r-md:12px;--r-lg:18px;--shadow-sm:0 1px 2px rgba(30,20,10,.05),0 1px 3px rgba(30,20,10,.07);--shadow-md:0 2px 10px rgba(30,20,10,.07),0 10px 26px -10px rgba(20,15,8,.16);}
+CSS="""<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"><style>
+:root{--g1:#2F6FED;--g2:#1B3A66;--g3:#0B1E3A;--gl:#EAF1FE;--gm:#D6E4FB;--gd:#9DBEF2;--acc:#3C93A0;--warn:#E08A1E;--err:#DC3545;--bg:#F4F6F9;--card:#ffffff;--txt:#1B2430;--muted:#6B7785;--clay:#2F6FED;--clay-deep:#1F4AA8;--gold:#D9A441;--line:#E4E9F0;--sw:264px;--r-sm:8px;--r-md:12px;--r-lg:18px;--shadow-sm:0 1px 2px rgba(16,24,40,.05),0 1px 3px rgba(16,24,40,.07);--shadow-md:0 2px 10px rgba(16,24,40,.07),0 10px 26px -10px rgba(16,24,40,.16);}
 *{box-sizing:border-box;margin:0;padding:0;}
 body{background:var(--bg);font-family:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',sans-serif;color:var(--txt);font-size:.9rem;line-height:1.5;-webkit-font-smoothing:antialiased;}
-h1,h2,h3,h4,h5,h6,.brand-font{font-family:'Fraunces',serif;letter-spacing:-.01em;font-weight:600;}
-#sb{position:fixed;top:0;left:0;width:var(--sw);height:100vh;background:linear-gradient(180deg,var(--g3) 0%,#051710 100%);overflow-y:auto;z-index:1040;display:flex;flex-direction:column;box-shadow:2px 0 12px rgba(0,0,0,.1);}
+h1,h2,h3,h4,h5,h6,.brand-font{font-family:'IBM Plex Sans',sans-serif;letter-spacing:-.01em;font-weight:600;}
+#sb{position:fixed;top:0;left:0;width:var(--sw);height:100vh;background:linear-gradient(180deg,var(--g3) 0%,#081428 100%);overflow-y:auto;z-index:1040;display:flex;flex-direction:column;box-shadow:2px 0 12px rgba(0,0,0,.1);}
 #sb .logo{padding:22px 18px 16px;border-bottom:1px solid rgba(255,255,255,.1);}
 #sb .logo .brand{display:flex;align-items:center;gap:11px;}
 #sb .logo .ico{width:40px;height:40px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.25);border-radius:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
-#sb .logo h6{color:#fff;font-size:.98rem;font-weight:600;margin:0;font-family:'Fraunces',serif;letter-spacing:-.01em;}
-#sb .logo small{color:#8FB39E;font-size:.68rem;letter-spacing:.02em;}
-#sb .sec{padding:16px 16px 6px;font-size:.62rem;font-weight:700;letter-spacing:1.6px;color:#5E8570;text-transform:uppercase;}
-#sb a.nl{display:flex;align-items:center;gap:10px;padding:9px 14px;color:#CBDED2;border-radius:9px;margin:1.5px 10px;font-size:.83rem;font-weight:500;text-decoration:none;transition:background .15s,color .15s;}
+#sb .logo h6{color:#fff;font-size:.98rem;font-weight:700;margin:0;font-family:'IBM Plex Sans',sans-serif;letter-spacing:-.01em;}
+#sb .logo small{color:#8FA8D6;font-size:.68rem;letter-spacing:.02em;}
+#sb .sec{padding:16px 16px 6px;font-size:.62rem;font-weight:700;letter-spacing:1.6px;color:#5E7CA8;text-transform:uppercase;}
+#sb a.nl{display:flex;align-items:center;gap:10px;padding:9px 14px;color:#C6D3E8;border-radius:9px;margin:1.5px 10px;font-size:.83rem;font-weight:500;text-decoration:none;transition:background .15s,color .15s;}
 #sb a.nl:hover{background:rgba(255,255,255,.06);color:#fff;}
 #sb a.nl.active{background:rgba(255,255,255,.14);color:#fff;box-shadow:none;border-left:3px solid var(--clay);padding-left:11px;}
 #sb a.nl i{width:16px;text-align:center;font-size:.82rem;opacity:.9;}
 #sb .sb-foot{padding:14px;border-top:1px solid rgba(255,255,255,.1);margin-top:auto;}
 #tb{position:fixed;top:0;left:var(--sw);right:0;height:58px;background:#fff;border-bottom:1px solid var(--line);display:flex;align-items:center;padding:0 24px;z-index:1030;justify-content:space-between;}
-#tb .pt{font-weight:600;color:var(--g3);font-size:1.02rem;display:flex;align-items:center;gap:9px;font-family:'Fraunces',serif;letter-spacing:-.01em;}
+#tb .pt{font-weight:700;color:var(--g3);font-size:1.02rem;display:flex;align-items:center;gap:9px;font-family:'IBM Plex Sans',sans-serif;letter-spacing:-.01em;}
 #mc{margin-left:var(--sw);margin-top:58px;padding:26px 28px;min-height:calc(100vh - 58px);}
 .card{background:var(--card);border:1px solid var(--line);border-radius:var(--r-md);box-shadow:var(--shadow-sm);}
 .card-hdr{padding:15px 20px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;background:#fff;border-radius:var(--r-md) var(--r-md) 0 0;}
-.card-hdr .title{font-weight:600;color:var(--g3);font-size:.92rem;display:flex;align-items:center;gap:10px;font-family:'Fraunces',serif;letter-spacing:-.005em;}
+.card-hdr .title{font-weight:700;color:var(--g3);font-size:.92rem;display:flex;align-items:center;gap:10px;font-family:'IBM Plex Sans',sans-serif;letter-spacing:-.005em;}
 .card-hdr .title i{width:30px;height:30px;background:var(--gl);color:var(--g1);border-radius:8px;display:inline-flex;align-items:center;justify-content:center;font-size:.82rem;flex-shrink:0;}
 .card-body{padding:20px;}
 .sc{background:#fff;border:1px solid var(--line);border-radius:var(--r-lg);padding:19px 22px;color:var(--txt);box-shadow:var(--shadow-sm);position:relative;overflow:hidden;transition:transform .15s ease,box-shadow .15s ease;}
 .sc::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--accent,var(--g1));}
 .sc:hover{transform:translateY(-2px);box-shadow:var(--shadow-md);}
-.sc .sv{font-size:1.7rem;font-weight:600;line-height:1;font-family:'Fraunces',serif;letter-spacing:-.02em;color:var(--accent,var(--g1));}
+.sc .sv{font-size:1.7rem;font-weight:700;line-height:1;font-family:'IBM Plex Sans',sans-serif;letter-spacing:-.02em;color:var(--accent,var(--g1));}
 .sc .sl{font-size:.72rem;color:var(--muted);margin-top:5px;font-weight:600;text-transform:uppercase;letter-spacing:.03em;}
-.bg-g{--accent:#0F4D3A;}
-.bg-b{--accent:#3B5A82;}
-.bg-o{--accent:#C68A2E;}
-.bg-r{--accent:#B23B3B;}
+.bg-g{--accent:#1E9E6B;}
+.bg-b{--accent:#2F6FED;}
+.bg-o{--accent:#E08A1E;}
+.bg-r{--accent:#DC3545;}
 .bg-v{--accent:#6d5bb3;}
-.bg-t{--accent:#B9532C;}
+.bg-t{--accent:#3C93A0;}
 .bg-pk{--accent:#b8447a;}
 .table{width:100%;border-collapse:collapse;}
-.table th{background:#FAF6EC;font-size:.7rem;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--g2);padding:11px 12px;border-bottom:1.5px solid var(--line);text-align:left;}
-.table td{padding:11px 12px;font-size:.85rem;border-bottom:1px solid #F1EADC;vertical-align:middle;}
+.table th{background:#F8FAFC;font-size:.7rem;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--g2);padding:11px 12px;border-bottom:1.5px solid var(--line);text-align:left;}
+.table td{padding:11px 12px;font-size:.85rem;border-bottom:1px solid #E4E9F0;vertical-align:middle;}
 .table tr:last-child td{border-bottom:none;}
-.table tr:hover td{background:#FBF8F0;}
+.table tr:hover td{background:#FAFBFD;}
 .bk{display:inline-block;font-size:.7rem;padding:3px 10px;border-radius:20px;font-weight:600;}
-.ok{background:var(--gl);color:var(--g3);}.att{background:#FBEBD8;color:#8a6415;}
-.err{background:#F6DEDE;color:#7a251c;}.inf{background:#E2EBF3;color:#2A4560;}
-.vio{background:#E8E4F5;color:#3D2E6B;}.grey{background:#F0EDE4;color:#5A6158;}
+.ok{background:var(--gl);color:var(--g3);}.att{background:#FDF1E1;color:#8a5a10;}
+.err{background:#FBE9EA;color:#9c2430;}.inf{background:#EAF1FE;color:#1e4fa8;}
+.vio{background:#EFECFA;color:#3D2E6B;}.grey{background:#F0F2F5;color:#5A6472;}
 .form-label{font-size:.82rem;font-weight:600;color:var(--g3);margin-bottom:5px;display:block;}
 .form-control,.form-select{border:1.5px solid var(--line);border-radius:8px;padding:9px 12px;font-size:.87rem;width:100%;transition:border-color .15s,box-shadow .15s;background:#fff;color:var(--txt);font-family:'IBM Plex Sans';}
-.form-control:focus,.form-select:focus{border-color:var(--clay);outline:none;box-shadow:0 0 0 3px rgba(185,83,44,.14);}
-.ig-text{background:#FAF6EC;border:1.5px solid var(--line);border-right:none;border-radius:8px 0 0 8px;padding:9px 12px;}
+.form-control:focus,.form-select:focus{border-color:var(--clay);outline:none;box-shadow:0 0 0 3px rgba(47,111,237,.14);}
+.ig-text{background:#F8FAFC;border:1.5px solid var(--line);border-right:none;border-radius:8px 0 0 8px;padding:9px 12px;}
 .btn{display:inline-flex;align-items:center;gap:6px;padding:9px 17px;border-radius:8px;font-size:.83rem;font-weight:600;cursor:pointer;border:none;transition:filter .15s,box-shadow .15s,transform .1s;text-decoration:none;font-family:'IBM Plex Sans';}
 .btn:hover{filter:brightness(1.07);}
 .btn:active{transform:translateY(1px);}
-.btn-g{background:var(--clay);color:#fff;box-shadow:0 1px 2px rgba(185,83,44,.3);}.btn-r{background:var(--err);color:#fff;box-shadow:0 1px 2px rgba(178,59,59,.25);}
+.btn-g{background:var(--clay);color:#fff;box-shadow:0 1px 2px rgba(47,111,237,.3);}.btn-r{background:var(--err);color:#fff;box-shadow:0 1px 2px rgba(220,53,69,.25);}
 .btn-o{background:var(--warn);color:#fff;}.btn-b{background:var(--acc);color:#fff;}
 .btn-v{background:#6D5BB3;color:#fff;}
 .btn-outline-g{background:transparent;border:1.5px solid var(--clay);color:var(--clay);}
@@ -553,22 +553,22 @@ h1,h2,h3,h4,h5,h6,.brand-font{font-family:'Fraunces',serif;letter-spacing:-.01em
 .btn-sm{padding:5px 10px;font-size:.76rem;border-radius:6px;}
 .al{border-radius:8px;padding:10px 14px;font-size:.85rem;margin-bottom:10px;display:flex;align-items:center;gap:8px;}
 .al-s{background:var(--gl);border:1px solid var(--gd);color:var(--g3);}
-.al-e{background:#F6DEDE;border:1px solid #DFAFAF;color:#7a251c;}
-.al-w{background:#FBEBD8;border:1px solid #E8C88A;color:#7A5312;}
-.al-i{background:#E2EBF3;border:1px solid #AFC4D8;color:#2A4560;}
+.al-e{background:#FBE9EA;border:1px solid #F0B8BC;color:#9c2430;}
+.al-w{background:#FDF1E1;border:1px solid #F0C98A;color:#8a5a10;}
+.al-i{background:#EAF1FE;border:1px solid #BBD2F7;color:#1e4fa8;}
 .carte-urgence{background:#fff;border:1px solid var(--line);border-radius:var(--r-md);padding:12px 14px;box-shadow:var(--shadow-sm);}
 .urgence-pulse{animation:urgPulse 1.8s infinite;}
 @keyframes urgPulse{0%,100%{box-shadow:0 1px 3px rgba(0,0,0,.08);}50%{box-shadow:0 0 0 4px rgba(127,29,29,.25);}}
 .notif-wrap{position:relative;}
 .notif-dot{position:absolute;top:-4px;right:-4px;width:18px;height:18px;background:var(--err);border-radius:50%;font-size:.6rem;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;border:2px solid #fff;}
-.avatar{width:42px;height:42px;border-radius:50%;object-fit:cover;background:var(--g2);color:#fff;font-family:'Fraunces',serif;font-weight:600;display:flex;align-items:center;justify-content:center;border:none;}
-.nav-tabs{display:inline-flex;gap:3px;background:#E9E0CC;padding:3px;border-radius:999px;margin-bottom:16px;border:none;flex-wrap:wrap;}
+.avatar{width:42px;height:42px;border-radius:50%;object-fit:cover;background:var(--g2);color:#fff;font-family:'IBM Plex Sans',sans-serif;font-weight:700;display:flex;align-items:center;justify-content:center;border:none;}
+.nav-tabs{display:inline-flex;gap:3px;background:#E8EDF5;padding:3px;border-radius:999px;margin-bottom:16px;border:none;flex-wrap:wrap;}
 .nav-tab{padding:7px 16px;border-radius:999px;font-size:.81rem;font-weight:600;cursor:pointer;border:none;background:transparent;color:var(--muted);transition:background .15s,color .15s;}
 .nav-tab:hover{color:var(--g2);}
-.nav-tab.active{background:#fff;color:var(--g2);border:none;box-shadow:0 1px 3px rgba(30,20,10,.12);}
-.urg-1{background:#7A2420;color:#fff;}.urg-2{background:#B23B3B;color:#fff;}
-.urg-3{background:#D9A441;color:#fff;}.urg-4{background:var(--g1);color:#fff;}.urg-5{background:#E2EBF3;color:#2A4560;}
-.stat-dispo{background:var(--gl);color:var(--g3);}.stat-occ{background:#FBEBD8;color:#7A5312;}.stat-conge{background:#E2EBF3;color:#2A4560;}
+.nav-tab.active{background:#fff;color:var(--g2);border:none;box-shadow:0 1px 3px rgba(16,24,40,.12);}
+.urg-1{background:#8A1F28;color:#fff;}.urg-2{background:#DC3545;color:#fff;}
+.urg-3{background:#D9A441;color:#fff;}.urg-4{background:var(--g1);color:#fff;}.urg-5{background:#EAF1FE;color:#1e4fa8;}
+.stat-dispo{background:var(--gl);color:var(--g3);}.stat-occ{background:#FDF1E1;color:#8a5a10;}.stat-conge{background:#EAF1FE;color:#1e4fa8;}
 /* Charts */
 .chart-bar{display:flex;align-items:flex-end;gap:8px;height:120px;padding:8px 0;}
 .bar{flex:1;border-radius:6px 6px 0 0;min-width:20px;transition:.3s;position:relative;}
@@ -603,10 +603,10 @@ h1,h2,h3,h4,h5,h6,.brand-font{font-family:'Fraunces',serif;letter-spacing:-.01em
   .table-responsive-stack table, .table-responsive-stack thead, .table-responsive-stack tbody, .table-responsive-stack th, .table-responsive-stack td, .table-responsive-stack tr{display:block;}
   .table-responsive-stack thead tr{position:absolute;top:-9999px;left:-9999px;}
   .table-responsive-stack tr{border:1px solid var(--line);border-radius:8px;margin-bottom:8px;padding:6px;}
-  .table-responsive-stack td{border:none;border-bottom:1px solid #F1EADC;position:relative;padding-left:45%;}
+  .table-responsive-stack td{border:none;border-bottom:1px solid #E4E9F0;position:relative;padding-left:45%;}
   .table-responsive-stack td:before{position:absolute;left:8px;width:40%;white-space:nowrap;font-weight:600;font-size:.7rem;color:var(--g2);content:attr(data-label);}
 }
-::-webkit-scrollbar{width:4px;}::-webkit-scrollbar-track{background:#FAF6EC;}::-webkit-scrollbar-thumb{background:var(--gd);border-radius:4px;}
+::-webkit-scrollbar{width:4px;}::-webkit-scrollbar-track{background:#F8FAFC;}::-webkit-scrollbar-thumb{background:var(--gd);border-radius:4px;}
 </style>"""
 
 JS_BASE="""<script>
@@ -801,10 +801,10 @@ LOGIN_HTML=f"""<!DOCTYPE html>
 <title>Connexion — LE TROPICAL</title>
 {CSS}
 <style>
-.lw{{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(160deg,#092A1F 0%,#14614A 55%,#1A7A5C 100%);position:relative;overflow:hidden;padding:24px;}}
+.lw{{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(160deg,#0B1E3A 0%,#2F6FED 55%,#4C86F5 100%);position:relative;overflow:hidden;padding:24px;}}
 .lw::before{{content:"";position:absolute;inset:0;opacity:.08;background-image:repeating-linear-gradient(45deg,#fff 0 1.5px,transparent 1.5px 30px),repeating-linear-gradient(-45deg,#fff 0 1.5px,transparent 1.5px 30px);}}
 .lc{{position:relative;background:#fff;border-radius:20px;box-shadow:0 24px 60px -12px rgba(6,20,15,.5);width:100%;max-width:412px;overflow:hidden;}}
-.lh{{background:linear-gradient(135deg,#092A1F,#14614A);padding:32px 32px 26px;text-align:center;color:#fff;}}
+.lh{{background:linear-gradient(135deg,#0B1E3A,#2F6FED);padding:32px 32px 26px;text-align:center;color:#fff;}}
 .li{{width:60px;height:60px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.28);border-radius:16px;display:inline-flex;align-items:center;justify-content:center;font-size:1.5rem;margin-bottom:14px;}}
 .lh h4{{color:#fff;font-size:1.4rem;margin:0;}}
 .lh p{{opacity:.78;font-size:.82rem;margin:6px 0 0;font-family:'IBM Plex Sans';}}
@@ -969,7 +969,7 @@ def view_doc(ref_type, ref_id):
       <div style="font-size:.75rem;color:var(--muted);">Total</div>
     </div>
     <div style="background:#E2EBF3;border-radius:8px;padding:14px;text-align:center;">
-      <div style="font-size:1.1rem;font-weight:800;color:#3B5A82;">{fac["part_assurance"]:,} F</div>
+      <div style="font-size:1.1rem;font-weight:800;color:#3C93A0;">{fac["part_assurance"]:,} F</div>
       <div style="font-size:.75rem;color:var(--muted);">Assurance</div>
     </div>
     <div style="background:#FDF5E6;border-radius:8px;padding:14px;text-align:center;">
@@ -1052,15 +1052,15 @@ def dashboard():
         extra_js=f"""<script>
 // Graphique consultations par service
 const ctx1=document.getElementById('chartCons');
-if(ctx1){{new Chart(ctx1,{{type:'bar',data:{{labels:{json.dumps(chart_labels)},datasets:[{{label:'Consultations',data:{json.dumps(chart_vals)},backgroundColor:['#0F4D3A','#3B5A82','#D9A441','#B23B3B','#6D5BB3','#4A8A93','#B8447A'],borderRadius:6}}]}},options:{{responsive:true,plugins:{{legend:{{display:false}}}},scales:{{y:{{beginAtZero:true,ticks:{{stepSize:1}}}}}}}}}})}}
+if(ctx1){{new Chart(ctx1,{{type:'bar',data:{{labels:{json.dumps(chart_labels)},datasets:[{{label:'Consultations',data:{json.dumps(chart_vals)},backgroundColor:['#2F6FED','#3C93A0','#D9A441','#DC3545','#6D5BB3','#4A8A93','#B8447A'],borderRadius:6}}]}},options:{{responsive:true,plugins:{{legend:{{display:false}}}},scales:{{y:{{beginAtZero:true,ticks:{{stepSize:1}}}}}}}}}})}}
 
 // Graphique RDV par statut
 const ctx2=document.getElementById('chartRdv');
-if(ctx2){{new Chart(ctx2,{{type:'doughnut',data:{{labels:{json.dumps(list(rdv_stats.keys()))},datasets:[{{data:{json.dumps(list(rdv_stats.values()))},backgroundColor:['#0F4D3A','#D9A441','#B23B3B','#4A8A93'],borderWidth:2}}]}},options:{{responsive:true,plugins:{{legend:{{position:'right'}}}}}}}})}}
+if(ctx2){{new Chart(ctx2,{{type:'doughnut',data:{{labels:{json.dumps(list(rdv_stats.keys()))},datasets:[{{data:{json.dumps(list(rdv_stats.values()))},backgroundColor:['#2F6FED','#D9A441','#DC3545','#4A8A93'],borderWidth:2}}]}},options:{{responsive:true,plugins:{{legend:{{position:'right'}}}}}}}})}}
 
 // Graphique stocks
 const ctxS=document.getElementById('chartStock');
-if(ctxS){{const sn=[{','.join([repr(next((m["libelle"] for m in DB["medicaments"] if m["id_stock"]==s["id"]),"?")) for s in DB["stocks"]])}];const sv=[{','.join([str(s["quantite"]) for s in DB["stocks"]])}];new Chart(ctxS,{{type:'bar',data:{{labels:sn,datasets:[{{label:'Quantite',data:sv,backgroundColor:sv.map(v=>v==0?'#B23B3B':v<20?'#D9A441':'#0F4D3A'),borderRadius:4}}]}},options:{{responsive:true,plugins:{{legend:{{display:false}}}},scales:{{y:{{beginAtZero:true}}}}}}}})}}
+if(ctxS){{const sn=[{','.join([repr(next((m["libelle"] for m in DB["medicaments"] if m["id_stock"]==s["id"]),"?")) for s in DB["stocks"]])}];const sv=[{','.join([str(s["quantite"]) for s in DB["stocks"]])}];new Chart(ctxS,{{type:'bar',data:{{labels:sn,datasets:[{{label:'Quantite',data:sv,backgroundColor:sv.map(v=>v==0?'#DC3545':v<20?'#D9A441':'#2F6FED'),borderRadius:4}}]}},options:{{responsive:true,plugins:{{legend:{{display:false}}}},scales:{{y:{{beginAtZero:true}}}}}}}})}}
 </script>"""
 
         body=f"""
@@ -1738,9 +1738,9 @@ def a_rapports_financiers():
 
     extra_js=f"""<script>
 const ctxM=document.getElementById('chartMensuel');
-if(ctxM){{new Chart(ctxM,{{type:'line',data:{{labels:{json.dumps(mois_labels)},datasets:[{{label:'Recettes (FCFA)',data:{json.dumps(mois_vals)},borderColor:'#0F4D3A',backgroundColor:'rgba(13,122,82,.1)',fill:true,tension:.3}}]}},options:{{responsive:true,plugins:{{legend:{{display:false}}}},scales:{{y:{{beginAtZero:true}}}}}}}})}}
+if(ctxM){{new Chart(ctxM,{{type:'line',data:{{labels:{json.dumps(mois_labels)},datasets:[{{label:'Recettes (FCFA)',data:{json.dumps(mois_vals)},borderColor:'#2F6FED',backgroundColor:'rgba(47,111,237,.1)',fill:true,tension:.3}}]}},options:{{responsive:true,plugins:{{legend:{{display:false}}}},scales:{{y:{{beginAtZero:true}}}}}}}})}}
 const ctxT=document.getElementById('chartTypes');
-if(ctxT){{new Chart(ctxT,{{type:'doughnut',data:{{labels:{json.dumps(list(rev_type.keys()))},datasets:[{{data:{json.dumps(list(rev_type.values()))},backgroundColor:['#0F4D3A','#3B5A82','#D9A441','#B23B3B','#6D5BB3'],borderWidth:2}}]}},options:{{responsive:true,plugins:{{legend:{{position:'right'}}}}}}}})}}
+if(ctxT){{new Chart(ctxT,{{type:'doughnut',data:{{labels:{json.dumps(list(rev_type.keys()))},datasets:[{{data:{json.dumps(list(rev_type.values()))},backgroundColor:['#2F6FED','#3C93A0','#D9A441','#DC3545','#6D5BB3'],borderWidth:2}}]}},options:{{responsive:true,plugins:{{legend:{{position:'right'}}}}}}}})}}
 </script>"""
 
     body=f"""
@@ -1859,7 +1859,7 @@ def a_statistiques():
 
     extra_js=f"""<script>
 const ctxE=document.getElementById('chartEvolution');
-if(ctxE){{new Chart(ctxE,{{type:'line',data:{{labels:{json.dumps(mois_labels)},datasets:[{{label:'Consultations',data:{json.dumps(cons_mois)},borderColor:'#0F4D3A',backgroundColor:'rgba(13,122,82,.1)',fill:true,tension:.3}},{{label:'Rendez-vous',data:{json.dumps(rdv_mois)},borderColor:'#3B5A82',backgroundColor:'rgba(43,122,158,.08)',fill:true,tension:.3}}]}},options:{{responsive:true,plugins:{{legend:{{display:true}}}},scales:{{y:{{beginAtZero:true,ticks:{{stepSize:1}}}}}}}}}})}}
+if(ctxE){{new Chart(ctxE,{{type:'line',data:{{labels:{json.dumps(mois_labels)},datasets:[{{label:'Consultations',data:{json.dumps(cons_mois)},borderColor:'#2F6FED',backgroundColor:'rgba(47,111,237,.1)',fill:true,tension:.3}},{{label:'Rendez-vous',data:{json.dumps(rdv_mois)},borderColor:'#3C93A0',backgroundColor:'rgba(43,122,158,.08)',fill:true,tension:.3}}]}},options:{{responsive:true,plugins:{{legend:{{display:true}}}},scales:{{y:{{beginAtZero:true,ticks:{{stepSize:1}}}}}}}}}})}}
 const ctxM=document.getElementById('chartMotifs');
 if(ctxM){{new Chart(ctxM,{{type:'bar',indexAxis:'y',data:{{labels:{json.dumps([m for m,n in top_motifs])},datasets:[{{label:'Nb consultations',data:{json.dumps([n for m,n in top_motifs])},backgroundColor:'#6D5BB3',borderRadius:4}}]}},options:{{responsive:true,plugins:{{legend:{{display:false}}}},scales:{{x:{{beginAtZero:true,ticks:{{stepSize:1}}}}}}}}}})}}
 </script>"""
@@ -2321,7 +2321,7 @@ def m_dossier(pid):
     rows_o="".join(f'<tr><td>ORD-{o["id"]:04d}</td><td>{o["date"]}</td><td>{", ".join(l["libelle"] for l in o["lignes"])}</td><td>{o["duree"]} j</td></tr>' for o in ords)
     infos="".join(f'<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--gl);font-size:.82rem;"><span style="color:var(--muted);">{k}</span><span style="font-weight:600;">{v}</span></div>' for k,v in [("Sexe",pat["sexe"]),("Naissance",pat["date_naissance"]),("Groupe sg.",f'<span class="bk {gc}">{gs}</span>'),("Assurance",pat["assurance"]),("Telephone",pat["telephone"]),("Email",pat.get("email","-")),("Adresse",pat.get("adresse","-")),("Dossier",dos["num_dossier"] if dos else "-"),("Diagnostic gen.",dos["diagnostic_general"] if dos else "-")])
     if allergies:
-        allergies_html="".join(f'<span class="badge" style="background:{"#B23B3B" if a["severite"] in ("Elevee","Critique") else "#D9A441"};color:#fff;margin:2px;padding:4px 8px;border-radius:6px;font-size:.75rem;display:inline-block;"><i class="fas fa-exclamation-triangle"></i> {a["libelle"]} ({a["severite"]})</span>' for a in allergies)
+        allergies_html="".join(f'<span class="badge" style="background:{"#DC3545" if a["severite"] in ("Elevee","Critique") else "#D9A441"};color:#fff;margin:2px;padding:4px 8px;border-radius:6px;font-size:.75rem;display:inline-block;"><i class="fas fa-exclamation-triangle"></i> {a["libelle"]} ({a["severite"]})</span>' for a in allergies)
     else:
         allergies_html='<span style="color:var(--muted);font-size:.8rem;">Aucune allergie connue</span>'
 
@@ -2369,9 +2369,9 @@ def m_dossier(pid):
         chart_const_js=f"""<script>
         (function(){{
         const ctx1=document.getElementById('chartPoids');
-        if(ctx1) new Chart(ctx1,{{type:'line',data:{{labels:{json.dumps(labels)},datasets:[{{label:'Poids (kg)',data:{json.dumps(poids_data)},borderColor:'#0F4D3A',backgroundColor:'rgba(13,122,82,.1)',fill:true,tension:.3}}]}},options:{{responsive:true,plugins:{{legend:{{display:true}}}}}}}});
+        if(ctx1) new Chart(ctx1,{{type:'line',data:{{labels:{json.dumps(labels)},datasets:[{{label:'Poids (kg)',data:{json.dumps(poids_data)},borderColor:'#2F6FED',backgroundColor:'rgba(47,111,237,.1)',fill:true,tension:.3}}]}},options:{{responsive:true,plugins:{{legend:{{display:true}}}}}}}});
         const ctx2=document.getElementById('chartTension');
-        if(ctx2) new Chart(ctx2,{{type:'line',data:{{labels:{json.dumps(labels)},datasets:[{{label:'Systolique',data:{json.dumps(ts_data)},borderColor:'#B23B3B',tension:.3}},{{label:'Diastolique',data:{json.dumps(td_data)},borderColor:'#3B5A82',tension:.3}}]}},options:{{responsive:true,plugins:{{legend:{{display:true}}}}}}}});
+        if(ctx2) new Chart(ctx2,{{type:'line',data:{{labels:{json.dumps(labels)},datasets:[{{label:'Systolique',data:{json.dumps(ts_data)},borderColor:'#DC3545',tension:.3}},{{label:'Diastolique',data:{json.dumps(td_data)},borderColor:'#3C93A0',tension:.3}}]}},options:{{responsive:true,plugins:{{legend:{{display:true}}}}}}}});
         }})();
         </script>"""
 
@@ -2856,11 +2856,11 @@ def m_ordo(cid):
             opts="".join(f'<option value="{m["id"]}">{m["libelle"]}</option>' for m in DB["medicaments"])
             alerte_html="".join(f'<div class="al {"al-d" if a["bloquant"] else "al-w"} mb-2"><i class="fas fa-{"exclamation-triangle" if a["bloquant"] else "info-circle"}"></i><span style="font-size:.83rem;">{a["message"]}</span></div>' for a in alertes)
             body=f"""<div class="row justify-content-center"><div class="col-lg-7"><div class="card">
-<div class="card-hdr" style="background:#B23B3B;"><div class="title" style="color:#fff;"><i class="fas fa-exclamation-triangle"></i>ALERTE — Interactions detectees</div></div>
+<div class="card-hdr" style="background:#DC3545;"><div class="title" style="color:#fff;"><i class="fas fa-exclamation-triangle"></i>ALERTE — Interactions detectees</div></div>
 <div class="card-body">
   <div class="al al-d mb-3"><i class="fas fa-ban"></i><strong>Validation bloquee.</strong> Des interactions a risque eleve ou critique ont ete detectees. Vous devez modifier la prescription.</div>
   {alerte_html}
-  <div style="margin-top:16px;padding:12px;background:#F9ECEC;border-radius:8px;border-left:4px solid #B23B3B;">
+  <div style="margin-top:16px;padding:12px;background:#F9ECEC;border-radius:8px;border-left:4px solid #DC3545;">
     <p style="font-weight:700;color:#7A2420;font-size:.85rem;margin:0;">Regles metier : Les prescriptions doivent etre verifiees contre le module d interactions. Si le niveau de risque est eleve ou critique, le systeme bloque la validation.</p>
   </div>
   <div style="display:flex;gap:8px;margin-top:16px;">
@@ -3305,7 +3305,7 @@ def p_dossier():
     rows_c="".join(f'<tr><td>{c["date"]}</td><td>{mname(c["matricule"])}</td><td><strong>{c["diagnostic"]}</strong></td><td>{c.get("observation","")[:60]}</td><td>{c["type"]}</td></tr>' for c in conss)
     infos="".join(f'<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--gl);font-size:.82rem;"><span style="color:var(--muted);">{k}</span><span style="font-weight:600;">{v}</span></div>' for k,v in [("Nom complet",f'{pat["prenom"]} {pat["nom"]}'),("Sexe",pat["sexe"]),("Naissance",pat["date_naissance"]),("Telephone",pat["telephone"]),("Email",pat.get("email","-")),("Adresse",pat.get("adresse","-")),("Assurance",pat["assurance"]),("Groupe sanguin",f'<span class="bk {gc}">{gs}</span>'),("Statut",pat.get("statut","Actif")),("N° Dossier",dos["num_dossier"] if dos else "-"),("Depuis",dos["date_creation"] if dos else "-"),("Diagnostic gen.",dos["diagnostic_general"] if dos else "-")])
     if allergies:
-        allergies_html="".join(f'<span class="badge" style="background:{"#B23B3B" if a["severite"] in ("Elevee","Critique") else "#D9A441"};color:#fff;margin:2px;padding:4px 8px;border-radius:6px;font-size:.75rem;display:inline-block;"><i class="fas fa-exclamation-triangle"></i> {a["libelle"]} ({a["severite"]})</span>' for a in allergies)
+        allergies_html="".join(f'<span class="badge" style="background:{"#DC3545" if a["severite"] in ("Elevee","Critique") else "#D9A441"};color:#fff;margin:2px;padding:4px 8px;border-radius:6px;font-size:.75rem;display:inline-block;"><i class="fas fa-exclamation-triangle"></i> {a["libelle"]} ({a["severite"]})</span>' for a in allergies)
     else:
         allergies_html='<span style="color:var(--muted);font-size:.8rem;">Aucune allergie connue</span>'
 
@@ -3324,7 +3324,7 @@ def p_dossier():
         labels=[_ds(c["date"]) for c in constantes]
         poids_data=[c["poids"] for c in constantes]
         chart_const='<canvas id="chartPoidsP" height="90"></canvas>'
-        chart_const_js=f"""<script>(function(){{const ctx=document.getElementById('chartPoidsP');if(ctx)new Chart(ctx,{{type:'line',data:{{labels:{json.dumps(labels)},datasets:[{{label:'Poids (kg)',data:{json.dumps(poids_data)},borderColor:'#0F4D3A',backgroundColor:'rgba(13,122,82,.1)',fill:true,tension:.3}}]}},options:{{responsive:true}}}});}})();</script>"""
+        chart_const_js=f"""<script>(function(){{const ctx=document.getElementById('chartPoidsP');if(ctx)new Chart(ctx,{{type:'line',data:{{labels:{json.dumps(labels)},datasets:[{{label:'Poids (kg)',data:{json.dumps(poids_data)},borderColor:'#2F6FED',backgroundColor:'rgba(47,111,237,.1)',fill:true,tension:.3}}]}},options:{{responsive:true}}}});}})();</script>"""
 
     def row_vac(v):
         rappel=v.get("rappel_prevu")
@@ -3752,7 +3752,7 @@ def p_tickets():
             origine="RDV du "+_ds(next((r["date"] for r in DB["rdvs"] if r["id"]==t.get("id_rdv")),"")) if t.get("id_rdv") else ("Consultation du "+_ds(next((c["date"] for c in DB["consultations"] if c["id"]==t.get("id_consultation")),""))) if t.get("id_consultation") else f"Motif : {t.get('justificatif','-')}"
             voir_html=f"""<div class="card mb-3" style="border:2px solid var(--g1);"><div class="card-hdr" style="background:var(--g3);"><div class="title" style="color:#fff;"><i class="fas fa-ticket-alt"></i>Detail Ticket — {t['num_ticket']}</div><a href="/p-tickets" class="btn btn-sm" style="background:rgba(255,255,255,.2);color:#fff;"><i class="fas fa-times"></i>Fermer</a></div>
 <div class="card-body"><div style="text-align:center;margin-bottom:20px;">
-  <div style="background:linear-gradient(135deg,#0a3b28,#0F4D3A);border-radius:14px;padding:24px 32px;color:#fff;display:inline-block;min-width:240px;position:relative;">
+  <div style="background:linear-gradient(135deg,#0B1E3A,#2F6FED);border-radius:14px;padding:24px 32px;color:#fff;display:inline-block;min-width:240px;position:relative;">
     <div style="position:absolute;top:12px;right:12px;background:#fff;border-radius:6px;padding:4px;"><canvas id="qrTicket" width="64" height="64"></canvas></div>
     <div style="font-size:2.2rem;font-weight:800;letter-spacing:3px;">{t['num_ticket']}</div>
     <div style="font-size:1.05rem;margin-top:6px;opacity:.9;">{t['type_ticket']}</div>
@@ -4227,7 +4227,7 @@ def r_ticket_detail(tid):
     <div class="card-hdr" style="background:var(--g3);"><div class="title" style="color:#fff;"><i class="fas fa-ticket-alt" style="color:#8fc4a8;"></i>Detail Ticket {t['num_ticket']}</div></div>
     <div class="card-body">
       <div style="text-align:center;margin-bottom:20px;">
-        <div style="background:linear-gradient(135deg,#0a3b28,#0F4D3A);border-radius:14px;padding:24px;color:#fff;display:inline-block;min-width:220px;position:relative;">
+        <div style="background:linear-gradient(135deg,#0B1E3A,#2F6FED);border-radius:14px;padding:24px;color:#fff;display:inline-block;min-width:220px;position:relative;">
           <div style="position:absolute;top:12px;right:12px;background:#fff;border-radius:6px;padding:4px;"><canvas id="qrTicketR" width="56" height="56"></canvas></div>
           <div style="font-size:2rem;font-weight:700;letter-spacing:2px;">{t['num_ticket']}</div>
           <div style="font-size:1rem;margin-top:4px;opacity:.9;">{t['type_ticket']}</div>
@@ -4594,7 +4594,7 @@ def r_teleconsult():
         if s=="Planifiee" and not lien_ok:
             return '<span class="bk att"><i class="fas fa-clock me-1"></i>Lien non envoye</span>'
         if s=="En cours":
-            return '<span class="bk inf"><i class="fas fa-circle me-1" style="color:#B23B3B;animation:pulse 1s infinite;"></i>En cours</span>'
+            return '<span class="bk inf"><i class="fas fa-circle me-1" style="color:#DC3545;animation:pulse 1s infinite;"></i>En cours</span>'
         if s=="Terminee":
             return '<span class="bk grey"><i class="fas fa-flag-checkered me-1"></i>Terminee</span>'
         if s=="Annulee":
