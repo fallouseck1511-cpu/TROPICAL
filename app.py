@@ -5491,4 +5491,14 @@ def profil():
 <script>function previewPhoto(input){{if(input.files&&input.files[0]){{const r=new FileReader();r.onload=function(e){{document.getElementById('preview_img').src=e.target.result;document.getElementById('photo_preview').style.display='block';document.getElementById('photo_b64').value=e.target.result;}};r.readAsDataURL(input.files[0]);}}}}</script>"""
     return page("Mon Profil",role,u,body)
 
+@app.route("/_diag_counts_tmp987")
+def _diag_counts_tmp987():
+    from models import Patient, Medecin, Medicament, Rdv, Consultation, Facture, Historique
+    marker = Historique.query.filter_by(type="seed_demo_v1_applique").first()
+    return (f"<pre>Patients: {Patient.query.count()}\nMedecins: {Medecin.query.count()}\n"
+            f"Medicaments: {Medicament.query.count()}\nRDV: {Rdv.query.count()}\n"
+            f"Consultations: {Consultation.query.count()}\nFactures: {Facture.query.count()}\n"
+            f"Marqueur seed_demo present: {marker is not None}\n"
+            f"DATABASE_URL commence par: {os.environ.get('DATABASE_URL','(absente - sqlite local)')[:20]}</pre>")
+
 # ── LANCEMENT ─────────────────────────────────────────────────
