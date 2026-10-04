@@ -5491,18 +5491,4 @@ def profil():
 <script>function previewPhoto(input){{if(input.files&&input.files[0]){{const r=new FileReader();r.onload=function(e){{document.getElementById('preview_img').src=e.target.result;document.getElementById('photo_preview').style.display='block';document.getElementById('photo_b64').value=e.target.result;}};r.readAsDataURL(input.files[0]);}}}}</script>"""
     return page("Mon Profil",role,u,body)
 
-@app.route("/_run_seed_demo_tmp987")
-def _run_seed_demo_tmp987():
-    import seed_demo
-    try:
-        applique = seed_demo.run_seed_demo()
-    except Exception as e:
-        return f"<pre>ERREUR : {e}</pre>", 500
-    from models import Patient, Medecin, Medicament, Rdv, Consultation, Facture
-    resume = (f"Applique maintenant : {applique}\n"
-              f"Patients: {Patient.query.count()}\nMedecins: {Medecin.query.count()}\n"
-              f"Medicaments: {Medicament.query.count()}\nRDV: {Rdv.query.count()}\n"
-              f"Consultations: {Consultation.query.count()}\nFactures: {Facture.query.count()}")
-    return f"<pre>{resume}</pre>"
-
 # ── LANCEMENT ─────────────────────────────────────────────────
